@@ -12,3 +12,7 @@ else
 fi
 
 echo "Active Paw theme environment ready"
+echo ""
+echo "To enable Superpowers plugin (one-time setup in Claude Code):"
+echo "  Run: /plugin install superpowers@claude-plugins-official"
+echo ""
