@@ -1,0 +1,43 @@
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background rounded square -->
+  <rect x="12" y="12" width="96" height="96" rx="18" fill="#0f1820"/>
+
+  <!-- Shopping bag -->
+  <g transform="translate(60, 55)">
+    <!-- Bag body -->
+    <path d="M -22 -2 L -20 16 Q -20 18 -18 18 L 18 18 Q 20 18 20 16 L 22 -2 Z"
+          fill="white" stroke="none"/>
+
+    <!-- Bag left side fold -->
+    <line x1="-22" y1="-2" x2="-20" y2="0" stroke="white" stroke-width="1.5" opacity="0.3"/>
+
+    <!-- Bag right side fold -->
+    <line x1="22" y1="-2" x2="20" y2="0" stroke="white" stroke-width="1.5" opacity="0.3"/>
+
+    <!-- Bag handle left -->
+    <path d="M -14 -2 Q -14 -18 0 -20"
+          fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+
+    <!-- Bag handle right -->
+    <path d="M 14 -2 Q 14 -18 0 -20"
+          fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
+
+    <!-- Paw print -->
+    <g transform="translate(0, 4)">
+      <!-- Center pad -->
+      <circle cx="0" cy="0" r="5" fill="#f05a28"/>
+
+      <!-- Top left toe -->
+      <circle cx="-9" cy="-8" r="3.8" fill="#f05a28"/>
+
+      <!-- Top center-left toe -->
+      <circle cx="-3" cy="-10" r="3.8" fill="#f05a28"/>
+
+      <!-- Top center-right toe -->
+      <circle cx="3" cy="-10" r="3.8" fill="#f05a28"/>
+
+      <!-- Top right toe -->
+      <circle cx="9" cy="-8" r="3.8" fill="#f05a28"/>
+    </g>
+  </g>
+</svg>
