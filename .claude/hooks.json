@@ -1,0 +1,9 @@
+{
+  "hooks": [
+    {
+      "trigger": "SessionStart",
+      "script": ".claude/setup.sh",
+      "description": "Install graphify globally for persistent knowledge graph access"
+    }
+  ]
+}
