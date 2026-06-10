@@ -17,7 +17,8 @@ A modern, performant Shopify theme for pet-care e-commerce, designed with suppli
 
 - Develop on `master` (or feature branches off it). Never develop directly on `shopify-deploy`.
 - **Never merge `master` into `shopify-deploy`** — the 67MB `docs/` folder breaks Shopify's 50MB theme limit.
-- To ship theme changes to the store, copy only the theme folders across:
+- **Syncing is automatic:** a GitHub Action (`.github/workflows/sync-shopify-deploy.yml`) copies the theme folders to `shopify-deploy` on every push to `master` that touches them. Pushing theme changes to `master` deploys them to the live store — treat `master` pushes as production releases.
+- Manual fallback (only if the Action is down):
 
   ```bash
   git checkout shopify-deploy

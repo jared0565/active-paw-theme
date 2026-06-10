@@ -22,6 +22,9 @@
 !/.gitignore
 !/.shopifyignore
 
+# CI: auto-sync theme folders master -> shopify-deploy on every push
+!/.github/
+
 # Session setup hooks (credential-free; ensures graphify persists across sessions)
 !/.claude/
 !/.claude/setup.sh

@@ -1,0 +1,42 @@
+# Auto-sync theme files from master to the shopify-deploy branch.
+# shopify-deploy is connected to Shopify via the GitHub integration, so every
+# push to it goes live on the store. Only the theme folders are copied —
+# docs/ (67MB) must never reach shopify-deploy (50MB Shopify theme limit).
+name: Sync theme to shopify-deploy
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'assets/**'
+      - 'config/**'
+      - 'layout/**'
+      - 'locales/**'
+      - 'sections/**'
+      - 'snippets/**'
+      - 'templates/**'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out shopify-deploy
+        uses: actions/checkout@v4
+        with:
+          ref: shopify-deploy
+
+      - name: Copy theme folders from master and push
+        run: |
+          git fetch --no-tags --depth=1 origin master
+          git checkout FETCH_HEAD -- assets config layout locales sections snippets templates
+          if git diff --cached --quiet; then
+            echo "Theme already in sync — nothing to push."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Sync theme from master (${GITHUB_SHA::7})"
+          git push origin shopify-deploy
