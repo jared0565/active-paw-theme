@@ -1,0 +1,97 @@
+{%- comment -%}
+  Cart drawer contents — re-rendered via the Section Rendering API on every cart change.
+  Mirrors the per-line quantity-cap priority from sections/main-cart.liquid so the drawer
+  respects the same checkout limit (tracked inventory > supplier.max_order_qty >
+  supplier.available_qty > fallback 20).
+{%- endcomment -%}
+{%- if cart.item_count > 0 -%}
+  {%- assign cart_has_quantity_issue = false -%}
+  <ul class="cart-drawer__items" role="list">
+    {%- for item in cart.items -%}
+      {%- liquid
+        assign max_line_quantity = 20
+        assign line_has_quantity_issue = false
+        assign supplier_available_qty = item.variant.metafields.supplier.available_qty.value
+        assign supplier_max_order_qty = item.variant.metafields.supplier.max_order_qty.value
+        assign uses_tracked_inventory_limit = false
+
+        if item.variant.inventory_management != blank and item.variant.inventory_policy == 'deny'
+          assign uses_tracked_inventory_limit = true
+          assign max_line_quantity = item.variant.inventory_quantity | default: 0
+        endif
+
+        unless uses_tracked_inventory_limit
+          if supplier_max_order_qty != blank
+            assign max_line_quantity = supplier_max_order_qty
+          elsif supplier_available_qty != blank
+            assign max_line_quantity = supplier_available_qty
+          endif
+        endunless
+
+        if max_line_quantity < 1
+          assign max_line_quantity = 1
+        endif
+
+        if item.quantity > max_line_quantity
+          assign line_has_quantity_issue = true
+          assign cart_has_quantity_issue = true
+        endif
+      -%}
+      <li class="cart-drawer__item" data-cart-line="{{ forloop.index }}">
+        <a class="cart-drawer__media" href="{{ item.url }}" tabindex="-1" aria-hidden="true">
+          {%- if item.image != blank -%}
+            {{ item.image | image_url: width: 160 | image_tag: widths: '80, 120, 160', sizes: '64px', loading: 'lazy', alt: '' }}
+          {%- else -%}
+            <span aria-hidden="true">{{ item.product.title | slice: 0, 1 }}</span>
+          {%- endif -%}
+        </a>
+        <div class="cart-drawer__info">
+          <a class="cart-drawer__name" href="{{ item.url }}">{{ item.product.title }}</a>
+          {%- unless item.product.has_only_default_variant -%}
+            <span class="cart-drawer__variant">{{ item.variant.title }}</span>
+          {%- endunless -%}
+          <div class="cart-drawer__qty">
+            <button type="button" data-line-step="-1" data-line="{{ forloop.index }}" aria-label="Decrease quantity of {{ item.product.title | escape }}">&minus;</button>
+            <input type="number" min="0" max="{{ max_line_quantity }}" value="{{ item.quantity }}"
+                   data-line-qty data-line="{{ forloop.index }}" inputmode="numeric"
+                   aria-label="Quantity of {{ item.product.title | escape }}">
+            <button type="button" data-line-step="1" data-line="{{ forloop.index }}" aria-label="Increase quantity of {{ item.product.title | escape }}">+</button>
+          </div>
+          {%- if line_has_quantity_issue -%}
+            <span class="cart-drawer__warn">Reduce to {{ max_line_quantity }} or fewer before checkout.</span>
+          {%- endif -%}
+        </div>
+        <div class="cart-drawer__line-price">
+          {%- if item.original_line_price != item.final_line_price -%}
+            <s>{{ item.original_line_price | money }}</s>
+          {%- endif -%}
+          <strong>{{ item.final_line_price | money }}</strong>
+          <button type="button" class="cart-drawer__remove" data-line-remove data-line="{{ forloop.index }}">Remove</button>
+        </div>
+      </li>
+    {%- endfor -%}
+  </ul>
+
+  <div class="cart-drawer__foot">
+    <div class="cart-drawer__subtotal">
+      <span>Subtotal</span>
+      <strong>{{ cart.total_price | money }}</strong>
+    </div>
+    <p class="cart-drawer__tax">Shipping &amp; taxes calculated at checkout.</p>
+    {%- if cart_has_quantity_issue -%}
+      <div class="cart-drawer__alert" role="alert">One or more quantities exceed current limits. Update in your cart before checkout.</div>
+    {%- endif -%}
+    <div class="cart-drawer__actions">
+      <a class="button button-secondary full" href="{{ routes.cart_url }}">View cart</a>
+      <form action="{{ routes.cart_url }}" method="post" novalidate>
+        <button type="submit" name="checkout" class="button button-primary full"{% if cart_has_quantity_issue %} disabled{% endif %}>Checkout</button>
+      </form>
+    </div>
+  </div>
+{%- else -%}
+  <div class="cart-drawer__empty">
+    <p class="cart-drawer__empty-title">Your cart is empty</p>
+    <p>Start with grooming essentials, pet toys, or everyday care picks.</p>
+    <a class="button button-primary full" href="{{ routes.all_products_collection_url }}" data-cart-drawer-close>Shop all products</a>
+  </div>
+{%- endif -%}

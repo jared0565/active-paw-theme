@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="{{ request.locale.iso_code }}">
+  <head>
+    {% assign brand_name = settings.demo_brand_name | default: 'Active Paw' %}
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="{{ settings.color_ink | default: '#101820' }}">
+    {% if settings.favicon != blank %}
+      <link rel="icon" href="{{ settings.favicon | image_url: width: 64, height: 64 }}" type="image/png">
+      <link rel="apple-touch-icon" href="{{ settings.favicon | image_url: width: 180, height: 180 }}">
+    {% else %}
+      <link rel="icon" href="{{ 'active-paw-logo.svg' | asset_url }}" type="image/svg+xml">
+      <link rel="apple-touch-icon" href="{{ 'active-paw-logo.svg' | asset_url }}">
+    {% endif %}
+    <title>{{ page_title | replace: 'Pawmerce', brand_name }}{% if current_tags %} - {{ current_tags | join: ', ' }}{% endif %}{% if current_page != 1 %} - Page {{ current_page }}{% endif %}{% unless page_title contains brand_name %} - {{ brand_name }}{% endunless %}</title>
+    {% if page_description %}
+      <meta name="description" content="{{ page_description | replace: 'Pawmerce', brand_name | escape }}">
+    {% endif %}
+    <link rel="canonical" href="{{ canonical_url }}">
+    {%- render 'meta-tags' -%}
+    {%- liquid
+      assign body_font = settings.type_body_font
+      assign body_font_semibold = body_font | font_modify: 'weight', '600'
+      assign heading_font = settings.type_heading_font
+    -%}
+    {{ body_font | font_url | preload_tag: as: 'font', type: 'font/woff2' }}
+    {{ heading_font | font_url | preload_tag: as: 'font', type: 'font/woff2' }}
+    {{ content_for_header }}
+    {{ 'theme.css' | asset_url | stylesheet_tag }}
+    {% style %}
+      {{ body_font | font_face: font_display: 'swap' }}
+      {{ body_font_semibold | font_face: font_display: 'swap' }}
+      {{ heading_font | font_face: font_display: 'swap' }}
+      :root {
+        --ink: {{ settings.color_ink | default: '#101820' }};
+        --accent: {{ settings.color_accent | default: '#f05a28' }};
+        --accent-dark: {{ settings.color_accent | default: '#f05a28' | color_darken: 16 }};
+        --accent-soft: {{ settings.color_accent | default: '#f05a28' | color_lighten: 28 }};
+        --surface: {{ settings.color_surface | default: '#f7f4ef' }};
+        --font-body: {{ body_font.family }}, {{ body_font.fallback_families }};
+        --font-heading: {{ heading_font.family }}, {{ heading_font.fallback_families }};
+        --font-heading-weight: {{ heading_font.weight | default: 700 }};
+      }
+    {% endstyle %}
+    <script src="{{ 'theme.js' | asset_url }}" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#MainContent">Skip to content</a>
+    {% section 'announcement-bar' %}
+    <div class="sticky-header-stack">
+      {% sections 'header-group' %}
+    </div>
+    <main id="MainContent" class="main-content" role="main">
+      {{ content_for_layout }}
+    </main>
+    {% sections 'footer-group' %}
+    {% section 'cart-drawer' %}
+    {% render 'contact-modal' %}
+  </body>
+</html>

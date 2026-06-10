@@ -1,0 +1,74 @@
+{% doc %}
+Renders a real Shopify product card for category sections.
+@param {product} product - Product to render
+@param {string} badge - Short merchandising badge
+@param {boolean} [show_purchase_action] - Show direct buying controls on browse surfaces
+{% enddoc %}
+
+{% liquid
+  assign selected_variant = product.selected_or_first_available_variant
+  assign variant_count = product.variants_count | default: product.variants.size
+  assign show_purchase_action = show_purchase_action | default: false
+  assign rating = product.metafields.reviews.rating.value
+  assign rating_count = product.metafields.reviews.rating_count.value
+  assign benefit = 'A practical everyday pick for happier walks, easier grooming, and cleaner paws.'
+  if product.product_type contains 'grooming'
+    assign benefit = 'Grooming essential for cleaner coats and easier care routines.'
+  elsif product.product_type contains 'walking' or product.product_type contains 'harness'
+    assign benefit = 'Daily walking gear with options for fit, color, and use case.'
+  elsif product.product_type contains 'dental'
+    assign benefit = 'Daily care product that supports cleaner teeth and fresher breath.'
+  elsif product.product_type contains 'Paw'
+    assign benefit = 'Practical paw-care accessory for after walks and bath time.'
+  endif
+%}
+
+<article class="commerce-card">
+  <div class="commerce-card-link">
+    <a class="commerce-media-link" href="{{ product.url }}" aria-label="View {{ product.title | escape }}">
+      <div class="commerce-media">
+        {% if product.featured_image %}
+          {{ product.featured_image | image_url: width: 720 | image_tag: widths: '280, 420, 560, 720', sizes: '(max-width: 620px) 50vw, (max-width: 1200px) 25vw, 280px', loading: 'lazy', alt: product.title }}
+        {% else %}
+          <img src="{{ 'product-shampoo-glide.svg' | asset_url }}" alt="{{ product.title | escape }}" width="720" height="540" loading="lazy">
+        {% endif %}
+        <span>{{ badge | default: 'Popular pick' }}</span>
+      </div>
+    </a>
+    <div class="commerce-card-body">
+      {% if rating != blank and rating_count != blank %}
+        <div class="commerce-rating">★ {{ rating.rating | round: 1 }} <span>({{ rating_count }})</span></div>
+      {% endif %}
+      <h3><a href="{{ product.url }}">{{ product.title }}</a></h3>
+      <p>{{ benefit }}</p>
+      <div class="commerce-price-row">
+        <strong>{{ selected_variant.price | money }}</strong>
+        {% if selected_variant.compare_at_price > selected_variant.price %}
+          <span>{{ selected_variant.compare_at_price | money }}</span>
+        {% endif %}
+      </div>
+      <div class="commerce-card-footer">
+        {% if variant_count > 1 %}
+          <span>{{ variant_count }} options</span>
+          <strong>Choose options</strong>
+        {% else %}
+          <span>Ships fast</span>
+          <strong>View details</strong>
+        {% endif %}
+      </div>
+      {% if show_purchase_action %}
+        {% if product.available and selected_variant.available and variant_count == 1 %}
+          {% form 'product', product, class: 'commerce-card-form' %}
+            <input type="hidden" name="id" value="{{ selected_variant.id }}">
+            <input type="hidden" name="quantity" value="1">
+            <button class="commerce-add-button" type="submit">Add to cart</button>
+          {% endform %}
+        {% elsif product.available %}
+          <a class="commerce-option-button" href="{{ product.url }}">Choose options</a>
+        {% else %}
+          <span class="commerce-sold-out" aria-disabled="true">Sold out</span>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+</article>

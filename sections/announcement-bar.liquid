@@ -1,0 +1,50 @@
+<div class="announcement" role="region" aria-label="Store benefits">
+  <div class="announcement-track">
+    <p>
+      <span class="announcement-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M3 6.5h11v8H3z"/>
+          <path d="M14 9h3.8l2.2 2.8v2.7h-6z"/>
+          <circle cx="7" cy="17" r="1.8"/>
+          <circle cx="17.5" cy="17" r="1.8"/>
+        </svg>
+      </span>
+      <strong>{{ section.settings.shipping_title }}</strong>
+      <span>{{ section.settings.shipping_text }}</span>
+    </p>
+    <p>
+      <span class="announcement-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M7 7h9.5a4.5 4.5 0 1 1 0 9H6"/>
+          <path d="M8 4 4 8l4 4"/>
+        </svg>
+      </span>
+      <strong>{{ section.settings.returns_title }}</strong>
+      <span>{{ section.settings.returns_text }}</span>
+    </p>
+    <p>
+      <span class="announcement-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false">
+          <rect x="7" y="3" width="10" height="18" rx="2"/>
+          <path d="M11 17h2"/>
+        </svg>
+      </span>
+      <strong>{{ section.settings.support_title }}</strong>
+      <span>{{ section.settings.support_text }}</span>
+    </p>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Announcement bar",
+  "settings": [
+    { "type": "text", "id": "shipping_title", "label": "Shipping title", "default": "Free shipping" },
+    { "type": "text", "id": "shipping_text", "label": "Shipping text", "default": "UK mainland orders over £150" },
+    { "type": "text", "id": "returns_title", "label": "Returns title", "default": "Free returns" },
+    { "type": "text", "id": "returns_text", "label": "Returns text", "default": "Simple returns before checkout" },
+    { "type": "text", "id": "support_title", "label": "Support title", "default": "Pet-care support" },
+    { "type": "text", "id": "support_text", "label": "Support text", "default": "Grooming picks and bundle help" }
+  ]
+}
+{% endschema %}

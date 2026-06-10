@@ -1,0 +1,42 @@
+<section class="section">
+  <div class="section-heading">
+    <p class="eyebrow">Collection</p>
+    <h1>{{ collection.title | default: 'Our products' }}</h1>
+    <p>{{ collection.description | default: 'Browse the full range of everyday pet-care picks.' }}</p>
+  </div>
+  {% paginate collection.products by 12 %}
+    {% if collection.products_count > 0 %}
+      <div class="product-grid">
+        {% for product in collection.products %}
+          <article class="product-card">
+            <a href="{{ product.url }}">
+              <div class="product-media">{% if product.featured_image %}{{ product.featured_image | image_url: width: 900 | image_tag: widths: '300, 450, 600, 750, 900', sizes: '(max-width: 620px) 50vw, (max-width: 900px) 33vw, 300px', loading: 'lazy' }}{% else %}<span>{{ product.title }}</span>{% endif %}</div>
+              <div class="product-card-body"><h3>{{ product.title }}</h3><p class="price">{{ product.price | money }}</p></div>
+            </a>
+          </article>
+        {% endfor %}
+      </div>
+      {% if paginate.pages > 1 %}
+        <nav class="pagination" role="navigation" aria-label="Collection pagination">
+          {% if paginate.previous %}
+            <a href="{{ paginate.previous.url }}">Previous</a>
+          {% endif %}
+          <span>Page {{ paginate.current_page }} of {{ paginate.pages }}</span>
+          {% if paginate.next %}
+            <a href="{{ paginate.next.url }}">Next</a>
+          {% endif %}
+        </nav>
+      {% endif %}
+    {% else %}
+      <div class="empty-category">
+        <strong>No products here yet</strong>
+        <span>Check back soon, or browse the rest of the store.</span>
+        <a class="button button-primary" href="{{ routes.all_products_collection_url }}">Browse all products</a>
+      </div>
+    {% endif %}
+  {% endpaginate %}
+</section>
+
+{% schema %}
+{ "name": "Main collection", "settings": [] }
+{% endschema %}

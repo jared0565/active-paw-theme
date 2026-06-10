@@ -1,0 +1,81 @@
+{% assign brand_name = settings.demo_brand_name | default: 'Active Paw' %}
+
+<footer class="site-footer">
+  <div class="footer-shell">
+    <section class="footer-brand" aria-label="{{ brand_name }} footer">
+      <h2>{{ brand_name }}</h2>
+      <p>Pet care essentials for cleaner walks, easier grooming, and everyday routines.</p>
+      <div class="footer-trust-row" aria-label="Store confidence">
+        <span>Free UK mainland shipping over £150</span>
+        <span>Simple returns</span>
+        <span>Secure checkout</span>
+        <span>Stock checked daily</span>
+      </div>
+    </section>
+
+    <nav class="footer-nav" aria-label="Footer navigation">
+      <div>
+        <h3>Shop</h3>
+        {%- assign footer_menu = linklists[section.settings.footer_menu] -%}
+        {%- if footer_menu.links.size > 0 -%}
+          {%- for link in footer_menu.links -%}
+            <a href="{{ link.url }}">{{ link.title | escape }}</a>
+          {%- endfor -%}
+        {%- else -%}
+          {%- assign category_handles = 'pet-cleaning,pet-accessories,pet-health,pet-toys,more-to-love' | split: ',' -%}
+          {%- for handle in category_handles -%}
+            {%- if collections[handle].products_count > 0 -%}
+              <a href="{{ collections[handle].url }}">{{ collections[handle].title | escape }}</a>
+            {%- endif -%}
+          {%- endfor -%}
+        {%- endif -%}
+      </div>
+      <div>
+        <h3>Help</h3>
+        <a href="{{ routes.root_url }}#support">Shipping & returns</a>
+        <a href="mailto:support@activepaw.co.uk">Contact support</a>
+        <a href="{{ routes.root_url }}#support">FAQs</a>
+        <a href="{{ routes.cart_url }}">Cart</a>
+        <a href="{{ routes.search_url }}?type=product">Search products</a>
+      </div>
+      <div>
+        <h3>Routines</h3>
+        <a href="{{ routes.search_url }}?q=paw+cleaning&type=product">Muddy walk reset</a>
+        <a href="{{ routes.search_url }}?q=dog+food+water+bottle&type=product">Feeding & travel kit</a>
+        <a href="{{ routes.search_url }}?q=dental+care&type=product">Dental care routine</a>
+        <a href="{{ routes.search_url }}?q=grooming+add-ons&type=product">Grooming add-ons</a>
+      </div>
+    </nav>
+
+    <form class="newsletter footer-newsletter" method="post" action="/contact#contact_form" accept-charset="UTF-8">
+      <input type="hidden" name="form_type" value="customer">
+      <input type="hidden" name="utf8" value="✓">
+      <label for="NewsletterEmail">Get bundle ideas and launch offers</label>
+      <p>Pet-care picks, restock prompts, and practical offers for easier shopping.</p>
+      <div>
+        <input id="NewsletterEmail" type="email" name="contact[email]" placeholder="email@example.com" autocomplete="email" required>
+        <button type="submit">Subscribe</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="footer-bottom">
+    <span>&copy; {{ 'now' | date: '%Y' }} {{ brand_name }}</span>
+    <span>Prices, stock, and shipping are confirmed at checkout.</span>
+  </div>
+</footer>
+
+{% schema %}
+{
+  "name": "Site footer",
+  "settings": [
+    {
+      "type": "link_list",
+      "id": "footer_menu",
+      "label": "Footer shop menu",
+      "default": "footer",
+      "info": "Links shown under the Shop column. Falls back to the pet category collections until a menu is selected."
+    }
+  ]
+}
+{% endschema %}

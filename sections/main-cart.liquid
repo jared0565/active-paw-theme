@@ -1,0 +1,175 @@
+<section class="cart-page">
+  <div class="cart-shell">
+    <div class="cart-heading">
+      <p class="eyebrow">Basket</p>
+      <h1>Your cart</h1>
+      <p>
+        {% if cart.item_count > 0 %}
+          Review your pet-care picks before checkout.
+        {% else %}
+          Your cart is empty for now.
+        {% endif %}
+      </p>
+    </div>
+
+    {% if cart.item_count > 0 %}
+      {% assign cart_has_quantity_issue = false %}
+      <form class="cart-layout" action="{{ routes.cart_url }}" method="post" novalidate>
+        <div class="cart-items" aria-label="Cart items">
+          {% for item in cart.items %}
+            {% liquid
+              assign max_line_quantity = 20
+              assign inventory_note = 'Supplier-managed availability. Quantity is capped per order.'
+              assign line_has_quantity_issue = false
+              assign supplier_name = item.variant.metafields.supplier.name.value | default: item.product.metafields.supplier.name.value
+              assign supplier_status = item.variant.metafields.supplier.status.value | default: item.product.metafields.supplier.status.value
+              assign supplier_available_qty = item.variant.metafields.supplier.available_qty.value
+              assign supplier_max_order_qty = item.variant.metafields.supplier.max_order_qty.value
+              assign supplier_last_checked_at = item.variant.metafields.supplier.last_checked_at.value | default: item.product.metafields.supplier.last_checked_at.value
+              assign uses_tracked_inventory_limit = false
+
+              if item.variant.inventory_management != blank
+                if item.variant.inventory_policy == 'deny'
+                  assign uses_tracked_inventory_limit = true
+                  assign tracked_inventory = item.variant.inventory_quantity | default: 0
+                  assign max_line_quantity = tracked_inventory
+                  if tracked_inventory == 1
+                    assign inventory_note = 'Only 1 available from tracked stock.'
+                  else
+                    assign inventory_note = tracked_inventory | append: ' available from tracked stock.'
+                  endif
+                else
+                  assign inventory_note = 'Backorder or supplier sourcing is enabled for this item. Quantity is capped per order.'
+                endif
+              endif
+
+              unless uses_tracked_inventory_limit
+                if supplier_max_order_qty != blank
+                  assign max_line_quantity = supplier_max_order_qty
+                  assign supplier_status_label = supplier_status | default: 'supplier available' | replace: '_', ' '
+                  assign inventory_note = 'Supplier status: ' | append: supplier_status_label | append: '. Max ' | append: supplier_max_order_qty | append: ' per order.'
+                elsif supplier_available_qty != blank
+                  assign max_line_quantity = supplier_available_qty
+                  assign inventory_note = supplier_available_qty | append: ' available from supplier data.'
+                endif
+              endunless
+
+              if supplier_last_checked_at != blank
+                assign supplier_checked_label = supplier_last_checked_at | date: "%d %b %Y, %H:%M"
+              endif
+
+              if supplier_name != blank
+                assign inventory_note = inventory_note | append: ' Source: ' | append: supplier_name | append: '.'
+              endif
+
+              if supplier_last_checked_at != blank
+                assign inventory_note = inventory_note | append: ' Checked ' | append: supplier_checked_label | append: '.'
+              endif
+
+              if max_line_quantity < 1
+                assign max_line_quantity = 1
+              endif
+
+              if item.quantity > max_line_quantity
+                assign line_has_quantity_issue = true
+                assign cart_has_quantity_issue = true
+              endif
+            %}
+            <article class="cart-item">
+              <a class="cart-item-media" href="{{ item.url }}" aria-label="View {{ item.product.title | escape }}">
+                {% if item.image != blank %}
+                  {{ item.image | image_url: width: 220 | image_tag: widths: '120, 180, 220', sizes: '110px', loading: 'lazy', alt: item.image.alt | default: item.product.title }}
+                {% else %}
+                  <span aria-hidden="true">{{ item.product.title | slice: 0, 1 }}</span>
+                {% endif %}
+              </a>
+
+              <div class="cart-item-body">
+                <div class="cart-item-title">
+                  <a href="{{ item.url }}">{{ item.product.title }}</a>
+                  {% unless item.product.has_only_default_variant %}
+                    <span>{{ item.variant.title }}</span>
+                  {% endunless %}
+                  {% if item.selling_plan_allocation != blank %}
+                    <span>{{ item.selling_plan_allocation.selling_plan.name }}</span>
+                  {% endif %}
+                </div>
+
+                <div class="cart-item-controls">
+                  <label for="CartQuantity-{{ forloop.index }}">Quantity</label>
+                  <input
+                    id="CartQuantity-{{ forloop.index }}"
+                    name="updates[]"
+                    type="number"
+                    min="0"
+                    max="{{ max_line_quantity }}"
+                    value="{{ item.quantity }}"
+                    inputmode="numeric"
+                    data-cart-quantity
+                    aria-label="Quantity for {{ item.product.title | escape }}"
+                  >
+                  <a href="{{ routes.cart_change_url }}?line={{ forloop.index }}&quantity=0">Remove</a>
+                  <span class="cart-stock-note {% if line_has_quantity_issue %}is-warning{% endif %}">
+                    {% if line_has_quantity_issue %}
+                      Reduce to {{ max_line_quantity }} or fewer before checkout.
+                    {% else %}
+                      {{ inventory_note }}
+                    {% endif %}
+                  </span>
+                </div>
+              </div>
+
+              <div class="cart-item-price">
+                {% if item.original_line_price != item.final_line_price %}
+                  <s>{{ item.original_line_price | money }}</s>
+                {% endif %}
+                <strong>{{ item.final_line_price | money }}</strong>
+                {% if item.unit_price_measurement %}
+                  <span>
+                    {{ item.unit_price | money }} /
+                    {% if item.unit_price_measurement.reference_value != 1 %}
+                      {{ item.unit_price_measurement.reference_value }}
+                    {% endif %}
+                    {{ item.unit_price_measurement.reference_unit }}
+                  </span>
+                {% endif %}
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+
+        <aside class="cart-summary" aria-label="Order summary">
+          <div class="cart-summary-card">
+            <div class="cart-summary-row">
+              <span>Subtotal</span>
+              <strong>{{ cart.total_price | money }}</strong>
+            </div>
+            <p>Shipping, discounts, and taxes are calculated at checkout.</p>
+            {% if cart_has_quantity_issue %}
+              <div class="cart-alert" role="alert">
+                One or more quantities exceed current order limits. Update the cart before checkout.
+              </div>
+            {% endif %}
+
+            <div class="cart-summary-actions">
+              <button class="button button-secondary" type="submit" name="update">Update cart</button>
+              <button class="button button-primary" type="submit" name="checkout" {% if cart_has_quantity_issue %}disabled{% endif %}>Checkout</button>
+            </div>
+
+            <a class="cart-continue" href="{{ routes.all_products_collection_url }}">Continue shopping</a>
+          </div>
+        </aside>
+      </form>
+    {% else %}
+      <div class="cart-empty">
+        <strong>No products in your cart yet.</strong>
+        <span>Start with grooming essentials, pet toys, or everyday care picks.</span>
+        <a class="button button-primary" href="{{ routes.all_products_collection_url }}">Shop all products</a>
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+{% schema %}
+{ "name": "Main cart", "settings": [] }
+{% endschema %}

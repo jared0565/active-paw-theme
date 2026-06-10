@@ -1,0 +1,135 @@
+<section class="search-page">
+  <div class="search-shell">
+    <div class="search-heading">
+      <p class="eyebrow">Search</p>
+      {% if search.performed %}
+        <h1>Results for "{{ search.terms | escape }}"</h1>
+        <p>Browse matching products below — add single-option items straight to your cart.</p>
+      {% else %}
+        <h1>Find pet care products</h1>
+        <p>Search grooming, toys, feeding, walking, and daily care essentials.</p>
+      {% endif %}
+    </div>
+
+    {% if search.performed %}
+      {% paginate search.results by 24 %}
+        {% liquid
+          assign product_count = 0
+          assign result_product_ids = ''
+          for item in search.results
+            if item.object_type == 'product' and item.available
+              assign product_count = product_count | plus: 1
+              assign result_product_ids = result_product_ids | append: item.id | append: ','
+            endif
+          endfor
+
+          assign normalized_terms = search.terms | downcase
+          assign offer_collection_handle = 'more-to-love'
+          assign offer_title = 'Complete the care kit'
+          assign offer_body = 'Add practical companion products that fit this search. Eligible discounts apply automatically in cart and checkout when the offer is configured in Shopify.'
+          if normalized_terms contains 'food' or normalized_terms contains 'feed' or normalized_terms contains 'bowl' or normalized_terms contains 'water'
+            assign offer_collection_handle = 'pet-accessories'
+            assign offer_title = 'Build a feeding and travel set'
+            assign offer_body = 'Pair feeding finds with bowls, bottles, and daily-use accessories. Eligible bundle or automatic discounts apply at checkout when configured.'
+          elsif normalized_terms contains 'toy' or normalized_terms contains 'play' or normalized_terms contains 'scratch'
+            assign offer_collection_handle = 'pet-toys'
+            assign offer_title = 'Add more play value'
+            assign offer_body = 'Bundle toys and enrichment picks to build a fuller basket without leaving search.'
+          elsif normalized_terms contains 'health' or normalized_terms contains 'dental' or normalized_terms contains 'tooth' or normalized_terms contains 'clean teeth'
+            assign offer_collection_handle = 'pet-health'
+            assign offer_title = 'Round out the care routine'
+            assign offer_body = 'Daily health and dental add-ons that go hand in hand with what you came looking for.'
+          elsif normalized_terms contains 'groom' or normalized_terms contains 'brush' or normalized_terms contains 'wash' or normalized_terms contains 'shampoo' or normalized_terms contains 'paw' or normalized_terms contains 'clean'
+            assign offer_collection_handle = 'pet-cleaning'
+            assign offer_title = 'Complete the grooming routine'
+            assign offer_body = 'Towels, brushes, sprays, and cleaning add-ons that naturally pair with this search.'
+          endif
+          assign offer_collection = collections[offer_collection_handle]
+          assign bundle_variant_ids = ''
+          assign bundle_product_count = 0
+        %}
+
+        <div class="search-results-meta">
+          <strong>{{ product_count }} product{% unless product_count == 1 %}s{% endunless %}</strong>
+          <span>Matched from your search</span>
+        </div>
+
+        {% if product_count > 0 %}
+          <div class="commerce-grid search-results-grid">
+            {% for item in search.results %}
+              {% if item.object_type == 'product' and item.available %}
+                {% render 'product-card-commerce', product: item, badge: 'Search match', show_purchase_action: true %}
+              {% endif %}
+            {% endfor %}
+          </div>
+
+          {% if offer_collection != blank and offer_collection.products_count > 0 %}
+            <section class="search-offer" aria-labelledby="SearchOfferTitle">
+              <div class="search-offer-copy">
+                <p class="eyebrow">Bundle opportunity</p>
+                <h2 id="SearchOfferTitle">{{ offer_title }}</h2>
+                <p>{{ offer_body }}</p>
+              </div>
+              <div class="search-offer-grid">
+                {% for offer_product in offer_collection.products limit: 6 %}
+                  {% liquid
+                    assign offer_variant = offer_product.selected_or_first_available_variant
+                    assign offer_variant_count = offer_product.variants_count | default: offer_product.variants.size
+                    assign offer_product_signature = offer_product.id | append: ','
+                    assign is_duplicate_result = false
+                    if result_product_ids contains offer_product_signature
+                      assign is_duplicate_result = true
+                    endif
+                  %}
+                  {% if offer_product.available and is_duplicate_result == false %}
+                    <div class="search-offer-card">
+                      {% render 'product-card-commerce', product: offer_product, badge: 'Pairs well', show_purchase_action: true %}
+                    </div>
+                    {% if offer_product.available and offer_variant.available and offer_variant_count == 1 and bundle_product_count < 3 %}
+                      {% assign bundle_variant_ids = bundle_variant_ids | append: offer_variant.id | append: ',' %}
+                      {% assign bundle_product_count = bundle_product_count | plus: 1 %}
+                    {% endif %}
+                  {% endif %}
+                {% endfor %}
+              </div>
+              {% if bundle_product_count > 1 %}
+                <div class="search-bundle-action">
+                  <button
+                    class="bundle-add-button"
+                    type="button"
+                    data-bundle-add
+                    data-variant-ids="{{ bundle_variant_ids | escape }}"
+                  >
+                    Add recommended set
+                  </button>
+                  <span>Discounts are calculated by Shopify in cart and checkout when this set qualifies.</span>
+                </div>
+              {% endif %}
+            </section>
+          {% endif %}
+        {% else %}
+          <div class="search-empty">
+            <strong>No product matches yet</strong>
+            <span>Try a broader search like grooming, toy, feeder, bowl, leash, or cleaning.</span>
+          </div>
+        {% endif %}
+
+        {% if paginate.pages > 1 %}
+          <nav class="pagination" role="navigation" aria-label="Search results pagination">
+            {% if paginate.previous %}
+              <a href="{{ paginate.previous.url }}">Previous</a>
+            {% endif %}
+            <span>Page {{ paginate.current_page }} of {{ paginate.pages }}</span>
+            {% if paginate.next %}
+              <a href="{{ paginate.next.url }}">Next</a>
+            {% endif %}
+          </nav>
+        {% endif %}
+      {% endpaginate %}
+    {% endif %}
+  </div>
+</section>
+
+{% schema %}
+{ "name": "Main search", "settings": [] }
+{% endschema %}

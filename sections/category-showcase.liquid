@@ -1,0 +1,95 @@
+<section class="category-showcase" id="shop-categories">
+  <div class="category-shell">
+    {% for block in section.blocks %}
+      {% liquid
+        assign collection_setting = block.settings.collection
+        assign collection_handle = collection_setting.handle | default: collection_setting
+        assign anchor = block.settings.title | handleize
+        if anchor == 'pet-cleaning'
+          assign anchor = 'cleaning'
+          assign collection_handle = collection_handle | default: 'pet-cleaning'
+        elsif anchor == 'pet-accessories'
+          assign anchor = 'accessories'
+          assign collection_handle = collection_handle | default: 'pet-accessories'
+        elsif anchor == 'pet-health'
+          assign anchor = 'health'
+          assign collection_handle = collection_handle | default: 'pet-health'
+        elsif anchor == 'pet-toys'
+          assign anchor = 'toys'
+          assign collection_handle = collection_handle | default: 'pet-toys'
+        elsif anchor == 'more-to-love'
+          assign anchor = 'more'
+          assign collection_handle = collection_handle | default: 'more-to-love'
+        endif
+        assign collection = collections[collection_handle]
+        assign visible_limit = section.settings.visible_limit
+        assign total_products = collection.products_count | default: collection.all_products_count | default: collection.products.size
+      %}
+      <section class="category-block" id="category-{{ anchor }}" {{ block.shopify_attributes }}>
+        <div class="category-heading">
+          <div>
+            <h2>{{ block.settings.title }}</h2>
+            <p>{{ block.settings.body }}</p>
+          </div>
+          {% if collection.url != blank %}
+            <a class="category-view-link" href="{{ collection.url }}">View collection</a>
+          {% endif %}
+        </div>
+        {% if collection != blank and total_products > 0 %}
+          <div class="commerce-grid" data-collapsible-grid>
+            {% for product in collection.products limit: section.settings.max_products %}
+              <div class="{% if forloop.index > visible_limit %}is-extra-product{% endif %}">
+                {% render 'product-card-commerce', product: product, badge: block.settings.badge %}
+              </div>
+            {% endfor %}
+          </div>
+          {% if total_products > visible_limit %}
+            <button class="show-more-products" type="button" data-show-more aria-expanded="false">
+              <span>Show more {{ block.settings.title }}</span>
+              <span aria-hidden="true">+</span>
+            </button>
+          {% endif %}
+        {% else %}
+          <div class="empty-category">
+            <strong>{{ block.settings.title }}</strong>
+            <span>Add products to this collection to populate the section.</span>
+          </div>
+        {% endif %}
+      </section>
+    {% endfor %}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Collection showcase",
+  "settings": [
+    { "type": "range", "id": "visible_limit", "label": "Visible products before expansion", "min": 4, "max": 12, "step": 1, "default": 8 },
+    { "type": "range", "id": "max_products", "label": "Maximum products rendered per collection", "min": 8, "max": 24, "step": 4, "default": 16 }
+  ],
+  "blocks": [
+    {
+      "type": "category",
+      "name": "Collection",
+      "settings": [
+        { "type": "text", "id": "title", "label": "Title", "default": "Pet Cleaning" },
+        { "type": "textarea", "id": "body", "label": "Body", "default": "Curated picks for easy browsing and confident buying." },
+        { "type": "text", "id": "badge", "label": "Product badge", "default": "Popular pick" },
+        { "type": "collection", "id": "collection", "label": "Collection" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Collection showcase",
+      "blocks": [
+        { "type": "category" },
+        { "type": "category", "settings": { "title": "Pet Accessories", "badge": "Daily use" } },
+        { "type": "category", "settings": { "title": "Pet Health", "badge": "Care routine" } },
+        { "type": "category", "settings": { "title": "Pet Toys", "badge": "Play pick" } },
+        { "type": "category", "settings": { "title": "More To Love", "badge": "Trending" } }
+      ]
+    }
+  ]
+}
+{% endschema %}

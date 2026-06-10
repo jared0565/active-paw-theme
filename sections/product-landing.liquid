@@ -1,0 +1,28 @@
+<section class="landing routine-builder" id="routine-builder">
+  <div class="routine-copy">
+    <h2>Shop by the routine, not by guessing single items</h2>
+    <p>Start with the job you need done — muddy paws, daily walks, healthy teeth — and add the supporting essentials in one go. Discounts and shipping are calculated at checkout.</p>
+    <a class="button button-primary" href="{{ routes.search_url }}?q=grooming&type=product">Find a care kit</a>
+  </div>
+  <div class="routine-paths" aria-label="Recommended shopping routines">
+    <a href="{{ routes.search_url }}?q=paw+cleaning&type=product">
+      <span>01</span>
+      <strong>Muddy walk reset</strong>
+      <small>Paw washer, drying towel, grooming brush, and gentle cleaning add-ons.</small>
+    </a>
+    <a href="{{ routes.search_url }}?q=dog+walking&type=product">
+      <span>02</span>
+      <strong>Out-the-door walk kit</strong>
+      <small>Leash, harness, travel bowl, water bottle, and pick-up essentials.</small>
+    </a>
+    <a href="{{ routes.search_url }}?q=dental+care&type=product">
+      <span>03</span>
+      <strong>Daily health top-up</strong>
+      <small>Toothbrushes, oral care, paw care, and maintenance products.</small>
+    </a>
+  </div>
+</section>
+
+{% schema %}
+{ "name": "Product landing module", "settings": [], "presets": [{ "name": "Product landing module" }] }
+{% endschema %}
