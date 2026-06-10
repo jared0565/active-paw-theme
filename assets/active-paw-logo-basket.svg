@@ -1,0 +1,33 @@
+<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background rounded square -->
+  <rect x="12" y="12" width="96" height="96" rx="16" fill="#0f1820"/>
+
+  <!-- Basket shape -->
+  <g transform="translate(60, 60)">
+    <!-- Basket body -->
+    <path d="M -20 -8 L -18 12 Q -18 14 -16 14 L 16 14 Q 18 14 18 12 L 20 -8 Z"
+          fill="white" stroke="none"/>
+
+    <!-- Basket handle -->
+    <path d="M -16 -8 Q -16 -20 0 -22 Q 16 -20 16 -8"
+          fill="none" stroke="white" stroke-width="3" stroke-linecap="round"/>
+
+    <!-- Paw print (center) -->
+    <g>
+      <!-- Center pad -->
+      <circle cx="0" cy="2" r="4.5" fill="#f05a28"/>
+
+      <!-- Top left toe -->
+      <circle cx="-8" cy="-6" r="3.5" fill="#f05a28"/>
+
+      <!-- Top right toe -->
+      <circle cx="8" cy="-6" r="3.5" fill="#f05a28"/>
+
+      <!-- Bottom left toe -->
+      <circle cx="-6" cy="6" r="3.5" fill="#f05a28"/>
+
+      <!-- Bottom right toe -->
+      <circle cx="6" cy="6" r="3.5" fill="#f05a28"/>
+    </g>
+  </g>
+</svg>
