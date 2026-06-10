@@ -22,7 +22,7 @@
           "type": "category",
           "settings": {
             "title": "Pet Cleaning",
-            "body": "Bath brushes, towels, wipes, paw washers, and grooming essentials for high-intent shoppers.",
+            "body": "Bath brushes, towels, wipes, paw washers, and grooming essentials for cleaner coats and paws.",
             "badge": "Cleaning",
             "collection": "pet-cleaning"
           }
@@ -31,7 +31,7 @@
           "type": "category",
           "settings": {
             "title": "Pet Accessories",
-            "body": "Walking, harness, leash, and utility products that support repeat browsing and cross-sells.",
+            "body": "Walking, harness, leash, and everyday gear for easier outings together.",
             "badge": "Accessory",
             "collection": "pet-accessories"
           }
@@ -40,7 +40,7 @@
           "type": "category",
           "settings": {
             "title": "Pet Health",
-            "body": "Oral, paw, and care-routine products built for trust-led product pages.",
+            "body": "Oral, paw, and daily-care products that keep healthy routines on track.",
             "badge": "Care",
             "collection": "pet-health"
           }
@@ -49,7 +49,7 @@
           "type": "category",
           "settings": {
             "title": "Pet Toys",
-            "body": "A dedicated slot for play and enrichment products as the catalog expands.",
+            "body": "Play and enrichment picks to keep dogs and cats happily busy.",
             "badge": "Play",
             "collection": "pet-toys"
           }
@@ -58,7 +58,7 @@
           "type": "category",
           "settings": {
             "title": "More To Love",
-            "body": "A broader discovery rail for products worth testing in paid campaigns.",
+            "body": "A broader mix of customer favourites worth discovering.",
             "badge": "Trending",
             "collection": "more-to-love"
           }

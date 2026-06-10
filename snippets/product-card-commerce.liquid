@@ -2,14 +2,16 @@
 Renders a real Shopify product card for category sections.
 @param {product} product - Product to render
 @param {string} badge - Short merchandising badge
-@param {boolean} show_purchase_action - Show direct buying controls for high-intent surfaces
+@param {boolean} [show_purchase_action] - Show direct buying controls on browse surfaces
 {% enddoc %}
 
 {% liquid
   assign selected_variant = product.selected_or_first_available_variant
   assign variant_count = product.variants_count | default: product.variants.size
   assign show_purchase_action = show_purchase_action | default: false
-  assign benefit = 'Ad-ready product page with variants, bundles, and delivery details.'
+  assign rating = product.metafields.reviews.rating.value
+  assign rating_count = product.metafields.reviews.rating_count.value
+  assign benefit = 'A practical everyday pick for happier walks, easier grooming, and cleaner paws.'
   if product.product_type contains 'grooming'
     assign benefit = 'Grooming essential for cleaner coats and easier care routines.'
   elsif product.product_type contains 'walking' or product.product_type contains 'harness'
@@ -30,11 +32,13 @@ Renders a real Shopify product card for category sections.
         {% else %}
           <img src="{{ 'product-shampoo-glide.svg' | asset_url }}" alt="{{ product.title | escape }}" width="720" height="540" loading="lazy">
         {% endif %}
-        <span>{{ badge | default: 'Campaign ready' }}</span>
+        <span>{{ badge | default: 'Popular pick' }}</span>
       </div>
     </a>
     <div class="commerce-card-body">
-      <div class="commerce-rating">★★★★★ <span>4.8</span></div>
+      {% if rating != blank and rating_count != blank %}
+        <div class="commerce-rating">★ {{ rating.rating | round: 1 }} <span>({{ rating_count }})</span></div>
+      {% endif %}
       <h3><a href="{{ product.url }}">{{ product.title }}</a></h3>
       <p>{{ benefit }}</p>
       <div class="commerce-price-row">
@@ -48,7 +52,7 @@ Renders a real Shopify product card for category sections.
           <span>{{ variant_count }} options</span>
           <strong>Choose options</strong>
         {% else %}
-          <span>Fast details</span>
+          <span>Ships fast</span>
           <strong>View details</strong>
         {% endif %}
       </div>

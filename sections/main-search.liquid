@@ -4,7 +4,7 @@
       <p class="eyebrow">Search</p>
       {% if search.performed %}
         <h1>Results for "{{ search.terms | escape }}"</h1>
-        <p>Products are shown in the same card format as the homepage, with buying actions surfaced for faster checkout.</p>
+        <p>Browse matching products below — add single-option items straight to your cart.</p>
       {% else %}
         <h1>Find pet care products</h1>
         <p>Search grooming, toys, feeding, walking, and daily care essentials.</p>
@@ -34,15 +34,15 @@
           elsif normalized_terms contains 'toy' or normalized_terms contains 'play' or normalized_terms contains 'scratch'
             assign offer_collection_handle = 'pet-toys'
             assign offer_title = 'Add more play value'
-            assign offer_body = 'Bundle toys and enrichment picks so shoppers can build a fuller basket without leaving search.'
+            assign offer_body = 'Bundle toys and enrichment picks to build a fuller basket without leaving search.'
           elsif normalized_terms contains 'health' or normalized_terms contains 'dental' or normalized_terms contains 'tooth' or normalized_terms contains 'clean teeth'
             assign offer_collection_handle = 'pet-health'
             assign offer_title = 'Round out the care routine'
-            assign offer_body = 'Suggest daily health and dental add-ons beside the products they already came looking for.'
+            assign offer_body = 'Daily health and dental add-ons that go hand in hand with what you came looking for.'
           elsif normalized_terms contains 'groom' or normalized_terms contains 'brush' or normalized_terms contains 'wash' or normalized_terms contains 'shampoo' or normalized_terms contains 'paw' or normalized_terms contains 'clean'
             assign offer_collection_handle = 'pet-cleaning'
             assign offer_title = 'Complete the grooming routine'
-            assign offer_body = 'Surface towels, brushes, sprays, and cleaning add-ons that naturally pair with this search.'
+            assign offer_body = 'Towels, brushes, sprays, and cleaning add-ons that naturally pair with this search.'
           endif
           assign offer_collection = collections[offer_collection_handle]
           assign bundle_variant_ids = ''

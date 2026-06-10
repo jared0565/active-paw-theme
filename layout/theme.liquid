@@ -18,12 +18,35 @@
     {% endif %}
     <link rel="canonical" href="{{ canonical_url }}">
     {%- render 'meta-tags' -%}
+    {%- liquid
+      assign body_font = settings.type_body_font
+      assign body_font_semibold = body_font | font_modify: 'weight', '600'
+      assign heading_font = settings.type_heading_font
+    -%}
+    {{ body_font | font_url | preload_tag: as: 'font', type: 'font/woff2' }}
+    {{ heading_font | font_url | preload_tag: as: 'font', type: 'font/woff2' }}
     {{ content_for_header }}
     {{ 'theme.css' | asset_url | stylesheet_tag }}
+    {% style %}
+      {{ body_font | font_face: font_display: 'swap' }}
+      {{ body_font_semibold | font_face: font_display: 'swap' }}
+      {{ heading_font | font_face: font_display: 'swap' }}
+      :root {
+        --ink: {{ settings.color_ink | default: '#101820' }};
+        --accent: {{ settings.color_accent | default: '#f05a28' }};
+        --accent-dark: {{ settings.color_accent | default: '#f05a28' | color_darken: 16 }};
+        --accent-soft: {{ settings.color_accent | default: '#f05a28' | color_lighten: 28 }};
+        --surface: {{ settings.color_surface | default: '#f7f4ef' }};
+        --font-body: {{ body_font.family }}, {{ body_font.fallback_families }};
+        --font-heading: {{ heading_font.family }}, {{ heading_font.fallback_families }};
+        --font-heading-weight: {{ heading_font.weight | default: 700 }};
+      }
+    {% endstyle %}
     <script src="{{ 'theme.js' | asset_url }}" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#MainContent">Skip to content</a>
+    {% section 'announcement-bar' %}
     <div class="sticky-header-stack">
       {% sections 'header-group' %}
     </div>
