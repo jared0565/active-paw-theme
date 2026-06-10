@@ -17,5 +17,22 @@
       { "type": "color", "id": "color_accent", "label": "Accent", "default": "#F05A28" },
       { "type": "color", "id": "color_surface", "label": "Surface", "default": "#F7F4EF" }
     ]
+  },
+  {
+    "name": "Typography",
+    "settings": [
+      {
+        "type": "font_picker",
+        "id": "type_heading_font",
+        "label": "Heading font",
+        "default": "inter_n7"
+      },
+      {
+        "type": "font_picker",
+        "id": "type_body_font",
+        "label": "Body font",
+        "default": "inter_n4"
+      }
+    ]
   }
 ]

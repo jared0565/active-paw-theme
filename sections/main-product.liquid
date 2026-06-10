@@ -12,7 +12,7 @@
   assign supplier_max_order_qty = selected_variant.metafields.supplier.max_order_qty.value
   assign pdp_max_order_qty = 20
   assign pdp_status_label = 'Ready to ship'
-  assign pdp_status_detail = 'Free UK shipping over GBP150. Tracking details are sent after dispatch.'
+  assign pdp_status_detail = 'Free UK shipping over £150. Tracking details are sent after dispatch.'
 
   if selected_variant.inventory_management != blank and selected_variant.inventory_policy == 'deny'
     assign pdp_max_order_qty = selected_variant.inventory_quantity | default: 0
@@ -116,9 +116,14 @@
     </nav>
     <div class="pdp-status-row">
       <span class="stock-dot">{{ pdp_status_label }}</span>
-      <span>156 salon reviews</span>
     </div>
-    <p class="rating">★★★★★ 4.9 average rating</p>
+    {% liquid
+      assign pdp_rating = product.metafields.reviews.rating.value
+      assign pdp_rating_count = product.metafields.reviews.rating_count.value
+    %}
+    {% if pdp_rating != blank and pdp_rating_count != blank %}
+      <p class="rating">★ {{ pdp_rating.rating | round: 1 }} from {{ pdp_rating_count }} reviews</p>
+    {% endif %}
     <h1
       class="pdp-title"
       data-fit-title
@@ -215,13 +220,6 @@
     {% else %}
       <div class="payment-note">Secure checkout options are shown at checkout.</div>
     {% endif %}
-    <div class="bundle-card">
-      <div>
-        <strong>Recommended add-on</strong>
-        <span>Silk Coat Detangling Spray</span>
-      </div>
-      <button type="button" class="mini-button">Add GBP13.50</button>
-    </div>
     <div class="delivery-card">
       <strong>{{ pdp_status_label }}</strong>
       <span>{{ pdp_status_detail }}</span>
@@ -231,7 +229,7 @@
     </div>
     <details>
       <summary>Delivery and returns</summary>
-      <p>Clear delivery promise, simple returns, and shipping threshold messaging stay close to the add-to-cart action.</p>
+      <p>Orders are dispatched quickly with tracking details sent by email. UK mainland orders over £150 ship free. If something is not right, contact support and we will help arrange a simple return.</p>
     </details>
   </aside>
 </section>
@@ -239,11 +237,11 @@
 {% if related_collection != blank and related_collection.products_count > 1 %}
   <section class="section related-products pdp-priority-related">
     <div class="section-heading">
-      <h2>Other buyers who bought this item also buy</h2>
+      <h2>You may also like</h2>
       {% if related_collection.title != blank %}
-        <p>More products from {{ related_collection.title }} that fit the same shopping intent.</p>
+        <p>More favourites from {{ related_collection.title }} that pair well with this one.</p>
       {% else %}
-        <p>More products that fit the same shopping intent.</p>
+        <p>More favourites that pair well with this one.</p>
       {% endif %}
     </div>
     <div class="commerce-grid">
@@ -272,8 +270,8 @@
 
 <section class="pdp-detail-stack">
   <div class="section-heading">
-    <h2>Everything buyers need before adding to cart</h2>
-    <p>Clear product context, care guidance, delivery confidence, and matching add-ons help shoppers decide quickly.</p>
+    <h2>Good to know before you buy</h2>
+    <p>The essentials on everyday use, care, and delivery — so you can choose with confidence.</p>
   </div>
   <div class="pdp-info-grid">
     <article><span>01</span><h3>Everyday use</h3><p>Made for practical grooming, bath time, cleanup, walking, or play depending on the product.</p></article>
@@ -281,22 +279,6 @@
     <article><span>03</span><h3>Pairs well</h3><p>Recommended add-ons make it easier to build a complete pet-care basket.</p></article>
     <article><span>04</span><h3>Buy with confidence</h3><p>Fast dispatch, returns, secure payment, and customer reviews stay visible before checkout.</p></article>
   </div>
-</section>
-
-<section class="review-panel">
-  <div>
-    <h2>4.9/5 from professional groomers</h2>
-    <p>Review distribution and plain-language quotes make the page feel active without needing a third-party app for the prototype.</p>
-  </div>
-  <div class="review-bars" aria-label="Review distribution">
-    <div><span>5 stars</span><meter min="0" max="100" value="94">94%</meter><strong>94%</strong></div>
-    <div><span>4 stars</span><meter min="0" max="100" value="6">6%</meter><strong>6%</strong></div>
-    <div><span>3 stars</span><meter min="0" max="100" value="0">0%</meter><strong>0%</strong></div>
-  </div>
-  <article class="quote-card">
-    <p>"The coat feels clean without being stripped, and the finishing spray add-on makes rebooking care kits much easier."</p>
-    <strong>Amelia R., salon owner</strong>
-  </article>
 </section>
 
 {% schema %}
