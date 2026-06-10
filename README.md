@@ -6,6 +6,28 @@ A modern, performant Shopify theme for pet-care e-commerce, designed with suppli
 
 ---
 
+## ⚠️ Branch Strategy (read first)
+
+| Branch | Purpose |
+|---|---|
+| **`shopify-deploy`** | **Default branch.** Theme files only (~428KB). Connected to Shopify via GitHub integration — **every push goes live on the store.** |
+| **`master`** | Development branch. Full repo: theme + `docs/` (67MB) + tooling. All feature work happens here. |
+
+**Rules:**
+
+- Develop on `master` (or feature branches off it). Never develop directly on `shopify-deploy`.
+- **Never merge `master` into `shopify-deploy`** — the 67MB `docs/` folder breaks Shopify's 50MB theme limit.
+- To ship theme changes to the store, copy only the theme folders across:
+
+  ```bash
+  git checkout shopify-deploy
+  git checkout master -- assets config layout locales sections snippets templates
+  git commit -m "Sync theme from master"
+  git push origin shopify-deploy
+  ```
+
+---
+
 ## Features
 
 ### 🎨 **Design**
