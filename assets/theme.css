@@ -618,28 +618,6 @@ h3 { margin: 0; font-size: 18px; line-height: 1.25; }
 p { line-height: 1.6; }
 .section-heading p, .conversion p, .landing p { color: var(--muted); }
 
-.product-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-}
-.product-card {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  overflow: hidden;
-  background: var(--panel);
-  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
-}
-.product-card:hover {
-  transform: translateY(-3px);
-  border-color: rgba(240,90,40,0.42);
-  box-shadow: 0 18px 42px rgba(16,24,32,0.1);
-}
-.product-card-link {
-  display: grid;
-  height: 100%;
-  grid-template-rows: auto 1fr;
-}
 .product-media {
   position: relative;
   aspect-ratio: 4 / 3;
@@ -659,7 +637,6 @@ p { line-height: 1.6; }
   object-fit: cover;
   transition: transform 220ms ease;
 }
-.product-card:hover .product-media img { transform: scale(1.04); }
 .product-media::after {
   content: "";
   position: absolute;
@@ -676,7 +653,6 @@ p { line-height: 1.6; }
   font-size: 12px;
   font-weight: 600;
 }
-.product-card-body { padding: 16px; }
 .rating { color: var(--star); font-size: 13px; font-weight: 600; margin: 0 0 8px; }
 .price { color: var(--ink); font-weight: 700; }
 
@@ -784,7 +760,8 @@ p { line-height: 1.6; }
   font-weight: 700;
 }
 .commerce-card-body {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 9px;
   padding: 15px;
 }
@@ -832,23 +809,34 @@ p { line-height: 1.6; }
   text-decoration: line-through;
   font-weight: 700;
 }
-.commerce-card-footer {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: center;
-  margin-top: 4px;
+.commerce-card-meta {
+  margin-top: auto;
   border-top: 1px solid var(--line);
-  padding-top: 12px;
+  padding-top: 10px;
   color: var(--muted);
   font-size: 13px;
 }
-.commerce-card-footer strong {
-  color: var(--accent-dark);
-  white-space: nowrap;
+.commerce-card-action {
+  margin-top: 2px;
 }
 .commerce-card-form {
-  margin: 2px 0 0;
+  margin: 0;
+}
+.commerce-media span.commerce-badge-sale {
+  background: var(--accent);
+  color: white;
+}
+.commerce-media span.commerce-badge-soldout {
+  background: rgba(16,24,32,0.82);
+  color: white;
+}
+.commerce-card.is-sold-out .commerce-media img {
+  filter: grayscale(0.4);
+  opacity: 0.72;
+}
+.commerce-card.is-sold-out:hover .commerce-media img,
+.commerce-card.is-sold-out:focus-within .commerce-media img {
+  transform: none;
 }
 .commerce-add-button,
 .commerce-option-button,
@@ -2080,7 +2068,7 @@ summary { cursor: pointer; font-weight: 600; }
   .hero-background-spacer { min-height: 360px; }
   .hero-panel { min-height: auto; }
   .hero-image-frame { min-height: 360px; }
-  .product-grid, .feature-grid, .pdp-info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .feature-grid, .pdp-info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .cart-layout {
     grid-template-columns: 1fr;
   }
@@ -2194,7 +2182,7 @@ summary { cursor: pointer; font-weight: 600; }
   .hero-background-spacer { min-height: 260px; }
   .hero-product { grid-template-columns: 1fr; }
   .hero-product strong { align-self: auto; }
-  .product-grid, .feature-grid, .pdp-proof-strip, .pdp-info-grid { grid-template-columns: 1fr; }
+  .feature-grid, .pdp-proof-strip, .pdp-info-grid { grid-template-columns: 1fr; }
   h2,
   .revenue-proof-copy h2,
   .routine-copy h2,
@@ -2446,7 +2434,7 @@ summary { cursor: pointer; font-weight: 600; }
 .cart-drawer__empty { padding: 48px 28px; text-align: center; display: flex; flex-direction: column; gap: 14px; align-items: center; }
 .cart-drawer__empty-title { font-size: 20px; font-weight: 700; }
 .cart-error { margin-top: 10px; color: var(--accent-dark); font-size: 13px; font-weight: 700; }
-.button.is-loading { opacity: 0.7; pointer-events: none; }
+.button.is-loading, .commerce-add-button.is-loading { opacity: 0.7; pointer-events: none; }
 body.cart-drawer-open { overflow: hidden; }
 
 /* Header: Collections dropdown + Contact trigger */

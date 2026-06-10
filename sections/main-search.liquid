@@ -58,7 +58,7 @@
           <div class="commerce-grid search-results-grid">
             {% for item in search.results %}
               {% if item.object_type == 'product' and item.available %}
-                {% render 'product-card-commerce', product: item, badge: 'Search match', show_purchase_action: true %}
+                {% render 'product-card-commerce', product: item, badge: 'Search match' %}
               {% endif %}
             {% endfor %}
           </div>
@@ -83,7 +83,7 @@
                   %}
                   {% if offer_product.available and is_duplicate_result == false %}
                     <div class="search-offer-card">
-                      {% render 'product-card-commerce', product: offer_product, badge: 'Pairs well', show_purchase_action: true %}
+                      {% render 'product-card-commerce', product: offer_product, badge: 'Pairs well' %}
                     </div>
                     {% if offer_product.available and offer_variant.available and offer_variant_count == 1 and bundle_product_count < 3 %}
                       {% assign bundle_variant_ids = bundle_variant_ids | append: offer_variant.id | append: ',' %}
