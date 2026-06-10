@@ -19,6 +19,7 @@
 !/docs/
 !/CLAUDE.md
 !/.gitignore
+!/.shopifyignore
 
 # Session setup hooks (credential-free; ensures graphify persists across sessions)
 !/.claude/

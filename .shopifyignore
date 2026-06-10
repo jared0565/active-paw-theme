@@ -1,0 +1,34 @@
+# Shopify theme deployment ignore file
+# Excludes files/directories that should not be deployed to Shopify
+
+# Documentation (development only, not part of theme)
+docs/
+
+# Project files (not part of theme)
+.git/
+.gitignore
+.graphifyinclude
+
+# Development tools & cache
+graphify-out/
+node_modules/
+.DS_Store
+*.swp
+*.swo
+*~
+
+# GitHub workflows (not needed on Shopify)
+.github/
+
+# Local credentials and env files (should never be deployed)
+.env
+.env.local
+.env.*.local
+
+# IDE/editor config
+.vscode/
+.idea/
+*.iml
+
+# Claude Code config (local development only)
+.claude/
