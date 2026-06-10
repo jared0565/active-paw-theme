@@ -1,0 +1,7 @@
+{
+  "sections": {
+    "main": { "type": "main-collection", "settings": {} },
+    "trust": { "type": "trust-bar", "settings": {} }
+  },
+  "order": ["main", "trust"]
+}

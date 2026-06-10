@@ -1,0 +1,6 @@
+{
+  "sections": {
+    "main": { "type": "demo-product-fallback", "settings": {} }
+  },
+  "order": ["main"]
+}

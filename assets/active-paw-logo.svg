@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-label="Active Paw">
+  <!-- dark rounded-square background -->
+  <rect width="96" height="96" rx="22" fill="#101820"/>
+
+  <!-- white shopping basket (wide trapezoid body) -->
+  <path d="M20 48 h56 l-4 22 a6 6 0 0 1 -6 6 h-36 a6 6 0 0 1 -6 -6 z" fill="#ffffff"/>
+  <!-- basket top rim -->
+  <rect x="18" y="46" width="60" height="5" rx="2.5" fill="#ffffff"/>
+
+  <!-- handle (wide arch with small side nubs) -->
+  <path d="M26 46 v-6 a22 22 0 0 1 44 0 v6" fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round"/>
+
+  <!-- orange paw print centered -->
+  <g transform="translate(48, 61)">
+    <!-- main pad -->
+    <ellipse cx="0" cy="4.5" rx="9.5" ry="7" fill="#f05a28"/>
+    <!-- toe 1 -->
+    <ellipse cx="-7.5" cy="-3.5" rx="3.5" ry="4.5" fill="#f05a28" transform="rotate(-22 -7.5 -3.5)"/>
+    <!-- toe 2 -->
+    <ellipse cx="0" cy="-6" rx="3.3" ry="4.8" fill="#f05a28"/>
+    <!-- toe 3 -->
+    <ellipse cx="7.5" cy="-3.5" rx="3.5" ry="4.5" fill="#f05a28" transform="rotate(22 7.5 -3.5)"/>
+  </g>
+</svg>

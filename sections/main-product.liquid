@@ -1,0 +1,304 @@
+{% liquid
+  assign demo_title = 'CoatGuard Glide 3-in-1 Shampoo + Conditioner'
+  assign brand_name = settings.demo_brand_name | default: 'Active Paw'
+  assign product_title = product.title | default: demo_title
+  assign selected_variant = product.selected_or_first_available_variant
+  assign supplier_name = selected_variant.metafields.supplier.name.value | default: product.metafields.supplier.name.value
+  assign supplier_status = selected_variant.metafields.supplier.status.value | default: product.metafields.supplier.status.value
+  assign supplier_warehouse = selected_variant.metafields.supplier.warehouse.value | default: product.metafields.supplier.warehouse.value
+  assign supplier_last_checked_at = selected_variant.metafields.supplier.last_checked_at.value | default: product.metafields.supplier.last_checked_at.value
+  assign supplier_fulfillment_confidence = selected_variant.metafields.supplier.fulfillment_confidence.value | default: product.metafields.supplier.fulfillment_confidence.value
+  assign supplier_available_qty = selected_variant.metafields.supplier.available_qty.value
+  assign supplier_max_order_qty = selected_variant.metafields.supplier.max_order_qty.value
+  assign pdp_max_order_qty = 20
+  assign pdp_status_label = 'Ready to ship'
+  assign pdp_status_detail = 'Free UK shipping over GBP150. Tracking details are sent after dispatch.'
+
+  if selected_variant.inventory_management != blank and selected_variant.inventory_policy == 'deny'
+    assign pdp_max_order_qty = selected_variant.inventory_quantity | default: 0
+    if pdp_max_order_qty <= 3
+      assign pdp_status_label = 'Low stock'
+    endif
+    assign pdp_status_detail = pdp_max_order_qty | append: ' available from tracked Shopify inventory.'
+  elsif supplier_max_order_qty != blank
+    assign pdp_max_order_qty = supplier_max_order_qty
+    assign pdp_status_label = supplier_status | default: 'Supplier available' | replace: '_', ' ' | capitalize
+    assign pdp_status_detail = 'Supplier-backed order limit: ' | append: supplier_max_order_qty | append: ' per order.'
+  elsif supplier_available_qty != blank
+    assign pdp_max_order_qty = supplier_available_qty
+    assign pdp_status_label = supplier_status | default: 'Supplier available' | replace: '_', ' ' | capitalize
+    assign pdp_status_detail = supplier_available_qty | append: ' available from supplier data.'
+  elsif supplier_status != blank
+    assign pdp_status_label = supplier_status | replace: '_', ' ' | capitalize
+  endif
+  # A max of 0 produces an invalid <input max="0" min="1"> that blocks the whole form.
+  # Never emit < 1 while Add to cart is shown; Shopify enforces real stock at /cart/add (422).
+  if pdp_max_order_qty < 1
+    assign pdp_max_order_qty = 1
+  endif
+  assign product_title_length = product_title | size
+  assign product_title_max_size = 42
+
+  if product_title_length > 150
+    assign product_title_max_size = 26
+  elsif product_title_length > 120
+    assign product_title_max_size = 28
+  elsif product_title_length > 90
+    assign product_title_max_size = 31
+  elsif product_title_length > 65
+    assign product_title_max_size = 35
+  elsif product_title_length > 45
+    assign product_title_max_size = 39
+  endif
+
+  assign related_collection = blank
+  assign category_handles = 'pet-cleaning,pet-accessories,pet-health,pet-toys,more-to-love' | split: ','
+  for category_handle in category_handles
+    for candidate_collection in product.collections
+      if candidate_collection.handle == category_handle and candidate_collection.products_count > 1
+        assign related_collection = candidate_collection
+        break
+      endif
+    endfor
+    if related_collection != blank
+      break
+    endif
+  endfor
+  for candidate_collection in product.collections
+    if related_collection == blank and candidate_collection.products_count > 1
+      assign related_collection = candidate_collection
+      break
+    endif
+  endfor
+  if related_collection == blank
+    assign related_collection = collections['more-to-love']
+  endif
+%}
+
+<section class="product-detail" data-pdp-shell>
+  <div class="product-gallery" aria-label="Product media gallery">
+    <div class="product-gallery-stage">
+      <div class="product-thumbs" aria-label="Product media thumbnails">
+        {% if product.media.size > 0 %}
+          {% for media in product.media limit: 12 %}
+            {% if media.preview_image %}
+              <button class="product-thumb {% if forloop.first %}is-active{% endif %}" type="button" data-product-media="{{ media.preview_image | image_url: width: 1400 }}" aria-label="Show product image {{ forloop.index }}">
+                {{ media.preview_image | image_url: width: 220 | image_tag: widths: '110, 165, 220', sizes: '80px', loading: 'lazy', alt: '' }}
+              </button>
+            {% endif %}
+          {% endfor %}
+        {% else %}
+          <button class="product-thumb is-active" type="button" data-product-media="{{ 'product-shampoo-glide.svg' | asset_url }}" aria-label="Show product image">
+            <img src="{{ 'product-shampoo-glide.svg' | asset_url }}" alt="" width="180" height="135" loading="lazy">
+          </button>
+        {% endif %}
+      </div>
+      <div class="product-media large product-featured-media">
+        {% if product.featured_image %}
+          {{ product.featured_image | image_url: width: 1400 | image_tag: widths: '400, 600, 800, 1000, 1200, 1400', sizes: '(max-width: 900px) 100vw, 600px', loading: 'eager', fetchpriority: 'high', alt: product_title }}
+        {% else %}
+          <img
+            src="{{ 'product-shampoo-glide.svg' | asset_url }}"
+            alt="CoatGuard Glide shampoo and conditioner concept product"
+            width="1400"
+            height="1050"
+            loading="eager"
+          >
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="product-summary">
+    <nav class="pdp-breadcrumbs" aria-label="Product location">
+      <a href="{{ routes.root_url }}">Home</a>
+      <span>/</span>
+      <a href="{{ routes.all_products_collection_url }}">Products</a>
+    </nav>
+    <div class="pdp-status-row">
+      <span class="stock-dot {% if pdp_status_label == 'Low stock' %}is-low-stock{% endif %}">{{ pdp_status_label }}</span>
+      <span>156 salon reviews</span>
+    </div>
+    <p class="rating">★★★★★ 4.9 average rating</p>
+    <h1
+      class="pdp-title"
+      data-fit-title
+      style="--pdp-title-max: {{ product_title_max_size }}px;"
+    >
+      {{ product_title }}
+    </h1>
+    <button
+      class="share-button pdp-share-button"
+      type="button"
+      data-share-url="{{ product.url | escape }}"
+      data-share-title="{{ product_title | escape }}"
+      data-share-text="Found this pet-care pick on {{ brand_name | escape }}."
+      aria-label="Share {{ product_title | escape }}"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M18 8a3 3 0 1 0-2.82-4H15a3 3 0 0 0 1.08 2.3l-7.1 3.55a3 3 0 1 0 0 4.3l7.1 3.55A3 3 0 1 0 17 16.1l-7.1-3.55a3.2 3.2 0 0 0 0-1.1l7.1-3.55c.28.08.6.1 1 .1Z"/>
+      </svg>
+      <span data-share-label>Share</span>
+    </button>
+    <div class="pdp-price-row">
+      {% if selected_variant %}
+        <p class="price">{{ selected_variant.price | money }}</p>
+        {% if selected_variant.compare_at_price > selected_variant.price %}
+          {%- assign pdp_save_pct = selected_variant.compare_at_price | minus: selected_variant.price | times: 100.0 | divided_by: selected_variant.compare_at_price | round -%}
+          <p class="compare-price">{{ selected_variant.compare_at_price | money }}</p>
+          <span class="save-badge">Save {{ pdp_save_pct }}%</span>
+        {% endif %}
+      {% else %}
+        <p class="price">From {{ product.price_min | money }}</p>
+      {% endif %}
+    </div>
+    <div class="pdp-delivery-banner">
+      <strong>{{ pdp_status_label }}</strong>
+      <span>{{ pdp_status_detail }}</span>
+      {% if supplier_last_checked_at != blank %}
+        <small>Supplier checked {{ supplier_last_checked_at | date: "%d %b %Y, %H:%M" }}.</small>
+      {% endif %}
+    </div>
+    <p class="pdp-lede">
+      A practical pet-care essential for grooming, cleaning, walking, and everyday routines with dogs and cats.
+    </p>
+    <div class="pdp-confidence-list" aria-label="Purchase confidence">
+      <div><strong>Free returns</strong><span>Simple return policy before checkout</span></div>
+      <div><strong>Secure checkout</strong><span>Payment options are controlled by the store checkout settings</span></div>
+      <div>
+        <strong>{% if supplier_name != blank %}Supplier{% else %}Care add-ons{% endif %}</strong>
+        <span>
+          {% if supplier_name != blank %}
+            {{ supplier_name }}{% if supplier_warehouse != blank %} · {{ supplier_warehouse }}{% endif %}{% if supplier_fulfillment_confidence != blank %} · {{ supplier_fulfillment_confidence }} confidence{% endif %}
+          {% else %}
+            Pair with matching grooming and cleaning essentials
+          {% endif %}
+        </span>
+      </div>
+    </div>
+  </div>
+  <aside class="product-buybox" aria-label="Purchase options">
+    <div class="buybox-heading">
+      <span>{{ pdp_status_label }}</span>
+      {% if selected_variant %}
+        <strong>{{ selected_variant.price | money }}</strong>
+      {% endif %}
+    </div>
+    {% form 'product', product %}
+      {% if product.has_only_default_variant == false %}
+        <label for="ProductSelect">Size</label>
+        <select id="ProductSelect" name="id">
+          {% for variant in product.variants %}
+            <option value="{{ variant.id }}">{{ variant.title }} - {{ variant.price | money }}</option>
+          {% endfor %}
+        </select>
+      {% else %}
+        <input type="hidden" name="id" value="{{ product.selected_or_first_available_variant.id }}">
+      {% endif %}
+      <label for="ProductQuantity">Quantity</label>
+      <div class="quantity-control">
+        <button type="button" data-quantity-change="-1" aria-label="Decrease quantity">-</button>
+        <input id="ProductQuantity" type="number" name="quantity" value="1" min="1" max="{{ pdp_max_order_qty }}" inputmode="numeric" data-cart-quantity>
+        <button type="button" data-quantity-change="1" aria-label="Increase quantity">+</button>
+      </div>
+      <button class="button button-primary full pdp-atc" type="submit" name="add">Add to cart</button>
+      {{ form | payment_button }}
+    {% endform %}
+    {% if shop.enabled_payment_types.size > 0 %}
+      <div class="payment-note">Secure checkout with the payment methods enabled for this store.</div>
+      <ul class="pdp-pay-row" aria-label="Accepted payment methods">
+        {% for type in shop.enabled_payment_types %}
+          <li class="pdp-pay-mark">
+            {{ type | payment_type_svg_tag: class: 'pdp-pay-icon' }}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="payment-note">Secure checkout options are shown at checkout.</div>
+    {% endif %}
+    <div class="bundle-card">
+      <div>
+        <strong>Recommended add-on</strong>
+        <span>Silk Coat Detangling Spray</span>
+      </div>
+      <button type="button" class="mini-button">Add GBP13.50</button>
+    </div>
+    <div class="delivery-card">
+      <strong>{{ pdp_status_label }}</strong>
+      <span>{{ pdp_status_detail }}</span>
+      {% if supplier_last_checked_at != blank %}
+        <span>Supplier checked {{ supplier_last_checked_at | date: "%d %b %Y, %H:%M" }}.</span>
+      {% endif %}
+    </div>
+    <details>
+      <summary>Delivery and returns</summary>
+      <p>Clear delivery promise, simple returns, and shipping threshold messaging stay close to the add-to-cart action.</p>
+    </details>
+  </aside>
+</section>
+
+{% if related_collection != blank and related_collection.products_count > 1 %}
+  <section class="section related-products pdp-priority-related">
+    <div class="section-heading">
+      <h2>Other buyers who bought this item also buy</h2>
+      {% if related_collection.title != blank %}
+        <p>More products from {{ related_collection.title }} that fit the same shopping intent.</p>
+      {% else %}
+        <p>More products that fit the same shopping intent.</p>
+      {% endif %}
+    </div>
+    <div class="commerce-grid">
+      {% assign rendered_related_products = 0 %}
+      {% for related_product in related_collection.products limit: 8 %}
+        {% if related_product.id != product.id and related_product.available and rendered_related_products < 4 %}
+          {% render 'product-card-commerce', product: related_product, badge: related_collection.title %}
+          {% assign rendered_related_products = rendered_related_products | plus: 1 %}
+        {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+
+<div class="mobile-sticky-atc" aria-label="Sticky product action">
+  <div>
+    <strong>{{ product_title }}</strong>
+    {% if selected_variant %}
+      <span>{{ selected_variant.price | money }}</span>
+    {% else %}
+      <span>Choose options</span>
+    {% endif %}
+  </div>
+  <a class="button button-primary" href="#ProductQuantity">Choose options</a>
+</div>
+
+<section class="pdp-detail-stack">
+  <div class="section-heading">
+    <h2>Everything buyers need before adding to cart</h2>
+    <p>Clear product context, care guidance, delivery confidence, and matching add-ons help shoppers decide quickly.</p>
+  </div>
+  <div class="pdp-info-grid">
+    <article><span>01</span><h3>Everyday use</h3><p>Made for practical grooming, bath time, cleanup, walking, or play depending on the product.</p></article>
+    <article><span>02</span><h3>Easy care</h3><p>Simple product guidance helps pet owners choose the right size, color, or routine.</p></article>
+    <article><span>03</span><h3>Pairs well</h3><p>Recommended add-ons make it easier to build a complete pet-care basket.</p></article>
+    <article><span>04</span><h3>Buy with confidence</h3><p>Fast dispatch, returns, secure payment, and customer reviews stay visible before checkout.</p></article>
+  </div>
+</section>
+
+<section class="review-panel">
+  <div>
+    <h2>4.9/5 from professional groomers</h2>
+    <p>Review distribution and plain-language quotes make the page feel active without needing a third-party app for the prototype.</p>
+  </div>
+  <div class="review-bars" aria-label="Review distribution">
+    <div><span>5 stars</span><meter min="0" max="100" value="94">94%</meter><strong>94%</strong></div>
+    <div><span>4 stars</span><meter min="0" max="100" value="6">6%</meter><strong>6%</strong></div>
+    <div><span>3 stars</span><meter min="0" max="100" value="0">0%</meter><strong>0%</strong></div>
+  </div>
+  <article class="quote-card">
+    <p>"The coat feels clean without being stripped, and the finishing spray add-on makes rebooking care kits much easier."</p>
+    <strong>Amelia R., salon owner</strong>
+  </article>
+</section>
+
+{% schema %}
+{ "name": "Main product", "settings": [] }
+{% endschema %}

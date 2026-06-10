@@ -1,0 +1,40 @@
+{% capture trust_items %}
+  <div class="trust-card">
+    <span class="trust-icon trust-stars" aria-label="Five star rating">★★★★★</span>
+    <strong>Loved by pet parents</strong>
+    <span>Review-led confidence for daily care essentials</span>
+  </div>
+  <div class="trust-card">
+    <span class="trust-icon" aria-hidden="true">🚚</span>
+    <strong>Free shipping threshold</strong>
+    <span>Clear progress prompts before checkout</span>
+  </div>
+  <div class="trust-card">
+    <span class="trust-icon" aria-hidden="true">🛡</span>
+    <strong>Care-first support</strong>
+    <span>Returns, guides, and FAQs near purchase</span>
+  </div>
+  <div class="trust-card">
+    <span class="trust-icon" aria-hidden="true">🎁</span>
+    <strong>Bundle-ready picks</strong>
+    <span>Pair grooming, toys, walking gear, and paw care</span>
+  </div>
+  <div class="trust-card">
+    <span class="trust-icon" aria-hidden="true">🐾</span>
+    <strong>Curated pet finds</strong>
+    <span>Useful products for dogs, cats, and everyday routines</span>
+  </div>
+{% endcapture %}
+
+<section class="trust-bar" aria-label="Store benefits">
+  <div class="trust-marquee">
+    <div class="trust-track">
+      {{ trust_items }}
+      {{ trust_items }}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{ "name": "Trust bar", "settings": [], "presets": [{ "name": "Trust bar" }] }
+{% endschema %}

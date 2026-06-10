@@ -1,0 +1,21 @@
+[
+  {
+    "name": "theme_info",
+    "theme_name": "Active Paw",
+    "theme_version": "1.0.0",
+    "theme_author": "Active Paw",
+    "theme_documentation_url": "https://4qkudm-ez.myshopify.com",
+    "theme_support_url": "https://4qkudm-ez.myshopify.com"
+  },
+  {
+    "name": "Theme settings",
+    "settings": [
+      { "type": "text", "id": "demo_brand_name", "label": "Brand name", "default": "Active Paw" },
+      { "type": "image_picker", "id": "brand_logo", "label": "Brand logo" },
+      { "type": "image_picker", "id": "favicon", "label": "Favicon" },
+      { "type": "color", "id": "color_ink", "label": "Ink", "default": "#101820" },
+      { "type": "color", "id": "color_accent", "label": "Accent", "default": "#F05A28" },
+      { "type": "color", "id": "color_surface", "label": "Surface", "default": "#F7F4EF" }
+    ]
+  }
+]

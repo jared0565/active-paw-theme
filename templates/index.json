@@ -1,0 +1,74 @@
+{
+  "sections": {
+    "hero": {
+      "type": "hero-commerce",
+      "settings": {
+        "eyebrow": "Happier pets, easier care",
+        "heading": "Smart Pet Finds for Grooming, Play & Walks",
+        "body": "Shop brushes, toys, paw care, leashes, walking gear, and everyday essentials for cleaner, happier dogs and cats.",
+        "primary_label": "Shop pet finds",
+        "secondary_label": "Explore best sellers"
+      }
+    },
+    "trust": { "type": "trust-bar", "settings": {} },
+    "featured": {
+      "type": "category-showcase",
+      "settings": {
+        "visible_limit": 8,
+        "max_products": 16
+      },
+      "blocks": {
+        "cleaning": {
+          "type": "category",
+          "settings": {
+            "title": "Pet Cleaning",
+            "body": "Bath brushes, towels, wipes, paw washers, and grooming essentials for high-intent shoppers.",
+            "badge": "Cleaning",
+            "collection": "pet-cleaning"
+          }
+        },
+        "accessories": {
+          "type": "category",
+          "settings": {
+            "title": "Pet Accessories",
+            "body": "Walking, harness, leash, and utility products that support repeat browsing and cross-sells.",
+            "badge": "Accessory",
+            "collection": "pet-accessories"
+          }
+        },
+        "health": {
+          "type": "category",
+          "settings": {
+            "title": "Pet Health",
+            "body": "Oral, paw, and care-routine products built for trust-led product pages.",
+            "badge": "Care",
+            "collection": "pet-health"
+          }
+        },
+        "toys": {
+          "type": "category",
+          "settings": {
+            "title": "Pet Toys",
+            "body": "A dedicated slot for play and enrichment products as the catalog expands.",
+            "badge": "Play",
+            "collection": "pet-toys"
+          }
+        },
+        "more": {
+          "type": "category",
+          "settings": {
+            "title": "More To Love",
+            "body": "A broader discovery rail for products worth testing in paid campaigns.",
+            "badge": "Trending",
+            "collection": "more-to-love"
+          }
+        }
+      },
+      "block_order": ["cleaning", "accessories", "health", "toys", "more"]
+    },
+    "roi": { "type": "conversion-stack", "settings": {} },
+    "landing": { "type": "product-landing", "settings": {} },
+    "faq": { "type": "faq-accordion", "settings": {} }
+  },
+  "order": ["hero", "trust", "featured", "roi", "landing", "faq"]
+}

@@ -1,0 +1,8 @@
+{
+  "type": "footer",
+  "name": "Footer group",
+  "sections": {
+    "footer": { "type": "site-footer", "settings": {} }
+  },
+  "order": ["footer"]
+}

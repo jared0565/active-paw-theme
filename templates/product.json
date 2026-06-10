@@ -1,0 +1,9 @@
+{
+  "sections": {
+    "main": { "type": "main-product", "settings": {} },
+    "trust": { "type": "trust-bar", "settings": {} },
+    "landing": { "type": "product-landing", "settings": {} },
+    "faq": { "type": "faq-accordion", "settings": {} }
+  },
+  "order": ["main", "trust", "landing", "faq"]
+}

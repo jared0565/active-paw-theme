@@ -1,0 +1,28 @@
+<section class="landing routine-builder" id="routine-builder">
+  <div class="routine-copy">
+    <h2>Shop by the routine, not by guessing single items</h2>
+    <p>Bundle prompts help shoppers add the supporting products they usually need next, while keeping the final discount and shipping calculation inside Shopify checkout.</p>
+    <a class="button button-primary" href="{{ routes.search_url }}?q=grooming&type=product">Find a care kit</a>
+  </div>
+  <div class="routine-paths" aria-label="Recommended shopping routines">
+    <a href="{{ routes.search_url }}?q=paw+cleaning&type=product">
+      <span>01</span>
+      <strong>Muddy walk reset</strong>
+      <small>Paw washer, drying towel, grooming brush, and gentle cleaning add-ons.</small>
+    </a>
+    <a href="{{ routes.search_url }}?q=dog+walking&type=product">
+      <span>02</span>
+      <strong>Out-the-door walk kit</strong>
+      <small>Leash, harness, travel bowl, water bottle, and pick-up essentials.</small>
+    </a>
+    <a href="{{ routes.search_url }}?q=dental+care&type=product">
+      <span>03</span>
+      <strong>Daily health top-up</strong>
+      <small>Toothbrushes, oral care, paw care, and maintenance products.</small>
+    </a>
+  </div>
+</section>
+
+{% schema %}
+{ "name": "Product landing module", "settings": [], "presets": [{ "name": "Product landing module" }] }
+{% endschema %}

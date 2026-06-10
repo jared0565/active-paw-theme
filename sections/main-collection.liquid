@@ -1,0 +1,21 @@
+<section class="section collection-section">
+  <div class="section-heading">
+    <h1>{{ collection.title | default: 'Professional grooming essentials' }}</h1>
+    <p>{{ collection.description | default: 'Merchandised for fast scanning, repeat buying, and trade-size discovery.' }}</p>
+  </div>
+  <div class="product-grid">
+    {% if collection.products_count > 0 %}
+      {% for product in collection.products limit: 12 %}
+        {% render 'product-card-commerce', product: product %}
+      {% endfor %}
+    {% else %}
+      {% render 'demo-product-card', title: 'Pet Toothbrush Oral Cleaning Products', price: 'From GBP4.99', rating: '5.0', tag: 'Demo', image: 'product-comb.svg', url: '/products/pet-toothbrush-oral-cleaning-products' %}
+      {% render 'demo-product-card', title: 'Dog Running Harness', price: 'From GBP14.99', rating: '4.9', tag: 'Demo', image: 'product-scissors.svg', url: '/products/dog-running-harness' %}
+      {% render 'demo-product-card', title: 'Pet Bath Shampoo Dog Grooming Products', price: 'GBP6.99', rating: '4.7', tag: 'Demo', image: 'product-shampoo-glide.svg', url: '/products/pet-bath-shampoo-dog-grooming-products' %}
+    {% endif %}
+  </div>
+</section>
+
+{% schema %}
+{ "name": "Main collection", "settings": [] }
+{% endschema %}

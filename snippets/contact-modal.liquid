@@ -1,0 +1,52 @@
+{%- comment -%}
+  Contact Us modal — wraps Shopify's native {% form 'contact' %} (emails the store's
+  contact address; no app/backend needed). The form does a full-page POST and Shopify
+  redirects back with form.posted_successfully? / form.errors set. We render that result
+  inside [data-contact-result]; theme.js auto-opens the modal on load when it's present.
+{%- endcomment -%}
+<div class="contact-modal" data-contact-modal aria-hidden="true">
+  <div class="contact-modal__overlay" data-contact-close></div>
+  <div class="contact-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="ContactModalTitle" tabindex="-1">
+    <header class="contact-modal__head">
+      <div>
+        <h2 id="ContactModalTitle">Contact us</h2>
+        <p>Questions about products, orders, or grooming picks? Send us a message.</p>
+      </div>
+      <button type="button" class="contact-modal__close" data-contact-close aria-label="Close contact form">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+          <path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </header>
+
+    {%- form 'contact', id: 'ContactForm', class: 'contact-form' -%}
+      {%- if form.posted_successfully? -%}
+        <div class="contact-form__result contact-form__result--ok" data-contact-result role="status">
+          Thanks — your message has been sent. We'll reply to your email shortly.
+        </div>
+      {%- elsif form.errors -%}
+        <div class="contact-form__result contact-form__result--error" data-contact-result role="alert">
+          {{ form.errors | default_errors }}
+        </div>
+      {%- endif -%}
+
+      <div class="contact-form__field">
+        <label for="ContactName">Name</label>
+        <input type="text" id="ContactName" name="contact[name]" value="{{ form.name }}" autocomplete="name">
+      </div>
+      <div class="contact-form__field">
+        <label for="ContactEmail">Email <span aria-hidden="true">*</span></label>
+        <input type="email" id="ContactEmail" name="contact[email]" value="{{ form.email }}" autocomplete="email" required>
+      </div>
+      <div class="contact-form__field">
+        <label for="ContactPhone">Phone <span class="contact-form__optional">(optional)</span></label>
+        <input type="tel" id="ContactPhone" name="contact[phone]" value="{{ form.phone }}" autocomplete="tel">
+      </div>
+      <div class="contact-form__field">
+        <label for="ContactBody">Message <span aria-hidden="true">*</span></label>
+        <textarea id="ContactBody" name="contact[body]" rows="5" required>{{ form.body }}</textarea>
+      </div>
+      <button type="submit" class="button button-primary full">Send message</button>
+    {%- endform -%}
+  </div>
+</div>
