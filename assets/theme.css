@@ -364,9 +364,8 @@ img { max-width: 100%; display: block; }
   line-height: 1.02;
   letter-spacing: 0;
 }
-.hero p { max-width: 650px; color: rgba(255,255,255,0.84); font-size: 18px; line-height: 1.65; }
+.hero p { max-width: 650px; font-size: 18px; line-height: 1.65; }
 .eyebrow { margin: 0 0 12px; color: var(--accent); font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
-.hero .eyebrow { color: #ffb28d; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
 .button, button {
   min-height: 48px;
