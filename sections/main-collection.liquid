@@ -6,14 +6,9 @@
   </div>
   {% paginate collection.products by 12 %}
     {% if collection.products_count > 0 %}
-      <div class="product-grid">
+      <div class="commerce-grid">
         {% for product in collection.products %}
-          <article class="product-card">
-            <a href="{{ product.url }}">
-              <div class="product-media">{% if product.featured_image %}{{ product.featured_image | image_url: width: 900 | image_tag: widths: '300, 450, 600, 750, 900', sizes: '(max-width: 620px) 50vw, (max-width: 900px) 33vw, 300px', loading: 'lazy' }}{% else %}<span>{{ product.title }}</span>{% endif %}</div>
-              <div class="product-card-body"><h3>{{ product.title }}</h3><p class="price">{{ product.price | money }}</p></div>
-            </a>
-          </article>
+          {% render 'product-card-commerce', product: product, badge: collection.title %}
         {% endfor %}
       </div>
       {% if paginate.pages > 1 %}
