@@ -1,12 +1,18 @@
-<section class="section collection-section">
+<section class="section">
   <div class="section-heading">
+    <p class="eyebrow">Collection</p>
     <h1>{{ collection.title | default: 'Professional grooming essentials' }}</h1>
     <p>{{ collection.description | default: 'Merchandised for fast scanning, repeat buying, and trade-size discovery.' }}</p>
   </div>
   <div class="product-grid">
     {% if collection.products_count > 0 %}
       {% for product in collection.products limit: 12 %}
-        {% render 'product-card-commerce', product: product %}
+        <article class="product-card">
+          <a href="{{ product.url }}">
+            <div class="product-media">{% if product.featured_image %}{{ product.featured_image | image_url: width: 900 | image_tag: widths: '300, 450, 600, 750, 900', sizes: '(max-width: 620px) 50vw, (max-width: 900px) 33vw, 300px', loading: 'lazy' }}{% else %}<span>{{ product.title }}</span>{% endif %}</div>
+            <div class="product-card-body"><h3>{{ product.title }}</h3><p class="price">{{ product.price | money }}</p></div>
+          </a>
+        </article>
       {% endfor %}
     {% else %}
       {% render 'demo-product-card', title: 'Pet Toothbrush Oral Cleaning Products', price: 'From GBP4.99', rating: '5.0', tag: 'Demo', image: 'product-comb.svg', url: '/products/pet-toothbrush-oral-cleaning-products' %}

@@ -8,8 +8,8 @@ Renders a real Shopify product card for category sections.
 {% liquid
   assign selected_variant = product.selected_or_first_available_variant
   assign variant_count = product.variants_count | default: product.variants.size
-  assign show_purchase_action = show_purchase_action | default: true
-  assign benefit = ''
+  assign show_purchase_action = show_purchase_action | default: false
+  assign benefit = 'Ad-ready product page with variants, bundles, and delivery details.'
   if product.product_type contains 'grooming'
     assign benefit = 'Grooming essential for cleaner coats and easier care routines.'
   elsif product.product_type contains 'walking' or product.product_type contains 'harness'

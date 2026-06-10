@@ -1,31 +1,29 @@
 {% doc %}
-Renders a demo product card matching the commerce-card style.
+Renders a fictitious proposal product card for the reusable theme prototype.
+@param {string} title - Product title
+@param {string} price - Product price label
+@param {string} rating - Product rating label
+@param {string} tag - Product merchandising tag
+@param {string} image - Product image URL
+@param {string} url - Product detail URL
 {% enddoc %}
 
-<article class="commerce-card">
-  <div class="commerce-card-link">
-    <a class="commerce-media-link" href="{{ url | default: '/products/coatguard-glide-3-in-1-shampoo-conditioner' }}" aria-label="View {{ title | escape }}">
-      <div class="commerce-media">
-        {% if image != blank %}
-          <img src="{{ image | asset_url }}" alt="{{ title | escape }}" width="720" height="540" loading="lazy">
-        {% else %}
-          <img src="{{ 'product-shampoo-glide.svg' | asset_url }}" alt="{{ title | escape }}" width="720" height="540" loading="lazy">
-        {% endif %}
-        <span>{{ tag | default: 'Demo' }}</span>
-      </div>
-    </a>
-    <div class="commerce-card-body">
-      <div class="commerce-rating">★★★★★ <span>{{ rating | default: '4.8' }}</span></div>
-      <h3><a href="{{ url | default: '/products/coatguard-glide-3-in-1-shampoo-conditioner' }}">{{ title }}</a></h3>
-      <p>{{ benefit | default: 'Daily care product that supports cleaner teeth and fresher breath.' }}</p>
-      <div class="commerce-price-row">
-        <strong>{{ price }}</strong>
-      </div>
-      <div class="commerce-card-footer">
-        <span>Fast details</span>
-        <strong>View details</strong>
-      </div>
-      <a class="commerce-option-button" href="{{ url | default: '/products/coatguard-glide-3-in-1-shampoo-conditioner' }}">Add to cart</a>
+<article class="product-card">
+  <a class="product-card-link" href="{{ url | default: '/products/coatguard-glide-3-in-1-shampoo-conditioner' }}" aria-label="View {{ title | escape }}">
+    <div class="product-media">
+      {% if image != blank %}
+        <img src="{{ image | asset_url }}" alt="{{ title | escape }}" width="900" height="675" loading="lazy">
+      {% endif %}
+      <span>{{ tag }}</span>
     </div>
-  </div>
+    <div class="product-card-body">
+      <p class="rating">★★★★★ {{ rating }}</p>
+      <h3>{{ title }}</h3>
+      <p class="price">{{ price }}</p>
+      <div class="card-meta-row">
+        <span>Variants + bundle details</span>
+        <strong>View product</strong>
+      </div>
+    </div>
+  </a>
 </article>
