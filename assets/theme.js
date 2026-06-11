@@ -255,17 +255,6 @@ document.addEventListener('click', (event) => {
     updateBuyboxValue();
   }
 
-  const thumbsToggle = event.target.closest('[data-thumbs-toggle]');
-  if (thumbsToggle) {
-    const thumbs = thumbsToggle.closest('[data-product-thumbs]');
-    if (thumbs) {
-      const expanded = thumbs.classList.toggle('is-expanded');
-      thumbsToggle.setAttribute('aria-expanded', String(expanded));
-      const label = thumbsToggle.querySelector('[data-thumbs-more-label]');
-      if (label) label.textContent = expanded ? 'Less' : label.dataset.moreText;
-    }
-  }
-
   const showMoreButton = event.target.closest('[data-show-more]');
   if (showMoreButton) {
     const block = showMoreButton.closest('.category-block');

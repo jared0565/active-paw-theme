@@ -1482,7 +1482,8 @@ summary { cursor: pointer; font-weight: 600; }
   display: grid;
   grid-template-columns: 1fr;
   gap: 8px;
-  max-height: calc(100vh - var(--sticky-header-offset) - 40px);
+  /* Never extend past the main image: cap at its height (and the viewport) and scroll. */
+  max-height: min(calc(100vh - var(--sticky-header-offset) - 40px), clamp(460px, 58vh, 650px));
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 2px 4px 2px 2px;
@@ -1511,25 +1512,6 @@ summary { cursor: pointer; font-weight: 600; }
 .product-thumb.is-active {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(240,90,40,0.18);
-}
-.product-thumb--overflow { display: none; }
-.product-thumbs.is-expanded .product-thumb--overflow { display: block; }
-.product-thumbs-more {
-  min-height: 40px;
-  padding: 0;
-  border: 1px dashed var(--line);
-  border-radius: var(--radius);
-  background: #fffdf9;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: border-color 160ms ease, color 160ms ease;
-}
-.product-thumbs-more:hover,
-.product-thumbs-more:focus-visible {
-  border-color: rgba(240,90,40,0.5);
-  color: var(--accent-dark);
 }
 .pdp-proof-strip {
   display: grid;
@@ -2124,7 +2106,10 @@ summary { cursor: pointer; font-weight: 600; }
   .product-gallery-stage { grid-template-columns: 1fr; }
   .product-thumbs {
     position: static;
-    grid-template-columns: repeat(5, minmax(72px, 1fr));
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(72px, 96px);
+    justify-content: start;
     overflow-x: auto;
     overflow-y: hidden;
     max-height: none;
@@ -2265,7 +2250,7 @@ summary { cursor: pointer; font-weight: 600; }
   .commerce-card-body { padding: 12px; }
   .commerce-card h3 { min-height: 42px; font-size: 15px; }
   .commerce-card p { font-size: 13px; }
-  .product-thumbs { grid-template-columns: repeat(4, minmax(72px, 1fr)); }
+  .product-thumbs { grid-auto-columns: minmax(64px, 80px); }
   .product-media.large { height: 360px; }
   .product-detail { padding: 24px 20px 56px; }
   .pdp-left-merch { grid-template-columns: 1fr; }
