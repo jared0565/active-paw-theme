@@ -588,13 +588,52 @@ document.addEventListener('click', (event) => {
   }
 });
 
+/* ---------------- Product details modal (PDP "More details") ---------------- */
+const getDetailsModal = () => document.querySelector('[data-details-modal]');
+let detailsReturnFocus = null;
+
+const openDetailsModal = () => {
+  const modal = getDetailsModal();
+  if (!modal) return;
+  detailsReturnFocus = document.activeElement;
+  modal.classList.add('is-open');
+  modal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('contact-modal-open'); // shared scroll lock
+  const dialog = modal.querySelector('.contact-modal__dialog');
+  if (dialog) window.requestAnimationFrame(() => dialog.focus());
+};
+
+const closeDetailsModal = () => {
+  const modal = getDetailsModal();
+  if (!modal || !modal.classList.contains('is-open')) return;
+  modal.classList.remove('is-open');
+  modal.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('contact-modal-open');
+  if (detailsReturnFocus && typeof detailsReturnFocus.focus === 'function') detailsReturnFocus.focus();
+  detailsReturnFocus = null;
+};
+
+document.addEventListener('click', (event) => {
+  if (event.target.closest('[data-details-open]')) {
+    event.preventDefault();
+    openDetailsModal();
+    return;
+  }
+  if (event.target.closest('[data-details-close]')) {
+    event.preventDefault();
+    closeDetailsModal();
+  }
+});
+
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     closeCollectionsMenu();
     closeContactModal();
+    closeDetailsModal();
   }
-  const modal = getContactModal();
-  if (!modal || !modal.classList.contains('is-open') || event.key !== 'Tab') return;
+  if (event.key !== 'Tab') return;
+  const modal = [getContactModal(), getDetailsModal()].find((m) => m && m.classList.contains('is-open'));
+  if (!modal) return;
   const dialog = modal.querySelector('.contact-modal__dialog');
   if (!dialog) return;
   const focusables = Array.from(

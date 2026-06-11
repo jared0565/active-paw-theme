@@ -107,6 +107,12 @@
         {% endif %}
       </div>
     </div>
+    <button class="pdp-more-details" type="button" data-details-open>
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+        <path d="M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20Zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm-1-12a1 1 0 1 1 2 0 1 1 0 0 1-2 0Zm0 3h2v6h-2v-6Z"/>
+      </svg>
+      More details
+    </button>
   </div>
   <div class="product-summary">
     <nav class="pdp-breadcrumbs" aria-label="Product location">
@@ -233,6 +239,8 @@
     </details>
   </aside>
 </section>
+
+{% render 'product-details-modal', product: product %}
 
 {% if related_collection != blank and related_collection.products_count > 1 %}
   <section class="section related-products pdp-priority-related">
