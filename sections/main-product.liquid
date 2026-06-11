@@ -75,6 +75,18 @@
   endif
 %}
 
+{% comment %}
+  PawScout beacon hook: imported supplier products carry a cj-pid-* tag.
+  pawscout.js reads this meta and sends view/add-to-cart signals that keep
+  the product alive through the 30-day performance cull.
+{% endcomment %}
+{% for tag in product.tags %}
+  {% if tag contains 'cj-pid-' %}
+    <meta name="pawscout-pid" content="{{ tag | remove_first: 'cj-pid-' | escape }}">
+    {% break %}
+  {% endif %}
+{% endfor %}
+
 <section class="product-detail" data-pdp-shell>
   <div class="product-gallery" aria-label="Product media gallery">
     <div class="product-gallery-stage">

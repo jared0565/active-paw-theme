@@ -114,6 +114,28 @@
           </div>
         {% endif %}
 
+        {% comment %}
+          PawScout backfill: when the store answers with fewer than 12 products,
+          pawscout.js fetches gated supplier candidates through the app proxy and
+          fills this grid with ghost cards (revealed only when matches exist).
+          First page only — backfill across pagination would duplicate cards.
+        {% endcomment %}
+        {% if paginate.current_page == 1 %}
+          <section
+            class="pawscout-backfill"
+            data-pawscout-search
+            data-terms="{{ search.terms | escape }}"
+            data-have="{{ product_count }}"
+            hidden
+          >
+            <div class="search-results-meta">
+              <strong>More matches from our supplier network</strong>
+              <span>Click any item for details — we stock it on demand.</span>
+            </div>
+            <div class="commerce-grid search-results-grid" data-pawscout-grid></div>
+          </section>
+        {% endif %}
+
         {% if paginate.pages > 1 %}
           <nav class="pagination" role="navigation" aria-label="Search results pagination">
             {% if paginate.previous %}
