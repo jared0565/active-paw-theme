@@ -170,6 +170,21 @@ document.addEventListener('focusin', (event) => {
   if (thumb) setProductMedia(thumb);
 });
 
+/* Buybox "Value": cash total of what Add to cart will put in the basket. */
+const updateBuyboxValue = () => {
+  const valueEl = document.querySelector('[data-buybox-value]');
+  if (!valueEl) return;
+  let unitPrice = Number(valueEl.dataset.unitPrice) || 0;
+  const select = document.getElementById('ProductSelect');
+  if (select) {
+    const option = select.options[select.selectedIndex];
+    if (option && option.dataset.price) unitPrice = Number(option.dataset.price);
+  }
+  const quantity = Math.max(1, Number(document.getElementById('ProductQuantity')?.value) || 1);
+  const currency = valueEl.dataset.currency || 'GBP';
+  valueEl.textContent = new Intl.NumberFormat(undefined, { style: 'currency', currency }).format((unitPrice * quantity) / 100);
+};
+
 const normalizeCartQuantity = (input) => {
   const max = Number(input.getAttribute('max'));
   const min = Number(input.getAttribute('min') || 0);
@@ -191,12 +206,16 @@ const normalizeCartQuantity = (input) => {
 
 document.addEventListener('input', (event) => {
   const cartQuantity = event.target.closest('[data-cart-quantity]');
-  if (cartQuantity) normalizeCartQuantity(cartQuantity);
+  if (cartQuantity) {
+    normalizeCartQuantity(cartQuantity);
+    updateBuyboxValue();
+  }
 });
 
 document.addEventListener('change', (event) => {
   const cartQuantity = event.target.closest('[data-cart-quantity]');
   if (cartQuantity) normalizeCartQuantity(cartQuantity);
+  if (cartQuantity || event.target.closest('#ProductSelect')) updateBuyboxValue();
 });
 
 document.addEventListener('click', (event) => {
@@ -233,6 +252,18 @@ document.addEventListener('click', (event) => {
       nextValue = max;
     }
     input.value = String(nextValue);
+    updateBuyboxValue();
+  }
+
+  const thumbsToggle = event.target.closest('[data-thumbs-toggle]');
+  if (thumbsToggle) {
+    const thumbs = thumbsToggle.closest('[data-product-thumbs]');
+    if (thumbs) {
+      const expanded = thumbs.classList.toggle('is-expanded');
+      thumbsToggle.setAttribute('aria-expanded', String(expanded));
+      const label = thumbsToggle.querySelector('[data-thumbs-more-label]');
+      if (label) label.textContent = expanded ? 'Less' : label.dataset.moreText;
+    }
   }
 
   const showMoreButton = event.target.closest('[data-show-more]');
@@ -299,6 +330,10 @@ document.addEventListener('click', (event) => {
 fitProductTitles();
 window.addEventListener('load', fitProductTitles);
 window.addEventListener('resize', scheduleTitleFit);
+
+// Browsers restore quantity/variant form state on back-navigation; re-sync the buybox value.
+updateBuyboxValue();
+window.addEventListener('pageshow', updateBuyboxValue);
 
 syncStickyHeaderOffset();
 window.addEventListener('load', syncStickyHeaderOffset);

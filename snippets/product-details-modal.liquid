@@ -83,9 +83,6 @@ Always ends with a specifications list built from real catalog data.
         {% if product.type != blank %}
           <div><dt>Category</dt><dd>{{ product.type }}</dd></div>
         {% endif %}
-        {% if product.vendor != blank %}
-          <div><dt>Brand</dt><dd>{{ product.vendor }}</dd></div>
-        {% endif %}
         {% unless product.has_only_default_variant %}
           {% for option in product.options_with_values %}
             <div><dt>{{ option.name }}</dt><dd>{{ option.values | join: ', ' }}</dd></div>
