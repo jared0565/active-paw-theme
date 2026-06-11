@@ -1512,6 +1512,25 @@ summary { cursor: pointer; font-weight: 600; }
   border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(240,90,40,0.18);
 }
+.product-thumb--overflow { display: none; }
+.product-thumbs.is-expanded .product-thumb--overflow { display: block; }
+.product-thumbs-more {
+  min-height: 40px;
+  padding: 0;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: #fffdf9;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease;
+}
+.product-thumbs-more:hover,
+.product-thumbs-more:focus-visible {
+  border-color: rgba(240,90,40,0.5);
+  color: var(--accent-dark);
+}
 .pdp-proof-strip {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1575,11 +1594,17 @@ summary { cursor: pointer; font-weight: 600; }
   scrollbar-width: thin;
   scrollbar-color: rgba(16,24,32,0.24) transparent;
 }
+.pdp-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
 .pdp-breadcrumbs {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 12px;
   color: var(--muted);
   font-size: 12px;
 }
@@ -1618,11 +1643,11 @@ summary { cursor: pointer; font-weight: 600; }
 .product-summary h1 {
   margin: 0;
   max-width: 680px;
-  --pdp-title-max: 42px;
-  --pdp-title-min: 22px;
-  --pdp-title-max-height: clamp(156px, 24vh, 252px);
-  font-size: clamp(var(--pdp-title-min), 2.7vw, var(--pdp-title-max));
-  line-height: 1.05;
+  --pdp-title-max: 30px;
+  --pdp-title-min: 18px;
+  --pdp-title-max-height: clamp(96px, 16vh, 150px);
+  font-size: clamp(var(--pdp-title-min), 2vw, var(--pdp-title-max));
+  line-height: 1.15;
   letter-spacing: 0;
   overflow-wrap: anywhere;
   text-wrap: balance;
@@ -1674,7 +1699,14 @@ summary { cursor: pointer; font-weight: 600; }
   flex: 0 0 auto;
 }
 .pdp-share-button {
-  margin-top: 12px;
+  min-height: 32px;
+  padding: 6px 11px;
+  font-size: 12px;
+  flex: 0 0 auto;
+}
+.pdp-share-button svg {
+  width: 14px;
+  height: 14px;
 }
 .pdp-price-row {
   display: flex;
@@ -1685,7 +1717,7 @@ summary { cursor: pointer; font-weight: 600; }
 }
 .pdp-price-row .price {
   margin: 0;
-  font-size: clamp(28px, 2.8vw, 42px);
+  font-size: clamp(20px, 1.8vw, 26px);
 }
 .compare-price {
   margin: 0;
@@ -1817,9 +1849,11 @@ summary { cursor: pointer; font-weight: 600; }
   padding-bottom: 14px;
 }
 .buybox-heading span {
-  color: var(--green);
+  color: var(--muted);
   font-size: 13px;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 .buybox-heading strong {
   color: var(--accent-dark);
@@ -2236,9 +2270,9 @@ summary { cursor: pointer; font-weight: 600; }
   .product-detail { padding: 24px 20px 56px; }
   .pdp-left-merch { grid-template-columns: 1fr; }
   .product-summary h1 {
-    --pdp-title-min: 21px;
-    --pdp-title-max-height: 186px;
-    font-size: min(28px, var(--pdp-title-max));
+    --pdp-title-min: 18px;
+    --pdp-title-max-height: 140px;
+    font-size: min(24px, var(--pdp-title-max));
   }
   .pdp-confidence-list div {
     grid-template-columns: 1fr;
