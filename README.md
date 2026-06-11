@@ -27,3 +27,13 @@
 | `shopify-deploy` | **This branch.** Theme folders only. Auto-syncs to Shopify. |
 
 Full project documentation, supplier metafield specs, and contribution guidelines are on [`master`](../../tree/master).
+
+## PawScout integration
+
+This theme is the storefront half of [`pawscout-worker`](https://github.com/jared0565/pawscout-worker) (supplier search backfill, on-demand product imports, performance beacons):
+
+- `assets/pawscout.js` — search-grid backfill with supplier "ghost" cards, the instant preview modal (real product is created in the background on click), and JS-only view/add-to-cart beacons. Loaded from `layout/theme.liquid`.
+- `sections/main-search.liquid` — hidden backfill grid (`data-pawscout-search`) revealed when supplier matches exist; first results page only; 12-product display cap.
+- `sections/main-product.liquid` — emits `<meta name="pawscout-pid">` for products tagged `cj-pid-*` so beacons can keep performing products alive through the 30-day cull.
+
+All storefront calls go through the Shopify App Proxy at `/apps/pawscout/*` (configured in the Partner Dashboard — see the worker README). If the proxy isn't configured or the worker is down, everything degrades gracefully to plain store search.
