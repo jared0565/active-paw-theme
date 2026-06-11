@@ -81,11 +81,10 @@
       <div class="product-thumbs" aria-label="Product media thumbnails" data-product-thumbs>
         {% if product.media.size > 0 %}
           {% liquid
-            # De-dupe repeated images (same underlying file) and cap visible thumbs at 5;
-            # the rest hide behind a "+N" toggle at the bottom of the rail.
+            # De-dupe repeated images (same underlying file); the rail itself
+            # scrolls when there are more thumbs than fit beside the main image.
             assign thumb_seen = ''
             assign thumb_count = 0
-            assign thumb_visible_limit = 5
           %}
           {% for media in product.media %}
             {% if media.preview_image %}
@@ -93,18 +92,12 @@
               {% unless thumb_seen contains thumb_key %}
                 {% assign thumb_seen = thumb_seen | append: thumb_key %}
                 {% assign thumb_count = thumb_count | plus: 1 %}
-                <button class="product-thumb{% if thumb_count == 1 %} is-active{% endif %}{% if thumb_count > thumb_visible_limit %} product-thumb--overflow{% endif %}" type="button" data-product-media="{{ media.preview_image | image_url: width: 1400 }}" aria-label="Show product image {{ thumb_count }}">
+                <button class="product-thumb{% if thumb_count == 1 %} is-active{% endif %}" type="button" data-product-media="{{ media.preview_image | image_url: width: 1400 }}" aria-label="Show product image {{ thumb_count }}">
                   {{ media.preview_image | image_url: width: 220 | image_tag: widths: '110, 165, 220', sizes: '80px', loading: 'lazy', alt: '' }}
                 </button>
               {% endunless %}
             {% endif %}
           {% endfor %}
-          {% if thumb_count > thumb_visible_limit %}
-            {% assign thumb_overflow = thumb_count | minus: thumb_visible_limit %}
-            <button class="product-thumbs-more" type="button" data-thumbs-toggle aria-expanded="false" aria-label="Show {{ thumb_overflow }} more product images">
-              <span data-thumbs-more-label data-more-text="+{{ thumb_overflow }}">+{{ thumb_overflow }}</span>
-            </button>
-          {% endif %}
         {% else %}
           <button class="product-thumb is-active" type="button" data-product-media="{{ 'product-shampoo-glide.svg' | asset_url }}" aria-label="Show product image">
             <img src="{{ 'product-shampoo-glide.svg' | asset_url }}" alt="" width="180" height="135" loading="lazy">
