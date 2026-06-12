@@ -53,12 +53,15 @@ img { max-width: 100%; display: block; }
   border-bottom: 1px solid rgba(255,255,255,0.12);
 }
 .announcement-track {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0;
   max-width: 1780px;
   margin: 0 auto;
 }
+.announcement-set {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+}
+.announcement-dup { display: none; } /* only the mobile marquee needs the duplicate */
 .announcement p {
   display: flex;
   gap: 10px;
@@ -2035,16 +2038,25 @@ summary { cursor: pointer; font-weight: 600; }
 
 @media (max-width: 900px) {
   :root { --sticky-header-offset: 190px; }
+  /* Single-line marquee: both sets in one row, slowly translating left;
+     the duplicate set makes the -50% loop seamless. */
+  .announcement { overflow: hidden; }
   .announcement-track {
-    grid-template-columns: repeat(3, minmax(220px, 1fr));
-    overflow-x: auto;
-    scrollbar-width: none;
+    display: flex;
+    width: max-content;
+    max-width: none;
+    animation: announcement-marquee 30s linear infinite;
   }
-  .announcement-track::-webkit-scrollbar { display: none; }
+  .announcement-set,
+  .announcement-dup { display: flex; }
   .announcement p {
     justify-content: flex-start;
-    min-height: 44px;
+    min-height: 40px;
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
+  .announcement p strong,
+  .announcement p span { white-space: nowrap; }
   .header-main {
     grid-template-columns: minmax(170px, auto) minmax(0, 1fr);
     gap: 12px;
@@ -2680,3 +2692,12 @@ body.pawscout-lock { overflow: hidden; }
   text-decoration: none; cursor: pointer; line-height: 1;
 }
 .social-share__btn:hover { background: rgba(16, 24, 32, 0.06); }
+
+@keyframes announcement-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (max-width: 900px) and (prefers-reduced-motion: reduce) {
+  .announcement-track { animation: none; overflow-x: auto; scrollbar-width: none; }
+  .announcement-track::-webkit-scrollbar { display: none; }
+}
