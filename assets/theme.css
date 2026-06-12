@@ -2701,3 +2701,11 @@ body.pawscout-lock { overflow: hidden; }
   .announcement-track { animation: none; overflow-x: auto; scrollbar-width: none; }
   .announcement-track::-webkit-scrollbar { display: none; }
 }
+
+/* PDP delivery info (strategy 2026-06-12: shipping transparency before checkout) */
+.delivery-info{margin-top:16px;padding:14px 16px;border:1px solid var(--border,#e3e0d8);border-radius:12px;background:var(--surface-soft,#faf8f4)}
+.di-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;background:#0c5132;color:#fff;font-size:12px;font-weight:600;margin-bottom:8px}
+.di-rows{list-style:none;margin:0;padding:0;font-size:13.5px;line-height:1.5}
+.di-rows li{padding:3px 0;display:flex;align-items:baseline;gap:6px}
+.di-rows li::before{content:"";flex:0 0 6px;width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.35;transform:translateY(-2px)}
+.di-rows a{color:inherit;text-decoration:underline}

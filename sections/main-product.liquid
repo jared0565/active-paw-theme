@@ -250,10 +250,7 @@
     {% else %}
       <div class="payment-note">Secure checkout options are shown at checkout.</div>
     {% endif %}
-    <details>
-      <summary>Delivery and returns</summary>
-      <p>Orders are dispatched quickly with tracking details sent by email. UK mainland orders over £150 ship free. If something is not right, contact support and we will help arrange a simple return.</p>
-    </details>
+    {% render 'delivery-info', product: product %}
     {% render 'social-share', product: product %}
   </aside>
 </section>
