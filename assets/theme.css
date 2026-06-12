@@ -2668,3 +2668,15 @@ body.contact-modal-open { overflow: hidden; }
 .pawscout-cta:disabled { opacity: 0.65; cursor: progress; }
 .pawscout-loading { padding: 28px 4px; text-align: center; color: #5c5f62; }
 body.pawscout-lock { overflow: hidden; }
+
+
+/* ---------- Social share (PDP) ---------- */
+.social-share { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(16, 24, 32, 0.12); }
+.social-share__label { font-weight: 700; font-size: 0.85rem; margin-right: 2px; }
+.social-share__btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(16, 24, 32, 0.18);
+  background: transparent; color: var(--ink); font-size: 0.8rem; font-weight: 600;
+  text-decoration: none; cursor: pointer; line-height: 1;
+}
+.social-share__btn:hover { background: rgba(16, 24, 32, 0.06); }
