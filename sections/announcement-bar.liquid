@@ -1,6 +1,10 @@
 <div class="announcement" role="region" aria-label="Store benefits">
   <div class="announcement-track">
-    <p>
+    {% comment %} Items render twice: the duplicate set feeds the seamless
+       mobile marquee loop and is hidden on desktop + from screen readers. {% endcomment %}
+    {% for dup in (1..2) %}
+    <div class="announcement-set{% if forloop.last %} announcement-dup{% endif %}"{% if forloop.last %} aria-hidden="true"{% endif %}>
+      <p>
       <span class="announcement-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" focusable="false">
           <path d="M3 6.5h11v8H3z"/>
@@ -32,6 +36,8 @@
       <strong>{{ section.settings.support_title }}</strong>
       <span>{{ section.settings.support_text }}</span>
     </p>
+    </div>
+    {% endfor %}
   </div>
 </div>
 
