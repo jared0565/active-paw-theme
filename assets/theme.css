@@ -1388,8 +1388,11 @@ p { line-height: 1.6; }
   line-height: 1.08;
 }
 .faq-list {
-  display: grid;
-  gap: 0;
+  display: block;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: white;
+  overflow: hidden;
 }
 details {
   border: 1px solid var(--line);
@@ -1397,10 +1400,46 @@ details {
   padding: 18px;
   background: white;
 }
-.faq-list details + details {
-  margin-top: 8px;
-}
 summary { cursor: pointer; font-weight: 600; }
+/* Compact vertical accordion: unified bordered box, divided rows, one chevron. */
+.faq-list details {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+}
+.faq-list details + details {
+  border-top: 1px solid var(--line);
+}
+.faq-list summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 16px;
+  line-height: 1.35;
+}
+.faq-list summary::-webkit-details-marker { display: none; }
+.faq-list summary::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  margin-right: 3px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.2s ease;
+  opacity: 0.5;
+}
+.faq-list details[open] summary::after { transform: rotate(-135deg); }
+.faq-list summary:hover { background: rgba(31,122,90,0.05); }
+.faq-list details > p {
+  margin: 0;
+  padding: 0 16px 15px;
+  color: var(--muted);
+}
 .support-card {
   position: sticky;
   top: calc(var(--sticky-header-offset) + 18px);

@@ -4,7 +4,7 @@
     <p>Clear answers on delivery, returns, payments, and sizing — everything you need to know before checkout.</p>
   </div>
   <div class="faq-grid">
-    <div class="faq-list">
+    <div class="faq-list" data-faq>
       <details open><summary>When does free UK delivery apply?</summary><p>Orders over £50 qualify for free UK delivery. Below that, standard UK delivery is a flat £4.99 — always shown in your cart before you pay, with no surprises at checkout.</p></details>
       <details><summary>How long will my order take to arrive?</summary><p>Most orders arrive within 8–12 working days. Items marked <strong>“Ships from UK”</strong> are dispatched from a UK warehouse and typically arrive in 2–4 working days. As soon as your order is dispatched we email you a tracking link so you can follow it to your door.</p></details>
       <details><summary>What is your returns and refund policy?</summary><p>You have 14 days from delivery to change your mind and return an item (return postage is covered by you). If anything arrives faulty, damaged, or incorrect, we’ll put it right with a full refund or free replacement — including delivery. Please <a href="#support" data-contact-open>contact us</a> first and we’ll guide you through it. Full details are in our <a href="/policies/refund-policy">returns &amp; refunds policy</a>.</p></details>
@@ -22,6 +22,22 @@
     </aside>
   </div>
 </section>
+
+<script>
+  // Single-open accordion: opening one entry closes the others, so the FAQ
+  // never grows past one expanded row and stays compact. `toggle` doesn't
+  // bubble, so we listen in the capture phase on the container.
+  (function () {
+    var root = document.querySelector('[data-faq]');
+    if (!root) return;
+    root.addEventListener('toggle', function (e) {
+      var t = e.target;
+      if (t.tagName === 'DETAILS' && t.open) {
+        root.querySelectorAll('details[open]').forEach(function (d) { if (d !== t) d.open = false; });
+      }
+    }, true);
+  })();
+</script>
 
 {% schema %}
 { "name": "FAQ accordion", "settings": [], "presets": [{ "name": "FAQ accordion" }] }
