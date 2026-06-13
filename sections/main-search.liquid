@@ -103,6 +103,16 @@
           endif
           assign shown_count = relevant_count
 
+          # Query species (dog vs cat) — used to keep cross-species products
+          # out of the bundle/offer section, which isn't query-matched.
+          assign terms_pad = ' ' | append: search.terms | downcase | append: ' '
+          assign q_species = ''
+          if terms_pad contains ' dog ' or terms_pad contains ' dogs ' or terms_pad contains ' puppy ' or terms_pad contains ' puppies '
+            assign q_species = 'dog'
+          elsif terms_pad contains ' cat ' or terms_pad contains ' cats ' or terms_pad contains ' kitten ' or terms_pad contains ' kittens '
+            assign q_species = 'cat'
+          endif
+
           assign normalized_terms = search.terms | downcase
           assign offer_collection_handle = 'more-to-love'
           assign offer_title = 'Complete the care kit'
@@ -163,8 +173,26 @@
                     if result_product_ids contains offer_product_signature
                       assign is_duplicate_result = true
                     endif
+                    # Species guard: never pair a cat product into a dog search (or vice versa).
+                    assign offer_species_ok = true
+                    if q_species != ''
+                      assign offer_pad = ' ' | append: offer_product.title | downcase | replace: ',', ' ' | replace: '-', ' ' | append: '  '
+                      assign offer_has_dog = false
+                      assign offer_has_cat = false
+                      if offer_pad contains ' dog ' or offer_pad contains ' dogs ' or offer_pad contains ' puppy ' or offer_pad contains ' puppies '
+                        assign offer_has_dog = true
+                      endif
+                      if offer_pad contains ' cat ' or offer_pad contains ' cats ' or offer_pad contains ' kitten ' or offer_pad contains ' kittens '
+                        assign offer_has_cat = true
+                      endif
+                      if q_species == 'dog' and offer_has_cat and offer_has_dog == false
+                        assign offer_species_ok = false
+                      elsif q_species == 'cat' and offer_has_dog and offer_has_cat == false
+                        assign offer_species_ok = false
+                      endif
+                    endif
                   %}
-                  {% if offer_product.available and is_duplicate_result == false %}
+                  {% if offer_product.available and is_duplicate_result == false and offer_species_ok %}
                     <div class="search-offer-card">
                       {% render 'product-card-commerce', product: offer_product, badge: 'Pairs well' %}
                     </div>
