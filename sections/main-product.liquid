@@ -12,14 +12,21 @@
   assign supplier_max_order_qty = selected_variant.metafields.supplier.max_order_qty.value
   assign pdp_max_order_qty = 20
   assign pdp_status_label = 'Ready to ship'
-  assign pdp_status_detail = 'Free UK shipping over £150. Tracking details are sent after dispatch.'
+  assign pdp_status_detail = 'Free UK delivery over £50. Tracking details are sent after dispatch.'
+  assign pdp_sold_out = false
 
   if selected_variant.inventory_management != blank and selected_variant.inventory_policy == 'deny'
     assign pdp_max_order_qty = selected_variant.inventory_quantity | default: 0
-    if pdp_max_order_qty <= 3
+    if pdp_max_order_qty <= 0
+      assign pdp_sold_out = true
+      assign pdp_status_label = 'Out of stock'
+      assign pdp_status_detail = 'Currently unavailable — check back soon.'
+    elsif pdp_max_order_qty <= 3
       assign pdp_status_label = 'Low stock'
+      assign pdp_status_detail = pdp_max_order_qty | append: ' available from tracked Shopify inventory.'
+    else
+      assign pdp_status_detail = pdp_max_order_qty | append: ' available from tracked Shopify inventory.'
     endif
-    assign pdp_status_detail = pdp_max_order_qty | append: ' available from tracked Shopify inventory.'
   elsif supplier_max_order_qty != blank
     assign pdp_max_order_qty = supplier_max_order_qty
     assign pdp_status_label = supplier_status | default: 'Supplier available' | replace: '_', ' ' | capitalize
@@ -31,8 +38,13 @@
   elsif supplier_status != blank
     assign pdp_status_label = supplier_status | replace: '_', ' ' | capitalize
   endif
-  # A max of 0 produces an invalid <input max="0" min="1"> that blocks the whole form.
-  # Never emit < 1 while Add to cart is shown; Shopify enforces real stock at /cart/add (422).
+  unless selected_variant.available
+    assign pdp_sold_out = true
+    assign pdp_status_label = 'Out of stock'
+    assign pdp_status_detail = 'Currently unavailable — check back soon.'
+  endunless
+  # A max of 0 produces an invalid <input max="0" min="1"> that blocks the form;
+  # sold-out states disable the buy controls outright instead.
   if pdp_max_order_qty < 1
     assign pdp_max_order_qty = 1
   endif
@@ -195,7 +207,7 @@
       A practical pet-care essential for grooming, cleaning, walking, and everyday routines with dogs and cats.
     </p>
     <div class="pdp-confidence-list" aria-label="Purchase confidence">
-      <div><strong>Free returns</strong><span>Simple return policy before checkout</span></div>
+      <div><strong>14-day returns</strong><span>Fair, contact-first returns — <a href="/policies/refund-policy">see our policy</a></span></div>
       <div><strong>Secure checkout</strong><span>Payment options are controlled by the store checkout settings</span></div>
       <div>
         <strong>{% if supplier_name != blank %}Supplier{% else %}Care add-ons{% endif %}</strong>
@@ -235,8 +247,12 @@
         <input id="ProductQuantity" type="number" name="quantity" value="1" min="1" max="{{ pdp_max_order_qty }}" inputmode="numeric" data-cart-quantity>
         <button type="button" data-quantity-change="1" aria-label="Increase quantity">+</button>
       </div>
-      <button class="button button-primary full pdp-atc" type="submit" name="add">Add to cart</button>
-      {{ form | payment_button }}
+      {% if pdp_sold_out %}
+        <button class="button button-primary full pdp-atc" type="submit" name="add" disabled aria-disabled="true">Out of stock</button>
+      {% else %}
+        <button class="button button-primary full pdp-atc" type="submit" name="add">Add to cart</button>
+        {{ form | payment_button }}
+      {% endif %}
     {% endform %}
     {% if shop.enabled_payment_types.size > 0 %}
       <div class="payment-note">Secure checkout with the payment methods enabled for this store.</div>
