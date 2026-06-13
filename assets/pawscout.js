@@ -91,9 +91,10 @@
     if (!host) return;
     const terms = host.getAttribute('data-terms') || '';
     const have = parseInt(host.getAttribute('data-have') || '0', 10) || 0;
+    const exclude = host.getAttribute('data-shown-pids') || ''; // pids already on the page — never duplicate
     if (!terms || have >= GRID_CAP) return;
 
-    proxyGet('/search', { q: terms, have: String(have), limit: String(GRID_CAP - have) })
+    proxyGet('/search', { q: terms, have: String(have), limit: String(GRID_CAP - have), exclude: exclude })
       .then((r) => {
         if (!r || !r.ok || !r.products || !r.products.length) return;
         const grid = host.querySelector('[data-pawscout-grid]');

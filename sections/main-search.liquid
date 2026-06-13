@@ -14,14 +14,87 @@
     {% if search.performed %}
       {% paginate search.results by 24 %}
         {% liquid
+          # --- relevance filter: keep only results whose title matches the
+          # query (plural-stemmed, stopwords dropped) so a "cat toys" search
+          # stops surfacing dog toys. Falls back to all results if strict
+          # matching would empty the page. Mirrors PawScout's ghost gating. ---
+          assign stopwords = 'for,the,and,with,an,to,of,in,on,my,your,a' | split: ','
+          assign raw_terms = search.terms | downcase | split: ' '
+          assign q_tokens = ''
+          for raw in raw_terms
+            assign tok = raw | strip
+            assign n = tok | size
+            if n < 2
+              continue
+            endif
+            assign is_stop = false
+            for sw in stopwords
+              if sw == tok
+                assign is_stop = true
+                break
+              endif
+            endfor
+            if is_stop
+              continue
+            endif
+            assign last2 = tok | slice: -2, 2
+            assign stem = tok
+            if n > 4 and last2 == 'es'
+              assign cut = n | minus: 2
+              assign stem = tok | slice: 0, cut
+            else
+              assign last1 = tok | slice: -1
+              if n > 3 and last1 == 's'
+                assign cut = n | minus: 1
+                assign stem = tok | slice: 0, cut
+              endif
+            endif
+            assign q_tokens = q_tokens | append: stem | append: ','
+          endfor
+          assign q_tokens = q_tokens | split: ','
+
           assign product_count = 0
+          assign relevant_count = 0
           assign result_product_ids = ''
+          assign relevant_ids = ''
+          assign shown_pids = ''
           for item in search.results
             if item.object_type == 'product' and item.available
               assign product_count = product_count | plus: 1
               assign result_product_ids = result_product_ids | append: item.id | append: ','
+              assign title_dc = item.title | downcase
+              assign is_relevant = true
+              for st in q_tokens
+                assign stt = st | strip
+                if stt == ''
+                  continue
+                endif
+                unless title_dc contains stt
+                  assign is_relevant = false
+                  break
+                endunless
+              endfor
+              if is_relevant
+                assign relevant_count = relevant_count | plus: 1
+                assign relevant_ids = relevant_ids | append: item.id | append: ','
+                for tag in item.tags
+                  if tag contains 'cj-pid-'
+                    assign pid = tag | remove_first: 'cj-pid-'
+                    assign shown_pids = shown_pids | append: pid | append: ','
+                    break
+                  endif
+                endfor
+              endif
             endif
           endfor
+          # Safety net: never blank the page — if strict matching hides
+          # everything, show all results Shopify returned.
+          assign use_relevance = true
+          if relevant_count == 0
+            assign use_relevance = false
+            assign relevant_count = product_count
+          endif
+          assign shown_count = relevant_count
 
           assign normalized_terms = search.terms | downcase
           assign offer_collection_handle = 'more-to-love'
@@ -50,15 +123,18 @@
         %}
 
         <div class="search-results-meta">
-          <strong>{{ product_count }} product{% unless product_count == 1 %}s{% endunless %}</strong>
+          <strong>{{ shown_count }} product{% unless shown_count == 1 %}s{% endunless %}</strong>
           <span>Matched from your search</span>
         </div>
 
-        {% if product_count > 0 %}
+        {% if shown_count > 0 %}
           <div class="commerce-grid search-results-grid">
             {% for item in search.results %}
               {% if item.object_type == 'product' and item.available %}
-                {% render 'product-card-commerce', product: item, badge: 'Search match' %}
+                {% assign id_sig = item.id | append: ',' %}
+                {% if use_relevance == false or relevant_ids contains id_sig %}
+                  {% render 'product-card-commerce', product: item, badge: 'Search match' %}
+                {% endif %}
               {% endif %}
             {% endfor %}
           </div>
@@ -125,7 +201,8 @@
             class="pawscout-backfill"
             data-pawscout-search
             data-terms="{{ search.terms | escape }}"
-            data-have="{{ product_count }}"
+            data-have="{{ shown_count }}"
+            data-shown-pids="{{ shown_pids | escape }}"
             hidden
           >
             <div class="search-results-meta">
