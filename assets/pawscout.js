@@ -220,10 +220,126 @@
     }, true);
   };
 
+
+  /* ---------------- W-ADDON: hidden basket-fillers ----------------
+   * Cheap, curated products that are deliberately invisible to browsing and
+   * search (seo.hidden + no collection). They surface ONLY here: the PDP
+   * "Complete the kit" row and the cart drawer's free-delivery nudge.
+   * Flow: /apps/pawscout/addons -> handles -> /products/{handle}.js (price,
+   * image, variant stay Shopify-fresh) -> mini cards with one-tap add.
+   */
+  let addonCache = null; // handle list is stable per page view
+
+  const fetchAddonProducts = (limit) => {
+    if (addonCache) return Promise.resolve(addonCache.slice(0, limit));
+    return proxyGet('/addons', { limit: String(limit) })
+      .then((r) => {
+        if (!r || !r.ok || !Array.isArray(r.addons) || !r.addons.length) return [];
+        return Promise.all(
+          r.addons.map((handle) =>
+            fetch(`/products/${handle}.js`, { headers: { Accept: 'application/json' } })
+              .then((res) => (res.ok ? res.json() : null))
+              .catch(() => null)
+          )
+        );
+      })
+      .then((products) => {
+        addonCache = (products || []).filter((p) => p && p.available && p.variants && p.variants.length);
+        return addonCache.slice(0, limit);
+      })
+      .catch(() => []);
+  };
+
+  const renderCartDrawerHtml = (sections) => {
+    // Mirrors theme.js: swap [data-cart-drawer-content] from the section payload.
+    const html = sections && sections['cart-drawer'];
+    const drawer = document.querySelector('[data-cart-drawer]');
+    if (!drawer || typeof html !== 'string') return;
+    const parsed = new DOMParser().parseFromString(html, 'text/html');
+    const fresh = parsed.querySelector('[data-cart-drawer-content]');
+    const live = drawer.querySelector('[data-cart-drawer-content]');
+    if (fresh && live) live.innerHTML = fresh.innerHTML;
+    fetch('/cart.js', { headers: { Accept: 'application/json' } })
+      .then((r) => r.json())
+      .then((cart) => {
+        document.querySelectorAll('[data-cart-count]').forEach((el) => { el.textContent = cart.item_count || 0; });
+      })
+      .catch(() => {});
+  };
+
+  const addonCard = (product) => {
+    const v = product.variants[0];
+    const card = document.createElement('div');
+    card.className = 'addon-card';
+    const img = document.createElement('img');
+    img.src = product.featured_image || (product.images && product.images[0]) || '';
+    img.alt = '';
+    img.loading = 'lazy';
+    img.width = 56; img.height = 56;
+    const info = document.createElement('div');
+    info.className = 'addon-card__info';
+    const title = document.createElement('a');
+    title.href = product.url;
+    title.textContent = product.title;
+    const price = document.createElement('span');
+    price.textContent = money((v.price) / 100);
+    info.appendChild(title);
+    info.appendChild(price);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'addon-card__add';
+    btn.textContent = '+ Add';
+    btn.addEventListener('click', () => {
+      btn.disabled = true;
+      btn.textContent = 'Adding…';
+      fetch('/cart/add.js', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({ id: v.id, quantity: 1, sections: 'cart-drawer' })
+      })
+        .then((r) => { if (!r.ok) throw new Error('add failed'); return r.json(); })
+        .then((data) => { renderCartDrawerHtml(data.sections); })
+        .catch(() => { btn.disabled = false; btn.textContent = '+ Add'; });
+    });
+    card.appendChild(img);
+    card.appendChild(info);
+    card.appendChild(btn);
+    return card;
+  };
+
+  const fillAddonContainer = (root, limit) => {
+    const slot = root.querySelector('[data-addon-cards]');
+    if (!slot || slot.childElementCount > 0) return;
+    fetchAddonProducts(limit).then((products) => {
+      if (!products.length) return;
+      products.forEach((p) => slot.appendChild(addonCard(p)));
+      root.hidden = false;
+    });
+  };
+
+  const initAddons = () => {
+    // PDP row (static markup, fill once).
+    const pdpRow = document.querySelector('[data-pawscout-pdp-addons]');
+    if (pdpRow) fillAddonContainer(pdpRow, 3);
+
+    // Cart drawer nudge: the drawer content is server-re-rendered on every
+    // cart change, wiping our cards — observe and refill.
+    const drawerContent = document.querySelector('[data-cart-drawer-content]');
+    if (drawerContent) {
+      const refill = () => {
+        const nudge = drawerContent.querySelector('[data-pawscout-cart-addons]');
+        if (nudge) fillAddonContainer(nudge, 2);
+      };
+      refill();
+      new MutationObserver(refill).observe(drawerContent, { childList: true, subtree: false });
+    }
+  };
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => { initSearchBackfill(); initBeacons(); });
+    document.addEventListener('DOMContentLoaded', () => { initSearchBackfill(); initBeacons(); initAddons(); });
   } else {
     initSearchBackfill();
     initBeacons();
+    initAddons();
   }
 })();

@@ -267,6 +267,12 @@
       <div class="payment-note">Secure checkout options are shown at checkout.</div>
     {% endif %}
     {% render 'delivery-info', product: product %}
+    {%- comment -%} W-ADDON: pawscout.js fills this with hidden filler products
+        (cheap add-ons, never browsable) — stays hidden when none exist. {%- endcomment -%}
+    <div class="pdp-addons" data-pawscout-pdp-addons hidden>
+      <h3>Complete the kit</h3>
+      <div class="cart-addons__cards" data-addon-cards></div>
+    </div>
     {% render 'social-share', product: product %}
   </aside>
 </section>
