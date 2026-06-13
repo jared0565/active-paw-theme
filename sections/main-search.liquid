@@ -62,14 +62,21 @@
             if item.object_type == 'product' and item.available
               assign product_count = product_count | plus: 1
               assign result_product_ids = result_product_ids | append: item.id | append: ','
-              assign title_dc = item.title | downcase
+              # Word-boundary match (space-padded, punctuation neutralised) so a
+              # token only matches a whole word — "cat" must not match "catapult".
+              # Each stemmed token is checked against singular and plural forms.
+              assign title_norm = item.title | downcase | replace: ',', ' ' | replace: '.', ' ' | replace: '-', ' ' | replace: '/', ' ' | replace: '(', ' ' | replace: ')', ' ' | replace: '&', ' ' | replace: '+', ' '
+              assign title_pad = ' ' | append: title_norm | append: '  '
               assign is_relevant = true
               for st in q_tokens
                 assign stt = st | strip
                 if stt == ''
                   continue
                 endif
-                unless title_dc contains stt
+                assign m1 = ' ' | append: stt | append: ' '
+                assign m2 = ' ' | append: stt | append: 's '
+                assign m3 = ' ' | append: stt | append: 'es '
+                unless title_pad contains m1 or title_pad contains m2 or title_pad contains m3
                   assign is_relevant = false
                   break
                 endunless
