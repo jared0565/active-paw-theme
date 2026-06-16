@@ -1,8 +1,47 @@
 # Active Paw — Shopify Theme
 
-A modern, performant Shopify theme for pet-care e-commerce, designed with supplier intelligence and real-time inventory management at its core.
+**Active Paw** ([activepaw.co.uk](https://activepaw.co.uk)) is a UK-based online pet store selling pet accessories, toys, grooming tools, and health products. The catalogue is fully demand-driven — it grows and self-optimises based on what real visitors search for and interact with, without any manual product curation.
 
-**Demo Store:** [4qkudm-ez.myshopify.com](https://4qkudm-ez.myshopify.com)
+This repository is the **Shopify Liquid storefront theme** — the visitor-facing half of the system. The backend intelligence lives in [`pawscout-worker`](https://github.com/jared0565/pawscout-worker).
+
+| Repo | Role |
+|---|---|
+| `active-paw-theme` (**this repo**) | Shopify theme: search grid, ghost cards, preview modal, performance beacons. |
+| [`pawscout-worker`](https://github.com/jared0565/pawscout-worker) | Cloudflare Worker: supplier search, quality gates, pricing, import pipeline, fulfilment automation, merchant console. |
+
+---
+
+## Why it was built
+
+Traditional pet stores require constant manual effort to stay stocked: finding products, writing listings, managing prices, retiring dead stock. Active Paw was built to eliminate that entirely. The founding idea — **let customer demand decide what gets listed**. If visitors are searching for something, import it automatically. If nothing sells for 30 days, archive it automatically.
+
+The theme's role in that system is to be the **demand surface**: it captures what visitors are looking for, shows them supplier products before they're ever listed in the store, and signals back to the worker what's getting real attention.
+
+---
+
+## What it does
+
+### Search backfill (the core feature)
+
+When Shopify's native search returns fewer than 12 results, the theme silently calls PawScout and fills the remaining slots with quality-gated supplier "ghost cards" — real products with prices and images, not yet listed in Shopify. Ghost cards look identical to real product cards. Clicking one opens an instant preview modal; the import runs in the background and the "View" CTA flips to "Add to cart" within seconds.
+
+### Performance beacons
+
+For imported products, the theme sends JS-only `view` and `atc` (add-to-cart) signals to PawScout. These drive the 30-day performance cull: products with no qualifying activity are automatically archived.
+
+---
+
+## How it became helpful
+
+**"Cat on a dog listing."** CJ's search thumbnail and detail gallery are populated independently by the supplier. The search card showed a cat photo; the product detail showed the correct dog image. Fixed by PawScout caching a vision-vetted hero image on first preview — the grid card self-heals on all subsequent appearances.
+
+**"The modal loads slowly on first open."** Preview data is now pre-cached by PawScout's warehouse, so the modal opens from cache with no perceptible delay.
+
+---
+
+## Sample use case
+
+A visitor searches "dog grooming brush" on activepaw.co.uk. Shopify finds 6 matching products. The theme calls PawScout and receives 6 ghost cards to fill the grid to 12. The visitor clicks one — the preview modal opens instantly. The import runs in the background: Shopify product created, images uploaded, price set to £14.99, published. The modal CTA flips to "Add to cart" within seconds. The visitor buys it. When the order is paid, PawScout creates the CJ order and writes the tracking number back to Shopify — the buyer gets a shipping notification with a live tracking link.
 
 ---
 
