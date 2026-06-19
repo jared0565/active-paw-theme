@@ -4,7 +4,7 @@
       <p class="eyebrow">Search</p>
       {% if search.performed %}
         <h1>Results for "{{ search.terms | escape }}"</h1>
-        <p>Browse matching products below — add single-option items straight to your cart.</p>
+        <p>Products are shown in the same card format as the homepage, with buying actions surfaced for faster checkout.</p>
       {% else %}
         <h1>Find pet care products</h1>
         <p>Search grooming, toys, feeding, walking, and daily care essentials.</p>
@@ -14,238 +14,111 @@
     {% if search.performed %}
       {% paginate search.results by 24 %}
         {% liquid
-          # --- relevance filter: keep only results whose title matches the
-          # query (plural-stemmed, stopwords dropped) so a "cat toys" search
-          # stops surfacing dog toys. Falls back to all results if strict
-          # matching would empty the page. Mirrors PawScout's ghost gating. ---
-          assign stopwords = 'for,the,and,with,an,to,of,in,on,my,your,a' | split: ','
-          assign raw_terms = search.terms | downcase | split: ' '
-          assign q_tokens = ''
-          for raw in raw_terms
-            assign tok = raw | strip
-            assign n = tok | size
-            if n < 2
-              continue
-            endif
-            assign is_stop = false
-            for sw in stopwords
-              if sw == tok
-                assign is_stop = true
-                break
-              endif
-            endfor
-            if is_stop
-              continue
-            endif
-            assign last2 = tok | slice: -2, 2
-            assign stem = tok
-            if n > 4 and last2 == 'es'
-              assign cut = n | minus: 2
-              assign stem = tok | slice: 0, cut
-            else
-              assign last1 = tok | slice: -1
-              if n > 3 and last1 == 's'
-                assign cut = n | minus: 1
-                assign stem = tok | slice: 0, cut
-              endif
-            endif
-            assign q_tokens = q_tokens | append: stem | append: ','
-          endfor
-          assign q_tokens = q_tokens | split: ','
-
           assign product_count = 0
-          assign relevant_count = 0
-          assign result_product_ids = ''
-          assign relevant_ids = ''
-          assign shown_pids = ''
+          # Boundary-safe membership string: leading AND trailing comma so a short
+          # id ('2,') can never substring-match a longer one ('12,').
+          assign result_product_ids = ','
           for item in search.results
             if item.object_type == 'product' and item.available
               assign product_count = product_count | plus: 1
               assign result_product_ids = result_product_ids | append: item.id | append: ','
-              # Word-boundary match (space-padded, punctuation neutralised) so a
-              # token only matches a whole word — "cat" must not match "catapult".
-              # Each stemmed token is checked against singular and plural forms.
-              assign title_norm = item.title | downcase | replace: ',', ' ' | replace: '.', ' ' | replace: '-', ' ' | replace: '/', ' ' | replace: '(', ' ' | replace: ')', ' ' | replace: '&', ' ' | replace: '+', ' '
-              assign title_pad = ' ' | append: title_norm | append: '  '
-              assign is_relevant = true
-              for st in q_tokens
-                assign stt = st | strip
-                if stt == ''
-                  continue
-                endif
-                assign m1 = ' ' | append: stt | append: ' '
-                assign m2 = ' ' | append: stt | append: 's '
-                assign m3 = ' ' | append: stt | append: 'es '
-                unless title_pad contains m1 or title_pad contains m2 or title_pad contains m3
-                  assign is_relevant = false
-                  break
-                endunless
-              endfor
-              if is_relevant
-                assign relevant_count = relevant_count | plus: 1
-                assign relevant_ids = relevant_ids | append: item.id | append: ','
-                for tag in item.tags
-                  if tag contains 'cj-pid-'
-                    assign pid = tag | remove_first: 'cj-pid-'
-                    assign shown_pids = shown_pids | append: pid | append: ','
-                    break
-                  endif
-                endfor
-              endif
             endif
           endfor
-          # Safety net: never blank the page — if strict matching hides
-          # everything, show all results Shopify returned.
-          assign use_relevance = true
-          if relevant_count == 0
-            assign use_relevance = false
-            assign relevant_count = product_count
-          endif
-          assign shown_count = relevant_count
-
-          # Query species (dog vs cat) — used to keep cross-species products
-          # out of the bundle/offer section, which isn't query-matched.
-          assign terms_pad = ' ' | append: search.terms | downcase | append: ' '
-          assign q_species = ''
-          if terms_pad contains ' dog ' or terms_pad contains ' dogs ' or terms_pad contains ' puppy ' or terms_pad contains ' puppies '
-            assign q_species = 'dog'
-          elsif terms_pad contains ' cat ' or terms_pad contains ' cats ' or terms_pad contains ' kitten ' or terms_pad contains ' kittens '
-            assign q_species = 'cat'
-          endif
 
           assign normalized_terms = search.terms | downcase
           assign offer_collection_handle = 'more-to-love'
-          assign offer_title = 'Complete the care kit'
-          assign offer_body = 'Add practical companion products that fit this search. Eligible discounts apply automatically in cart and checkout when the offer is configured in Shopify.'
           if normalized_terms contains 'food' or normalized_terms contains 'feed' or normalized_terms contains 'bowl' or normalized_terms contains 'water'
             assign offer_collection_handle = 'pet-accessories'
-            assign offer_title = 'Build a feeding and travel set'
-            assign offer_body = 'Pair feeding finds with bowls, bottles, and daily-use accessories. Eligible bundle or automatic discounts apply at checkout when configured.'
           elsif normalized_terms contains 'toy' or normalized_terms contains 'play' or normalized_terms contains 'scratch'
             assign offer_collection_handle = 'pet-toys'
-            assign offer_title = 'Add more play value'
-            assign offer_body = 'Bundle toys and enrichment picks to build a fuller basket without leaving search.'
           elsif normalized_terms contains 'health' or normalized_terms contains 'dental' or normalized_terms contains 'tooth' or normalized_terms contains 'clean teeth'
             assign offer_collection_handle = 'pet-health'
-            assign offer_title = 'Round out the care routine'
-            assign offer_body = 'Daily health and dental add-ons that go hand in hand with what you came looking for.'
           elsif normalized_terms contains 'groom' or normalized_terms contains 'brush' or normalized_terms contains 'wash' or normalized_terms contains 'shampoo' or normalized_terms contains 'paw' or normalized_terms contains 'clean'
             assign offer_collection_handle = 'pet-cleaning'
-            assign offer_title = 'Complete the grooming routine'
-            assign offer_body = 'Towels, brushes, sprays, and cleaning add-ons that naturally pair with this search.'
           endif
           assign offer_collection = collections[offer_collection_handle]
-          assign bundle_variant_ids = ''
-          assign bundle_product_count = 0
+
+          # Suggestions fill in ONLY when the native grid is thin (< 4 real matches),
+          # capped at 3, and only when query-relevant (a query token — 4-char prefix
+          # for longer tokens — appears in the product title). This is what stops a
+          # 'feeding' search surfacing leashes.
+          assign suggestions_cap = 3
+          assign show_suggestions = false
+          if product_count > 0 and product_count < 4 and offer_collection != blank and offer_collection.products_count > 0
+            assign show_suggestions = true
+          endif
+          # Comma-wrapped stop set (matched against ',token,'). Tokens < 3 chars are dropped anyway.
+          assign stop_tokens = ',pet,pets,for,the,and,with,your,'
+          assign q_tokens = normalized_terms | split: ' '
         %}
 
         <div class="search-results-meta">
-          <strong>{{ shown_count }} product{% unless shown_count == 1 %}s{% endunless %}</strong>
+          <strong>{{ product_count }} product{% unless product_count == 1 %}s{% endunless %}</strong>
           <span>Matched from your search</span>
         </div>
 
-        {% if shown_count > 0 %}
+        {% if product_count > 0 %}
           <div class="commerce-grid search-results-grid">
             {% for item in search.results %}
               {% if item.object_type == 'product' and item.available %}
-                {% assign id_sig = item.id | append: ',' %}
-                {% if use_relevance == false or relevant_ids contains id_sig %}
-                  {% render 'product-card-commerce', product: item, badge: 'Search match' %}
-                {% endif %}
+                {% render 'product-card-commerce', product: item, badge: 'Search match', show_purchase_action: true %}
               {% endif %}
             {% endfor %}
-          </div>
 
-          {% if offer_collection != blank and offer_collection.products_count > 0 %}
-            <section class="search-offer" aria-labelledby="SearchOfferTitle">
-              <div class="search-offer-copy">
-                <p class="eyebrow">Bundle opportunity</p>
-                <h2 id="SearchOfferTitle">{{ offer_title }}</h2>
-                <p>{{ offer_body }}</p>
-              </div>
-              <div class="search-offer-grid">
-                {% for offer_product in offer_collection.products limit: 6 %}
+            {% if show_suggestions %}
+              {% assign suggested_count = 0 %}
+              {% capture suggestion_cards %}
+                {% for offer_product in offer_collection.products %}
+                  {% if suggested_count >= suggestions_cap %}{% break %}{% endif %}
                   {% liquid
-                    assign offer_variant = offer_product.selected_or_first_available_variant
-                    assign offer_variant_count = offer_product.variants_count | default: offer_product.variants.size
-                    assign offer_product_signature = offer_product.id | append: ','
+                    assign offer_product_signature = ',' | append: offer_product.id | append: ','
                     assign is_duplicate_result = false
                     if result_product_ids contains offer_product_signature
                       assign is_duplicate_result = true
                     endif
-                    # Species guard: never pair a cat product into a dog search (or vice versa).
-                    assign offer_species_ok = true
-                    if q_species != ''
-                      assign offer_pad = ' ' | append: offer_product.title | downcase | replace: ',', ' ' | replace: '-', ' ' | append: '  '
-                      assign offer_has_dog = false
-                      assign offer_has_cat = false
-                      if offer_pad contains ' dog ' or offer_pad contains ' dogs ' or offer_pad contains ' puppy ' or offer_pad contains ' puppies '
-                        assign offer_has_dog = true
+                    assign title_l = offer_product.title | downcase
+                    assign is_query_relevant = false
+                    for tk in q_tokens
+                      assign tkz = tk | strip
+                      assign tklen = tkz | size
+                      if tklen < 3
+                        continue
                       endif
-                      if offer_pad contains ' cat ' or offer_pad contains ' cats ' or offer_pad contains ' kitten ' or offer_pad contains ' kittens '
-                        assign offer_has_cat = true
+                      assign tkc = ',' | append: tkz | append: ','
+                      if stop_tokens contains tkc
+                        continue
                       endif
-                      if q_species == 'dog' and offer_has_cat and offer_has_dog == false
-                        assign offer_species_ok = false
-                      elsif q_species == 'cat' and offer_has_dog and offer_has_cat == false
-                        assign offer_species_ok = false
+                      if tklen > 4
+                        assign probe = tkz | slice: 0, 4
+                      else
+                        assign probe = tkz
                       endif
-                    endif
+                      if title_l contains probe
+                        assign is_query_relevant = true
+                        break
+                      endif
+                    endfor
                   %}
-                  {% if offer_product.available and is_duplicate_result == false and offer_species_ok %}
-                    <div class="search-offer-card">
-                      {% render 'product-card-commerce', product: offer_product, badge: 'Pairs well' %}
-                    </div>
-                    {% if offer_product.available and offer_variant.available and offer_variant_count == 1 and bundle_product_count < 3 %}
-                      {% assign bundle_variant_ids = bundle_variant_ids | append: offer_variant.id | append: ',' %}
-                      {% assign bundle_product_count = bundle_product_count | plus: 1 %}
-                    {% endif %}
+                  {% if offer_product.available and is_duplicate_result == false and is_query_relevant %}
+                    {% render 'product-card-commerce', product: offer_product, badge: 'Suggested', show_purchase_action: true %}
+                    {% assign suggested_count = suggested_count | plus: 1 %}
                   {% endif %}
                 {% endfor %}
-              </div>
-              {% if bundle_product_count > 1 %}
-                <div class="search-bundle-action">
-                  <button
-                    class="bundle-add-button"
-                    type="button"
-                    data-bundle-add
-                    data-variant-ids="{{ bundle_variant_ids | escape }}"
-                  >
-                    Add recommended set
-                  </button>
-                  <span>Discounts are calculated by Shopify in cart and checkout when this set qualifies.</span>
+              {% endcapture %}
+
+              {% if suggested_count > 0 %}
+                <div class="search-suggested-sep" role="separator">
+                  <span>Suggested for this search · from our supplier network</span>
                 </div>
+                {{ suggestion_cards }}
               {% endif %}
-            </section>
-          {% endif %}
+            {% endif %}
+          </div>
         {% else %}
           <div class="search-empty">
             <strong>No product matches yet</strong>
             <span>Try a broader search like grooming, toy, feeder, bowl, leash, or cleaning.</span>
           </div>
-        {% endif %}
-
-        {% comment %}
-          PawScout backfill: when the store answers with fewer than 12 products,
-          pawscout.js fetches gated supplier candidates through the app proxy and
-          fills this grid with ghost cards (revealed only when matches exist).
-          First page only — backfill across pagination would duplicate cards.
-        {% endcomment %}
-        {% if paginate.current_page == 1 %}
-          <section
-            class="pawscout-backfill"
-            data-pawscout-search
-            data-terms="{{ search.terms | escape }}"
-            data-have="{{ shown_count }}"
-            data-shown-pids="{{ shown_pids | escape }}"
-            hidden
-          >
-            <div class="search-results-meta">
-              <strong>More matches from our supplier network</strong>
-              <span>Click any item for details — we stock it on demand.</span>
-            </div>
-            <div class="commerce-grid search-results-grid" data-pawscout-grid></div>
-          </section>
         {% endif %}
 
         {% if paginate.pages > 1 %}
