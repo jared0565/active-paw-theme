@@ -267,6 +267,8 @@ git commit -m "fix(search): restrict native search to title/type/tag/variant-tit
 # STAGE 2 — Live supplier feed (ghost cards) in the grid (gated on App Proxy)
 
 > **PREREQUISITE — Task 3 below.** Stage 2 cannot be verified live until the `/apps/pawscout` App Proxy routes to the worker; today `https://activepaw.co.uk/apps/pawscout/proxy/search` returns **404**. Build Tasks 4–7, but their live verification waits on Task 3.
+>
+> **MUST-FIX BEFORE WIRING — Task 3b (worker pet-scoping).** The live feed as built is NOT pet-safe: `searchBackfill` calls `cj.search(keyword)` with the RAW keyword (no category filter), and the live gate `liveCjPasses` only checks popularity/price/species/title-token — it "trusts CJ's relevance". The pet guard `isLikelyPetProduct()` + LLM curation run ONLY on the import path (`jobs.ts:348`, `proxy/import.ts`), so a `shampoo` search would DISPLAY human/baby/car shampoo as ghost cards (rejected only on click → show-then-fail). Task 3b must land before any ghost card is shown.
 
 ### Task 3 (ops prerequisite): Enable + verify the App Proxy
 
@@ -278,6 +280,43 @@ git commit -m "fix(search): restrict native search to title/type/tag/variant-tit
 curl -s "https://activepaw.co.uk/apps/pawscout/proxy/search?q=dog%20toy&limit=3" | head -c 300
 ```
 Expected: JSON `{"ok":true,"products":[...]}` (Shopify adds the HMAC `signature`; the worker's `verifyAppProxy` passes). Today this returns `404 Not Found` → proxy not yet active. Do not proceed to live-verify Tasks 5–6 until this returns JSON.
+
+---
+
+### Task 3b (worker, must-fix): pet-scope the supplier search so non-pet products never display
+
+**Files:**
+- Modify: `pawscout-worker/src/cj.ts` (`search`/`searchV2` — accept an optional pet category scope)
+- Modify: `pawscout-worker/src/proxy/search.ts` (`searchBackfill` — scope the CJ query + apply a strengthened pet floor to live results)
+- Modify: `pawscout-worker/src/proxy/search.ts` (`isLikelyPetProduct` — add a strict variant that REQUIRES a pet signal)
+- Test: `pawscout-worker/tests/search.test.ts`
+
+**Why:** verified in code — the live feed returns whatever CJ's keyword search returns. CJ sells human/baby/car products; `cj.search("shampoo")` includes human shampoo. The store catalog is safe (import-time pet gate), but the *display* feed is not. This is independent of the App Proxy and is **testable now** (mock the CJ client).
+
+**Interfaces:**
+- Produces: `searchBackfill` returns only pet-relevant `GhostCard`s. Add `isPetProductStrict(text): boolean` — returns true only when a PET_TOKEN is present (no "ambiguous admits"), used on the live feed where false positives are worst.
+
+- [ ] **Step 1: Write the failing test** — a mocked CJ client returns `[{ pid:'h1', nameEn:'Moisturizing Argan Hair Shampoo 500ml', ... }, { pid:'p1', nameEn:'Pet Dog Shampoo Oatmeal', ... }]` for query `shampoo`; assert `searchBackfill(...)` returns only `p1` (the human shampoo is dropped). Test fails today (both returned).
+
+- [ ] **Step 2: Implement the strict pet floor** in `proxy/search.ts`:
+```ts
+/** Live-feed pet gate: REQUIRE an explicit pet signal (no ambiguous admits). */
+export function isPetProductStrict(text: string): boolean {
+  const words = (text || '').toLowerCase().split(/[^a-z0-9]+/);
+  return words.some((w) => PET_TOKENS.has(w));
+}
+```
+Apply it in `searchBackfill`'s live-CJ branch: `const gated = items.filter((i) => !seen.has(i.pid) && liveCjPasses(i, cfg.gates, kw) && isPetProductStrict(i.nameEn));`. (Warehouse rows are already admission-gated, so the strict floor is only needed on the live-CJ items.)
+
+- [ ] **Step 3: Category-scope the CJ query (primary fix).** Add an optional `categoryId?: string` to `cj.search`/`searchV2`, passing CJ listV2's category filter param when present (confirm the exact param name against CJ's listV2 API — likely `categoryId`; verify before relying on it). In `searchBackfill`, resolve the pet category for the query from `getKeywordMeta(...).category` (or the keyword→collection map) and pass its CJ category id. If no category resolves, fall back to keyword-only + the strict floor from Step 2.
+
+- [ ] **Step 4: Run the test** — `npx vitest run tests/search.test.ts`; expect the human shampoo dropped, pet shampoo kept. Add a case asserting a query that resolves to a pet category scopes the CJ call.
+
+- [ ] **Step 5: Commit** (worker repo):
+```bash
+git add src/cj.ts src/proxy/search.ts tests/search.test.ts
+git commit -m "fix(search): pet-scope the live supplier feed (strict pet floor + CJ category filter)"
+```
 
 ---
 
