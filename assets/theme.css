@@ -928,6 +928,21 @@ p { line-height: 1.6; }
 .search-results-grid {
   align-items: stretch;
 }
+.search-suggested-sep {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.search-suggested-sep::before,
+.search-suggested-sep::after { content: ""; flex: 1 1 auto; height: 1px; background: var(--line); }
+.search-suggested-sep span { flex: 0 0 auto; }
 .search-offer {
   display: grid;
   gap: 20px;
