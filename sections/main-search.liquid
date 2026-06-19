@@ -58,7 +58,16 @@
         </div>
 
         {% if product_count > 0 %}
-          <div class="commerce-grid search-results-grid">
+          {%- comment -%}
+            Live supplier feed (pawscout.js → /apps/pawscout/search). Ghost cards
+            merge into this same grid, gated to a thin native grid (< 4) and capped
+            at 3 in the JS, with the same 'Suggested' separator as Stage 1.
+          {%- endcomment -%}
+          <div data-pawscout-search
+               data-terms="{{ search.terms | escape }}"
+               data-have="{{ product_count }}"
+               data-shown-pids="">
+          <div class="commerce-grid search-results-grid" data-pawscout-grid>
             {% for item in search.results %}
               {% if item.object_type == 'product' and item.available %}
                 {% render 'product-card-commerce', product: item, badge: 'Search match', show_purchase_action: true %}
@@ -113,6 +122,7 @@
                 {{ suggestion_cards }}
               {% endif %}
             {% endif %}
+          </div>
           </div>
         {% else %}
           <div class="search-empty">
