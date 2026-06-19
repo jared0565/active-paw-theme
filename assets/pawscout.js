@@ -15,7 +15,11 @@
   'use strict';
 
   const PROXY = '/apps/pawscout';
-  const GRID_CAP = 12;
+  // Merchant-approved supplier framing: backfill ONLY a thin native grid
+  // (< 4 real matches) and never show more than 3 ghost cards — supplement,
+  // never flood. Mirrors the Stage-1 Liquid thin-gate/cap in main-search.liquid.
+  const SUPPLIER_THIN_MAX = 4;
+  const SUPPLIER_LIMIT = 3;
   const POLL_MS = 1500;
   const POLL_MAX = 20;
 
@@ -92,15 +96,23 @@
     const terms = host.getAttribute('data-terms') || '';
     const have = parseInt(host.getAttribute('data-have') || '0', 10) || 0;
     const exclude = host.getAttribute('data-shown-pids') || ''; // pids already on the page — never duplicate
-    if (!terms || have >= GRID_CAP) return;
+    if (!terms || have >= SUPPLIER_THIN_MAX) return;
 
-    proxyGet('/search', { q: terms, have: String(have), limit: String(GRID_CAP - have), exclude: exclude })
+    proxyGet('/search', { q: terms, have: String(have), limit: String(SUPPLIER_LIMIT), exclude: exclude })
       .then((r) => {
         if (!r || !r.ok || !r.products || !r.products.length) return;
         const grid = host.querySelector('[data-pawscout-grid]');
         if (!grid) return;
+        // In-grid merge: precede the first ghost with a supplier separator, but
+        // never add a second one if Stage-1 already rendered its 'Suggested' separator.
+        if (!grid.querySelector('.search-suggested-sep')) {
+          const sep = document.createElement('div');
+          sep.className = 'search-suggested-sep';
+          sep.setAttribute('role', 'separator');
+          sep.appendChild(el('span', null, 'From our supplier network'));
+          grid.appendChild(sep);
+        }
         r.products.forEach((p) => grid.appendChild(buildGhostCard(p)));
-        host.hidden = false;
       })
       .catch(() => { /* backfill is additive — never break the search page */ });
   };
