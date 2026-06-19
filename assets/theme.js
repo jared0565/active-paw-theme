@@ -170,6 +170,21 @@ document.addEventListener('focusin', (event) => {
   if (thumb) setProductMedia(thumb);
 });
 
+/* Buybox "Value": cash total of what Add to cart will put in the basket. */
+const updateBuyboxValue = () => {
+  const valueEl = document.querySelector('[data-buybox-value]');
+  if (!valueEl) return;
+  let unitPrice = Number(valueEl.dataset.unitPrice) || 0;
+  const select = document.getElementById('ProductSelect');
+  if (select) {
+    const option = select.options[select.selectedIndex];
+    if (option && option.dataset.price) unitPrice = Number(option.dataset.price);
+  }
+  const quantity = Math.max(1, Number(document.getElementById('ProductQuantity')?.value) || 1);
+  const currency = valueEl.dataset.currency || 'GBP';
+  valueEl.textContent = new Intl.NumberFormat(undefined, { style: 'currency', currency }).format((unitPrice * quantity) / 100);
+};
+
 const normalizeCartQuantity = (input) => {
   const max = Number(input.getAttribute('max'));
   const min = Number(input.getAttribute('min') || 0);
@@ -191,12 +206,16 @@ const normalizeCartQuantity = (input) => {
 
 document.addEventListener('input', (event) => {
   const cartQuantity = event.target.closest('[data-cart-quantity]');
-  if (cartQuantity) normalizeCartQuantity(cartQuantity);
+  if (cartQuantity) {
+    normalizeCartQuantity(cartQuantity);
+    updateBuyboxValue();
+  }
 });
 
 document.addEventListener('change', (event) => {
   const cartQuantity = event.target.closest('[data-cart-quantity]');
   if (cartQuantity) normalizeCartQuantity(cartQuantity);
+  if (cartQuantity || event.target.closest('#ProductSelect')) updateBuyboxValue();
 });
 
 document.addEventListener('click', (event) => {
@@ -233,6 +252,7 @@ document.addEventListener('click', (event) => {
       nextValue = max;
     }
     input.value = String(nextValue);
+    updateBuyboxValue();
   }
 
   const showMoreButton = event.target.closest('[data-show-more]');
@@ -299,6 +319,10 @@ document.addEventListener('click', (event) => {
 fitProductTitles();
 window.addEventListener('load', fitProductTitles);
 window.addEventListener('resize', scheduleTitleFit);
+
+// Browsers restore quantity/variant form state on back-navigation; re-sync the buybox value.
+updateBuyboxValue();
+window.addEventListener('pageshow', updateBuyboxValue);
 
 syncStickyHeaderOffset();
 window.addEventListener('load', syncStickyHeaderOffset);
@@ -588,13 +612,52 @@ document.addEventListener('click', (event) => {
   }
 });
 
+/* ---------------- Product details modal (PDP "More details") ---------------- */
+const getDetailsModal = () => document.querySelector('[data-details-modal]');
+let detailsReturnFocus = null;
+
+const openDetailsModal = () => {
+  const modal = getDetailsModal();
+  if (!modal) return;
+  detailsReturnFocus = document.activeElement;
+  modal.classList.add('is-open');
+  modal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('contact-modal-open'); // shared scroll lock
+  const dialog = modal.querySelector('.contact-modal__dialog');
+  if (dialog) window.requestAnimationFrame(() => dialog.focus());
+};
+
+const closeDetailsModal = () => {
+  const modal = getDetailsModal();
+  if (!modal || !modal.classList.contains('is-open')) return;
+  modal.classList.remove('is-open');
+  modal.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('contact-modal-open');
+  if (detailsReturnFocus && typeof detailsReturnFocus.focus === 'function') detailsReturnFocus.focus();
+  detailsReturnFocus = null;
+};
+
+document.addEventListener('click', (event) => {
+  if (event.target.closest('[data-details-open]')) {
+    event.preventDefault();
+    openDetailsModal();
+    return;
+  }
+  if (event.target.closest('[data-details-close]')) {
+    event.preventDefault();
+    closeDetailsModal();
+  }
+});
+
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     closeCollectionsMenu();
     closeContactModal();
+    closeDetailsModal();
   }
-  const modal = getContactModal();
-  if (!modal || !modal.classList.contains('is-open') || event.key !== 'Tab') return;
+  if (event.key !== 'Tab') return;
+  const modal = [getContactModal(), getDetailsModal()].find((m) => m && m.classList.contains('is-open'));
+  if (!modal) return;
   const dialog = modal.querySelector('.contact-modal__dialog');
   if (!dialog) return;
   const focusables = Array.from(

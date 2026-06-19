@@ -12,14 +12,21 @@
   assign supplier_max_order_qty = selected_variant.metafields.supplier.max_order_qty.value
   assign pdp_max_order_qty = 20
   assign pdp_status_label = 'Ready to ship'
-  assign pdp_status_detail = 'Free UK shipping over GBP150. Tracking details are sent after dispatch.'
+  assign pdp_status_detail = 'Free UK delivery over £50. Tracking details are sent after dispatch.'
+  assign pdp_sold_out = false
 
   if selected_variant.inventory_management != blank and selected_variant.inventory_policy == 'deny'
     assign pdp_max_order_qty = selected_variant.inventory_quantity | default: 0
-    if pdp_max_order_qty <= 3
+    if pdp_max_order_qty <= 0
+      assign pdp_sold_out = true
+      assign pdp_status_label = 'Out of stock'
+      assign pdp_status_detail = 'Currently unavailable — check back soon.'
+    elsif pdp_max_order_qty <= 3
       assign pdp_status_label = 'Low stock'
+      assign pdp_status_detail = pdp_max_order_qty | append: ' available from tracked Shopify inventory.'
+    else
+      assign pdp_status_detail = pdp_max_order_qty | append: ' available from tracked Shopify inventory.'
     endif
-    assign pdp_status_detail = pdp_max_order_qty | append: ' available from tracked Shopify inventory.'
   elsif supplier_max_order_qty != blank
     assign pdp_max_order_qty = supplier_max_order_qty
     assign pdp_status_label = supplier_status | default: 'Supplier available' | replace: '_', ' ' | capitalize
@@ -31,24 +38,29 @@
   elsif supplier_status != blank
     assign pdp_status_label = supplier_status | replace: '_', ' ' | capitalize
   endif
-  # A max of 0 produces an invalid <input max="0" min="1"> that blocks the whole form.
-  # Never emit < 1 while Add to cart is shown; Shopify enforces real stock at /cart/add (422).
+  unless selected_variant.available
+    assign pdp_sold_out = true
+    assign pdp_status_label = 'Out of stock'
+    assign pdp_status_detail = 'Currently unavailable — check back soon.'
+  endunless
+  # A max of 0 produces an invalid <input max="0" min="1"> that blocks the form;
+  # sold-out states disable the buy controls outright instead.
   if pdp_max_order_qty < 1
     assign pdp_max_order_qty = 1
   endif
   assign product_title_length = product_title | size
-  assign product_title_max_size = 42
+  assign product_title_max_size = 30
 
   if product_title_length > 150
-    assign product_title_max_size = 26
+    assign product_title_max_size = 20
   elsif product_title_length > 120
-    assign product_title_max_size = 28
+    assign product_title_max_size = 21
   elsif product_title_length > 90
-    assign product_title_max_size = 31
+    assign product_title_max_size = 23
   elsif product_title_length > 65
-    assign product_title_max_size = 35
+    assign product_title_max_size = 25
   elsif product_title_length > 45
-    assign product_title_max_size = 39
+    assign product_title_max_size = 27
   endif
 
   assign related_collection = blank
@@ -75,16 +87,39 @@
   endif
 %}
 
+{% comment %}
+  PawScout beacon hook: imported supplier products carry a cj-pid-* tag.
+  pawscout.js reads this meta and sends view/add-to-cart signals that keep
+  the product alive through the 30-day performance cull.
+{% endcomment %}
+{% for tag in product.tags %}
+  {% if tag contains 'cj-pid-' %}
+    <meta name="pawscout-pid" content="{{ tag | remove_first: 'cj-pid-' | escape }}">
+    {% break %}
+  {% endif %}
+{% endfor %}
+
 <section class="product-detail" data-pdp-shell>
   <div class="product-gallery" aria-label="Product media gallery">
     <div class="product-gallery-stage">
-      <div class="product-thumbs" aria-label="Product media thumbnails">
+      <div class="product-thumbs" aria-label="Product media thumbnails" data-product-thumbs>
         {% if product.media.size > 0 %}
-          {% for media in product.media limit: 12 %}
+          {% liquid
+            # De-dupe repeated images (same underlying file); the rail itself
+            # scrolls when there are more thumbs than fit beside the main image.
+            assign thumb_seen = ''
+            assign thumb_count = 0
+          %}
+          {% for media in product.media %}
             {% if media.preview_image %}
-              <button class="product-thumb {% if forloop.first %}is-active{% endif %}" type="button" data-product-media="{{ media.preview_image | image_url: width: 1400 }}" aria-label="Show product image {{ forloop.index }}">
-                {{ media.preview_image | image_url: width: 220 | image_tag: widths: '110, 165, 220', sizes: '80px', loading: 'lazy', alt: '' }}
-              </button>
+              {% capture thumb_key %}|{{ media.preview_image.src }}|{% endcapture %}
+              {% unless thumb_seen contains thumb_key %}
+                {% assign thumb_seen = thumb_seen | append: thumb_key %}
+                {% assign thumb_count = thumb_count | plus: 1 %}
+                <button class="product-thumb{% if thumb_count == 1 %} is-active{% endif %}" type="button" data-product-media="{{ media.preview_image | image_url: width: 1400 }}" aria-label="Show product image {{ thumb_count }}">
+                  {{ media.preview_image | image_url: width: 220 | image_tag: widths: '110, 165, 220', sizes: '80px', loading: 'lazy', alt: '' }}
+                </button>
+              {% endunless %}
             {% endif %}
           {% endfor %}
         {% else %}
@@ -107,18 +142,41 @@
         {% endif %}
       </div>
     </div>
+    <button class="pdp-more-details" type="button" data-details-open>
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+        <path d="M12 22a10 10 0 1 1 0-20 10 10 0 0 1 0 20Zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm-1-12a1 1 0 1 1 2 0 1 1 0 0 1-2 0Zm0 3h2v6h-2v-6Z"/>
+      </svg>
+      More details
+    </button>
   </div>
   <div class="product-summary">
-    <nav class="pdp-breadcrumbs" aria-label="Product location">
-      <a href="{{ routes.root_url }}">Home</a>
-      <span>/</span>
-      <a href="{{ routes.all_products_collection_url }}">Products</a>
-    </nav>
-    <div class="pdp-status-row">
-      <span class="stock-dot">{{ pdp_status_label }}</span>
-      <span>156 salon reviews</span>
+    <div class="pdp-top-row">
+      <nav class="pdp-breadcrumbs" aria-label="Product location">
+        <a href="{{ routes.root_url }}">Home</a>
+        <span>/</span>
+        <a href="{{ routes.all_products_collection_url }}">Products</a>
+      </nav>
+      <button
+        class="share-button pdp-share-button"
+        type="button"
+        data-share-url="{{ product.url | escape }}"
+        data-share-title="{{ product_title | escape }}"
+        data-share-text="Found this pet-care pick on {{ brand_name | escape }}."
+        aria-label="Share {{ product_title | escape }}"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M18 8a3 3 0 1 0-2.82-4H15a3 3 0 0 0 1.08 2.3l-7.1 3.55a3 3 0 1 0 0 4.3l7.1 3.55A3 3 0 1 0 17 16.1l-7.1-3.55a3.2 3.2 0 0 0 0-1.1l7.1-3.55c.28.08.6.1 1 .1Z"/>
+        </svg>
+        <span data-share-label>Share</span>
+      </button>
     </div>
-    <p class="rating">★★★★★ 4.9 average rating</p>
+    {% liquid
+      assign pdp_rating = product.metafields.reviews.rating.value
+      assign pdp_rating_count = product.metafields.reviews.rating_count.value
+    %}
+    {% if pdp_rating != blank and pdp_rating_count != blank %}
+      <p class="rating">★ {{ pdp_rating.rating | round: 1 }} from {{ pdp_rating_count }} reviews</p>
+    {% endif %}
     <h1
       class="pdp-title"
       data-fit-title
@@ -126,19 +184,6 @@
     >
       {{ product_title }}
     </h1>
-    <button
-      class="share-button pdp-share-button"
-      type="button"
-      data-share-url="{{ product.url | escape }}"
-      data-share-title="{{ product_title | escape }}"
-      data-share-text="Found this pet-care pick on {{ brand_name | escape }}."
-      aria-label="Share {{ product_title | escape }}"
-    >
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="M18 8a3 3 0 1 0-2.82-4H15a3 3 0 0 0 1.08 2.3l-7.1 3.55a3 3 0 1 0 0 4.3l7.1 3.55A3 3 0 1 0 17 16.1l-7.1-3.55a3.2 3.2 0 0 0 0-1.1l7.1-3.55c.28.08.6.1 1 .1Z"/>
-      </svg>
-      <span data-share-label>Share</span>
-    </button>
     <div class="pdp-price-row">
       {% if selected_variant %}
         <p class="price">{{ selected_variant.price | money }}</p>
@@ -162,7 +207,7 @@
       A practical pet-care essential for grooming, cleaning, walking, and everyday routines with dogs and cats.
     </p>
     <div class="pdp-confidence-list" aria-label="Purchase confidence">
-      <div><strong>Free returns</strong><span>Simple return policy before checkout</span></div>
+      <div><strong>14-day returns</strong><span>Fair, contact-first returns — <a href="/policies/refund-policy">see our policy</a></span></div>
       <div><strong>Secure checkout</strong><span>Payment options are controlled by the store checkout settings</span></div>
       <div>
         <strong>{% if supplier_name != blank %}Supplier{% else %}Care add-ons{% endif %}</strong>
@@ -178,17 +223,19 @@
   </div>
   <aside class="product-buybox" aria-label="Purchase options">
     <div class="buybox-heading">
-      <span>{{ pdp_status_label }}</span>
-      {% if selected_variant %}
-        <strong>{{ selected_variant.price | money }}</strong>
-      {% endif %}
+      <span>Value</span>
+      <strong
+        data-buybox-value
+        data-unit-price="{{ selected_variant.price | default: product.price_min }}"
+        data-currency="{{ cart.currency.iso_code }}"
+      >{{ selected_variant.price | default: product.price_min | money }}</strong>
     </div>
     {% form 'product', product %}
       {% if product.has_only_default_variant == false %}
         <label for="ProductSelect">Size</label>
         <select id="ProductSelect" name="id">
           {% for variant in product.variants %}
-            <option value="{{ variant.id }}">{{ variant.title }} - {{ variant.price | money }}</option>
+            <option value="{{ variant.id }}" data-price="{{ variant.price }}">{{ variant.title }} - {{ variant.price | money }}</option>
           {% endfor %}
         </select>
       {% else %}
@@ -200,8 +247,12 @@
         <input id="ProductQuantity" type="number" name="quantity" value="1" min="1" max="{{ pdp_max_order_qty }}" inputmode="numeric" data-cart-quantity>
         <button type="button" data-quantity-change="1" aria-label="Increase quantity">+</button>
       </div>
-      <button class="button button-primary full pdp-atc" type="submit" name="add">Add to cart</button>
-      {{ form | payment_button }}
+      {% if pdp_sold_out %}
+        <button class="button button-primary full pdp-atc" type="submit" name="add" disabled aria-disabled="true">Out of stock</button>
+      {% else %}
+        <button class="button button-primary full pdp-atc" type="submit" name="add">Add to cart</button>
+        {{ form | payment_button }}
+      {% endif %}
     {% endform %}
     {% if shop.enabled_payment_types.size > 0 %}
       <div class="payment-note">Secure checkout with the payment methods enabled for this store.</div>
@@ -215,35 +266,27 @@
     {% else %}
       <div class="payment-note">Secure checkout options are shown at checkout.</div>
     {% endif %}
-    <div class="bundle-card">
-      <div>
-        <strong>Recommended add-on</strong>
-        <span>Silk Coat Detangling Spray</span>
-      </div>
-      <button type="button" class="mini-button">Add GBP13.50</button>
+    {% render 'delivery-info', product: product %}
+    {%- comment -%} W-ADDON: pawscout.js fills this with hidden filler products
+        (cheap add-ons, never browsable) — stays hidden when none exist. {%- endcomment -%}
+    <div class="pdp-addons" data-pawscout-pdp-addons hidden>
+      <h3>Complete the kit</h3>
+      <div class="cart-addons__cards" data-addon-cards></div>
     </div>
-    <div class="delivery-card">
-      <strong>{{ pdp_status_label }}</strong>
-      <span>{{ pdp_status_detail }}</span>
-      {% if supplier_last_checked_at != blank %}
-        <span>Supplier checked {{ supplier_last_checked_at | date: "%d %b %Y, %H:%M" }}.</span>
-      {% endif %}
-    </div>
-    <details>
-      <summary>Delivery and returns</summary>
-      <p>Clear delivery promise, simple returns, and shipping threshold messaging stay close to the add-to-cart action.</p>
-    </details>
+    {% render 'social-share', product: product %}
   </aside>
 </section>
+
+{% render 'product-details-modal', product: product %}
 
 {% if related_collection != blank and related_collection.products_count > 1 %}
   <section class="section related-products pdp-priority-related">
     <div class="section-heading">
-      <h2>Other buyers who bought this item also buy</h2>
+      <h2>You may also like</h2>
       {% if related_collection.title != blank %}
-        <p>More products from {{ related_collection.title }} that fit the same shopping intent.</p>
+        <p>More favourites from {{ related_collection.title }} that pair well with this one.</p>
       {% else %}
-        <p>More products that fit the same shopping intent.</p>
+        <p>More favourites that pair well with this one.</p>
       {% endif %}
     </div>
     <div class="commerce-grid">
@@ -272,8 +315,8 @@
 
 <section class="pdp-detail-stack">
   <div class="section-heading">
-    <h2>Everything buyers need before adding to cart</h2>
-    <p>Clear product context, care guidance, delivery confidence, and matching add-ons help shoppers decide quickly.</p>
+    <h2>Good to know before you buy</h2>
+    <p>The essentials on everyday use, care, and delivery — so you can choose with confidence.</p>
   </div>
   <div class="pdp-info-grid">
     <article><span>01</span><h3>Everyday use</h3><p>Made for practical grooming, bath time, cleanup, walking, or play depending on the product.</p></article>
@@ -281,22 +324,6 @@
     <article><span>03</span><h3>Pairs well</h3><p>Recommended add-ons make it easier to build a complete pet-care basket.</p></article>
     <article><span>04</span><h3>Buy with confidence</h3><p>Fast dispatch, returns, secure payment, and customer reviews stay visible before checkout.</p></article>
   </div>
-</section>
-
-<section class="review-panel">
-  <div>
-    <h2>4.9/5 from professional groomers</h2>
-    <p>Review distribution and plain-language quotes make the page feel active without needing a third-party app for the prototype.</p>
-  </div>
-  <div class="review-bars" aria-label="Review distribution">
-    <div><span>5 stars</span><meter min="0" max="100" value="94">94%</meter><strong>94%</strong></div>
-    <div><span>4 stars</span><meter min="0" max="100" value="6">6%</meter><strong>6%</strong></div>
-    <div><span>3 stars</span><meter min="0" max="100" value="0">0%</meter><strong>0%</strong></div>
-  </div>
-  <article class="quote-card">
-    <p>"The coat feels clean without being stripped, and the finishing spray add-on makes rebooking care kits much easier."</p>
-    <strong>Amelia R., salon owner</strong>
-  </article>
 </section>
 
 {% schema %}

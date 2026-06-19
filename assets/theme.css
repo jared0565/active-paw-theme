@@ -108,13 +108,18 @@ img { max-width: 100%; display: block; }
 }
 .announcement-icon svg,
 .header-action-icon svg,
-.header-search svg {
+.header-search svg,
+.trust-icon svg,
+.cart-drawer__close svg,
+.contact-modal__close svg {
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+/* Trust-bar chip is 48px; size the glyph with padding so it reads as an icon, not a fill. */
+.trust-icon svg { width: 26px; height: 26px; }
 .site-header {
   display: grid;
   gap: 0;
