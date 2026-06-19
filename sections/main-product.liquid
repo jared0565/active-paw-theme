@@ -204,7 +204,9 @@
       {% endif %}
     </div>
     <p class="pdp-lede">
-      A practical pet-care essential for grooming, cleaning, walking, and everyday routines with dogs and cats.
+      {%- assign pdp_lede = product.description | strip_html | strip | truncate: 160 -%}
+      {%- if pdp_lede == blank -%}{%- assign pdp_lede = 'A practical everyday pick for happier, healthier pets.' -%}{%- endif -%}
+      {{ pdp_lede }}
     </p>
     <div class="pdp-confidence-list" aria-label="Purchase confidence">
       <div><strong>14-day returns</strong><span>Fair, contact-first returns — <a href="/policies/refund-policy">see our policy</a></span></div>
