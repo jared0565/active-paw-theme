@@ -51,14 +51,26 @@ img { max-width: 100%; display: block; }
   background: var(--ink);
   color: white;
   border-bottom: 1px solid rgba(255,255,255,0.12);
+  overflow: hidden; /* clip the mobile marquee track */
 }
+/* The benefit set is rendered twice (announcement-bar.liquid): on desktop one set
+   shows as a static 3-up row and the duplicate is hidden; on mobile (<=900px) both
+   sets animate as a seamless marquee loop. */
 .announcement-track {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0;
+  display: flex;
+  justify-content: center;
   max-width: 1780px;
   margin: 0 auto;
 }
+.announcement-set {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.announcement-dup { display: none; }
+@keyframes announcement-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .announcement-track { animation: none; } }
 .announcement p {
   display: flex;
   gap: 10px;
@@ -2151,14 +2163,17 @@ summary { cursor: pointer; font-weight: 800; }
 @media (max-width: 900px) {
   :root { --sticky-header-offset: 222px; }
   .announcement-track {
-    grid-template-columns: repeat(3, minmax(220px, 1fr));
-    overflow-x: auto;
-    scrollbar-width: none;
+    width: max-content;
+    justify-content: flex-start;
+    animation: announcement-marquee 24s linear infinite;
   }
-  .announcement-track::-webkit-scrollbar { display: none; }
+  .announcement-set { display: flex; flex: 0 0 auto; }
+  .announcement-dup { display: flex; }
   .announcement p {
     justify-content: flex-start;
     min-height: 44px;
+    flex: 0 0 auto;
+    border-right: 0;
   }
   .header-main {
     grid-template-columns: minmax(170px, auto) minmax(0, 1fr);
