@@ -1,0 +1,87 @@
+{% doc %}
+  Inline "Product details" block shown below the main image on the PDP (replaces
+  the old "More details" modal). Content priority:
+  1. product.metafields.details.bullets (list of single line text) — merchant-curated
+  2. Bullets parsed from product.description (CJ imports ship key facts as
+     <br>/<li>/<p>-separated lines; embedded supplier <img> dumps are cut off)
+  3. Plain-text description excerpt
+  Always ends with a specifications list built from real catalog data.
+  @param {product} product - Product to render details for
+{% enddoc %}
+
+{% liquid
+  assign details_variant = product.selected_or_first_available_variant
+  assign detail_bullets = product.metafields.details.bullets.value
+  assign parsed_bullets = blank
+
+  if detail_bullets == blank and product.description != blank
+    assign desc_source = product.description | split: '<img' | first
+    assign desc_lines = desc_source | replace: '</li>', '|||' | replace: '</p>', '|||' | replace: '<br>', '|||' | replace: '<br/>', '|||' | replace: '<br />', '|||' | split: '|||'
+    assign collected = ''
+    for line in desc_lines
+      assign clean = line | strip_html | strip
+      assign clean_size = clean | size
+      if clean_size < 9
+        continue
+      endif
+      assign last_char = clean | slice: -1
+      if last_char == ':' and clean_size < 30
+        continue
+      endif
+      if clean contains 'demo-store' or clean contains 'Supplier:' or clean contains 'Product Image' or clean contains 'Keywords:' or clean contains 'proposal testing'
+        continue
+      endif
+      assign collected = collected | append: clean | append: '@@'
+    endfor
+    if collected != blank
+      assign parsed_bullets = collected | split: '@@'
+    endif
+  endif
+
+  assign supplier_name = details_variant.metafields.supplier.name.value | default: product.metafields.supplier.name.value
+  assign supplier_warehouse = details_variant.metafields.supplier.warehouse.value | default: product.metafields.supplier.warehouse.value
+%}
+
+<section class="pdp-details" aria-labelledby="pdp-details-title">
+  <h2 id="pdp-details-title" class="pdp-details__title">Product details</h2>
+
+  {% if detail_bullets != blank %}
+    <h3>About this item</h3>
+    <ul class="pdp-details-bullets">
+      {% for bullet in detail_bullets limit: 12 %}
+        <li>{{ bullet }}</li>
+      {% endfor %}
+    </ul>
+  {% elsif parsed_bullets != blank %}
+    <h3>About this item</h3>
+    <ul class="pdp-details-bullets">
+      {% for bullet in parsed_bullets limit: 10 %}
+        <li>{{ bullet }}</li>
+      {% endfor %}
+    </ul>
+  {% elsif product.description != blank %}
+    <h3>About this item</h3>
+    <p class="pdp-details__excerpt">{{ product.description | strip_html | truncatewords: 80 }}</p>
+  {% endif %}
+
+  <h3>Specifications</h3>
+  <dl class="pdp-details-specs">
+    {% if product.type != blank %}
+      <div><dt>Category</dt><dd>{{ product.type }}</dd></div>
+    {% endif %}
+    {% unless product.has_only_default_variant %}
+      {% for option in product.options_with_values %}
+        <div><dt>{{ option.name }}</dt><dd>{{ option.values | join: ', ' }}</dd></div>
+      {% endfor %}
+    {% endunless %}
+    {% if details_variant.sku != blank %}
+      <div><dt>SKU</dt><dd>{{ details_variant.sku }}</dd></div>
+    {% endif %}
+    {% if details_variant.weight > 0 %}
+      <div><dt>Weight</dt><dd>{{ details_variant.weight | weight_with_unit }}</dd></div>
+    {% endif %}
+    {% if supplier_name != blank %}
+      <div><dt>Fulfilled by</dt><dd>{{ supplier_name }}{% if supplier_warehouse != blank %} · {{ supplier_warehouse }}{% endif %}</dd></div>
+    {% endif %}
+  </dl>
+</section>
