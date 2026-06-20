@@ -9,12 +9,12 @@
 
 {%- liquid
   assign share_url = shop.url | append: product.url
-  assign share_text = product.title | escape
+  assign share_text = product.title
   assign share_image = product.featured_image | image_url: width: 1200
 -%}
 
 {%- comment -%} NB: root must not carry data-share-url — theme.js click-delegates on it. {%- endcomment -%}
-<div class="social-share" data-social-share data-ss-url="{{ share_url }}" data-ss-title="{{ share_text }}">
+<div class="social-share" data-social-share data-ss-url="{{ share_url }}" data-ss-title="{{ share_text | escape }}">
   <span class="social-share__label">Share</span>
   <a class="social-share__btn" href="https://www.facebook.com/sharer/sharer.php?u={{ share_url | url_encode }}" target="_blank" rel="noopener" aria-label="Share on Facebook">
     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M13.5 21v-7h2.4l.4-3h-2.8V9.1c0-.87.24-1.46 1.49-1.46h1.4V5.07A19 19 0 0 0 14.34 5C12.06 5 10.5 6.39 10.5 8.95V11H8.1v3h2.4v7Z" fill="currentColor"/></svg>

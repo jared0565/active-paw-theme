@@ -2734,6 +2734,7 @@ body.contact-modal-open { overflow: hidden; }
 .social-share__btn:focus-visible { border-color: rgba(240,90,40,0.5); background: #fff4ee; color: var(--accent-dark); }
 .social-share__btn:focus-visible { outline: 3px solid rgba(240,90,40,0.22); outline-offset: 2px; }
 .social-share__btn svg { flex: 0 0 auto; fill: currentColor; }
+.social-share__qr[hidden] { display: none; } /* author rule above would otherwise defeat the [hidden] attribute */
 .social-share__qr { flex-basis: 100%; display: grid; justify-items: center; gap: 6px; margin-top: 6px; padding: 14px; max-width: 260px; border: 1px solid var(--line); border-radius: 12px; background: #fffdf9; }
 .social-share__qr-img { width: 200px; height: 200px; display: block; background: #fff; border-radius: 6px; }
 .social-share__qr-hint { margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); text-align: center; }
