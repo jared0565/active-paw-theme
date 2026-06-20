@@ -1,7 +1,9 @@
 {% doc %}
-  Share menu — network links + copy + a bundled (offline) QR code. Rendered once in
-  the header dropdown ({% render 'social-share' %}, shares the current page) and reusable
-  for a specific product ({% render 'social-share', product: product %}). No third-party
+  Share menu — network links + copy + a bundled (offline) QR code. Rendered ONCE per
+  page, in the header dropdown ({% render 'social-share' %}, shares the current page).
+  Pass a product to share that instead ({% render 'social-share', product: product %}).
+  NOTE: the inline script binds a single page-level [data-social-share] — do not render
+  more than once per page without first scoping the script per instance. No third-party
   scripts/trackers: the QR is generated client-side by assets/qrcode.js (MIT), lazy-loaded
   on first open. Link previews come from snippets/meta-tags.liquid (og:*).
   @param {product} [product] - Optional product to share; defaults to the current page.
@@ -14,7 +16,10 @@
     assign share_image = product.featured_image | image_url: width: 1200
   else
     assign share_url = canonical_url
-    assign share_text = page_title
+    if share_url == blank
+      assign share_url = request.origin | append: request.path
+    endif
+    assign share_text = page_title | default: shop.name
     assign share_image = ''
   endif
 -%}

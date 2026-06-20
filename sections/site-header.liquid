@@ -71,7 +71,7 @@
       </div>
 
       <div class="header-share" data-share-menu>
-        <button type="button" class="header-action header-share-trigger" data-share-trigger aria-haspopup="true" aria-expanded="false" aria-controls="ShareMenu">
+        <button type="button" class="header-action header-share-trigger" data-share-trigger aria-expanded="false" aria-controls="ShareMenu">
           <span class="header-action-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" focusable="false">
               <circle cx="18" cy="5" r="3"/>
@@ -83,7 +83,7 @@
           <span><strong>Share</strong><small>This page</small></span>
           <svg class="header-collections-caret" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
         </button>
-        <div class="header-share-menu" id="ShareMenu" role="menu" aria-label="Share this page">
+        <div class="header-share-menu" id="ShareMenu" role="group" aria-label="Share this page">
           {% render 'social-share' %}
         </div>
       </div>

@@ -564,6 +564,11 @@ const closeShareMenu = () => {
   document
     .querySelectorAll('[data-share-trigger][aria-expanded="true"]')
     .forEach((trigger) => trigger.setAttribute('aria-expanded', 'false'));
+  // Collapse the QR sub-panel too, so the menu reopens in its default state.
+  document.querySelectorAll('[data-share-qr]:not([hidden])').forEach((p) => p.setAttribute('hidden', ''));
+  document
+    .querySelectorAll('[data-share-qr-toggle][aria-expanded="true"]')
+    .forEach((t) => t.setAttribute('aria-expanded', 'false'));
 };
 
 document.addEventListener('click', (event) => {
