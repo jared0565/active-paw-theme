@@ -1,20 +1,31 @@
 {% doc %}
-  Social share row for the PDP. Plain intent/share links — no third-party
-  scripts, no trackers. Native device share is covered by the existing
-  top-row share button (theme.js); this row adds the network links + copy.
-  Link previews are handled by snippets/meta-tags.liquid (og:*) + Shopify's
-  auto-injected og:image.
-  @param {product} product - Product being shared
+  Share menu — network links + copy + a bundled (offline) QR code. Rendered ONCE per
+  page, in the header dropdown ({% render 'social-share' %}, shares the current page).
+  Pass a product to share that instead ({% render 'social-share', product: product %}).
+  NOTE: the inline script binds a single page-level [data-social-share] — do not render
+  more than once per page without first scoping the script per instance. No third-party
+  scripts/trackers: the QR is generated client-side by assets/qrcode.js (MIT), lazy-loaded
+  on first open. Link previews come from snippets/meta-tags.liquid (og:*).
+  @param {product} [product] - Optional product to share; defaults to the current page.
 {% enddoc %}
 
 {%- liquid
-  assign share_url = shop.url | append: product.url
-  assign share_text = product.title | escape
-  assign share_image = product.featured_image | image_url: width: 1200
+  if product
+    assign share_url = shop.url | append: product.url
+    assign share_text = product.title
+    assign share_image = product.featured_image | image_url: width: 1200
+  else
+    assign share_url = canonical_url
+    if share_url == blank
+      assign share_url = request.origin | append: request.path
+    endif
+    assign share_text = page_title | default: shop.name
+    assign share_image = ''
+  endif
 -%}
 
 {%- comment -%} NB: root must not carry data-share-url — theme.js click-delegates on it. {%- endcomment -%}
-<div class="social-share" data-social-share data-ss-url="{{ share_url }}" data-ss-title="{{ share_text }}">
+<div class="social-share" data-social-share data-ss-url="{{ share_url }}" data-ss-title="{{ share_text | escape }}" data-qr-src="{{ 'qrcode.js' | asset_url }}">
   <span class="social-share__label">Share</span>
   <a class="social-share__btn" href="https://www.facebook.com/sharer/sharer.php?u={{ share_url | url_encode }}" target="_blank" rel="noopener" aria-label="Share on Facebook">
     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M13.5 21v-7h2.4l.4-3h-2.8V9.1c0-.87.24-1.46 1.49-1.46h1.4V5.07A19 19 0 0 0 14.34 5C12.06 5 10.5 6.39 10.5 8.95V11H8.1v3h2.4v7Z" fill="currentColor"/></svg>
@@ -32,10 +43,22 @@
     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.65-1.16A9 9 0 1 0 12 3Zm0 1.8a7.2 7.2 0 1 1-3.66 13.4l-.26-.16-2.76.69.71-2.68-.17-.28A7.2 7.2 0 0 1 12 4.8Zm-2.4 3.3c-.2 0-.5.07-.76.36-.26.28-1 .97-1 2.37 0 1.4 1.02 2.76 1.16 2.95.14.19 2 3.05 4.86 4.15 2.38.92 2.87.74 3.39.69.52-.05 1.66-.68 1.9-1.33.23-.66.23-1.22.16-1.33-.07-.12-.26-.19-.54-.33-.28-.14-1.66-.82-1.92-.91-.26-.1-.45-.14-.63.14-.19.28-.73.9-.89 1.09-.16.19-.33.21-.61.07a7.74 7.74 0 0 1-2.26-1.4 8.46 8.46 0 0 1-1.57-1.95c-.16-.28-.02-.43.12-.57.13-.13.28-.33.42-.5.14-.16.19-.28.28-.47.1-.19.05-.35-.02-.5-.07-.14-.62-1.52-.86-2.08-.22-.55-.45-.47-.62-.48Z" fill="currentColor"/></svg>
     WhatsApp
   </a>
-  <button type="button" class="social-share__btn" data-share-copy aria-label="Copy product link">
+  <a class="social-share__btn" href="mailto:?subject={{ share_text | url_encode }}&body={{ share_url | url_encode }}" aria-label="Share by email">
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M3 5h18v14H3V5Zm2 2v.35l7 4.6 7-4.6V7H5Zm14 2.74-7 4.6-7-4.6V17h14V9.74Z" fill="currentColor"/></svg>
+    Email
+  </a>
+  <button type="button" class="social-share__btn" data-share-copy aria-label="Copy link">
     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M9 9h10v12H9V9Zm2 2v8h6v-8h-6ZM5 3h10v4h-2V5H7v10h2v2H5V3Z" fill="currentColor"/></svg>
     <span data-share-copy-label>Copy link</span>
   </button>
+  <button type="button" class="social-share__btn" data-share-qr-toggle aria-expanded="false" aria-controls="ShareQrPanel" aria-label="Show a QR code to scan">
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M3 3h8v8H3V3Zm2 2v4h4V5H5Zm8-2h8v8h-8V3Zm2 2v4h4V5h-4ZM3 13h8v8H3v-8Zm2 2v4h4v-4H5Zm10-2h2v2h-2v-2Zm4 0h2v2h-2v-2Zm-4 4h2v2h-2v-2Zm2 2h2v2h-2v-2Zm2-2h2v2h-2v-2Z" fill="currentColor"/></svg>
+    QR code
+  </button>
+  <div class="social-share__qr" id="ShareQrPanel" data-share-qr hidden>
+    <img class="social-share__qr-img" alt="QR code that links to this page" data-share-qr-img width="200" height="200">
+    <p class="social-share__qr-hint">Scan with a phone camera to open this page.</p>
+  </div>
 </div>
 
 <script>
@@ -43,6 +66,7 @@
     var root = document.querySelector('[data-social-share]');
     if (!root) return;
     var url = root.getAttribute('data-ss-url');
+
     var copy = root.querySelector('[data-share-copy]');
     if (copy) {
       copy.addEventListener('click', function () {
@@ -53,6 +77,44 @@
           .finally(function () {
             setTimeout(function () { if (label) label.textContent = 'Copy link'; }, 2000);
           });
+      });
+    }
+
+    var qrToggle = root.querySelector('[data-share-qr-toggle]');
+    var qrPanel = root.querySelector('[data-share-qr]');
+    var qrImg = root.querySelector('[data-share-qr-img]');
+    if (qrToggle && qrPanel && qrImg) {
+      var qrBuilt = false;
+      var buildQr = function () {
+        if (qrBuilt) return;
+        var make = function () {
+          try {
+            // Bundled MIT encoder (assets/qrcode.js) — no third-party request.
+            var qr = window.qrcode(0, 'M');
+            qr.addData(url);
+            qr.make();
+            qrImg.src = qr.createDataURL(6, 4);
+            qrBuilt = true;
+          } catch (e) { /* leave the img empty; the network links + Copy still work */ }
+        };
+        if (window.qrcode) { make(); return; }
+        var src = root.getAttribute('data-qr-src');
+        if (!src) return;
+        var s = document.createElement('script');
+        s.src = src;
+        s.onload = make;
+        document.head.appendChild(s);
+      };
+      qrToggle.addEventListener('click', function () {
+        var opening = qrPanel.hasAttribute('hidden');
+        if (opening) {
+          buildQr();
+          qrPanel.removeAttribute('hidden');
+          qrToggle.setAttribute('aria-expanded', 'true');
+        } else {
+          qrPanel.setAttribute('hidden', '');
+          qrToggle.setAttribute('aria-expanded', 'false');
+        }
       });
     }
   })();

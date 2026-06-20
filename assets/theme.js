@@ -558,16 +558,38 @@ const closeCollectionsMenu = () => {
     .querySelectorAll('[data-collections-trigger][aria-expanded="true"]')
     .forEach((trigger) => trigger.setAttribute('aria-expanded', 'false'));
 };
+// Header share dropdown — click-only (it holds interactive controls), mutually
+// exclusive with the collections menu, and closed by an outside click or Esc.
+const closeShareMenu = () => {
+  document
+    .querySelectorAll('[data-share-trigger][aria-expanded="true"]')
+    .forEach((trigger) => trigger.setAttribute('aria-expanded', 'false'));
+  // Collapse the QR sub-panel too, so the menu reopens in its default state.
+  document.querySelectorAll('[data-share-qr]:not([hidden])').forEach((p) => p.setAttribute('hidden', ''));
+  document
+    .querySelectorAll('[data-share-qr-toggle][aria-expanded="true"]')
+    .forEach((t) => t.setAttribute('aria-expanded', 'false'));
+};
 
 document.addEventListener('click', (event) => {
-  const trigger = event.target.closest('[data-collections-trigger]');
-  if (trigger) {
-    const isOpen = trigger.getAttribute('aria-expanded') === 'true';
+  const collectionsTrigger = event.target.closest('[data-collections-trigger]');
+  if (collectionsTrigger) {
+    const isOpen = collectionsTrigger.getAttribute('aria-expanded') === 'true';
     closeCollectionsMenu();
-    trigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+    closeShareMenu();
+    collectionsTrigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+    return;
+  }
+  const shareTrigger = event.target.closest('[data-share-trigger]');
+  if (shareTrigger) {
+    const isOpen = shareTrigger.getAttribute('aria-expanded') === 'true';
+    closeShareMenu();
+    closeCollectionsMenu();
+    shareTrigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
     return;
   }
   if (!event.target.closest('[data-collections-menu]')) closeCollectionsMenu();
+  if (!event.target.closest('[data-share-menu]')) closeShareMenu();
 });
 
 /* ---------------- Contact modal ---------------- */
@@ -652,6 +674,7 @@ document.addEventListener('click', (event) => {
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     closeCollectionsMenu();
+    closeShareMenu();
     closeContactModal();
     closeDetailsModal();
   }
