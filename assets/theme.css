@@ -2781,6 +2781,19 @@ body.contact-modal-open { overflow: hidden; }
   .header-contact-trigger span:not(.header-action-icon),
   .header-share-trigger > span:not(.header-action-icon),
   .header-share-trigger .header-collections-caret { display: none; }
+  /* Center the share dropdown in the viewport on mobile — the right-anchored
+     desktop position clipped it off the left edge (trigger sits mid-right). */
+  .header-share-menu {
+    position: fixed;
+    top: 96px;
+    left: 50%;
+    right: auto;
+    width: calc(100vw - 24px);
+    max-width: 360px;
+    margin: 0;
+    transform: translateX(-50%) translateY(6px);
+  }
+  .header-share-trigger[aria-expanded="true"] + .header-share-menu { transform: translateX(-50%) translateY(0); }
 }
 
 /* PawScout supplier ghost-card preview modal (built by assets/pawscout.js).
