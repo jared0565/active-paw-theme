@@ -34,5 +34,17 @@
         "default": "inter_n4"
       }
     ]
+  },
+  {
+    "name": "Contact form",
+    "settings": [
+      {
+        "type": "text",
+        "id": "contact_reply_eta",
+        "label": "Reply time shown after sending",
+        "info": "Shown in the confirmation box after a visitor submits the contact form, e.g. \"We usually reply within 24 hours\".",
+        "default": "24 hours"
+      }
+    ]
   }
 ]

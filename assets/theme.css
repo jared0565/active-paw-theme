@@ -2710,6 +2710,34 @@ body.cart-drawer-open { overflow: hidden; }
 .contact-form__result--error { background: #fdecea; color: #ba3d1a; }
 body.contact-modal-open { overflow: hidden; }
 
+/* Contact form success confirmation (reply ETA + spam-folder nudge) */
+.contact-confirm { display: grid; justify-items: center; text-align: center; gap: 8px; padding: 18px 14px; }
+.contact-confirm__icon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: #e7f7ef; color: #1f7a5a; margin-bottom: 2px; }
+.contact-confirm h3 { margin: 0; font-size: 20px; font-weight: 900; }
+.contact-confirm p { margin: 0; font-size: 14px; font-weight: 600; line-height: 1.5; }
+.contact-confirm__spam { color: var(--muted); }
+.contact-confirm .button { margin-top: 10px; }
+
+/* Social share row (PDP) + scannable QR panel */
+.social-share { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.social-share__label { font-size: 13px; font-weight: 900; margin-right: 2px; }
+.social-share__btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 34px; padding: 6px 12px;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: #fffdf9; color: var(--ink);
+  font: inherit; font-size: 13px; font-weight: 800; line-height: 1;
+  text-decoration: none; cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
+}
+.social-share__btn:hover,
+.social-share__btn:focus-visible { border-color: rgba(240,90,40,0.5); background: #fff4ee; color: var(--accent-dark); }
+.social-share__btn:focus-visible { outline: 3px solid rgba(240,90,40,0.22); outline-offset: 2px; }
+.social-share__btn svg { flex: 0 0 auto; fill: currentColor; }
+.social-share__qr { flex-basis: 100%; display: grid; justify-items: center; gap: 6px; margin-top: 6px; padding: 14px; max-width: 260px; border: 1px solid var(--line); border-radius: 12px; background: #fffdf9; }
+.social-share__qr-img { width: 200px; height: 200px; display: block; background: #fff; border-radius: 6px; }
+.social-share__qr-hint { margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); text-align: center; }
+
 @media (max-width: 900px) {
   .header-collections-trigger small,
   .header-contact-trigger small { display: none; }

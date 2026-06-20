@@ -21,32 +21,41 @@
 
     {%- form 'contact', id: 'ContactForm', class: 'contact-form' -%}
       {%- if form.posted_successfully? -%}
-        <div class="contact-form__result contact-form__result--ok" data-contact-result role="status">
-          Thanks — your message has been sent. We'll reply to your email shortly.
+        {%- comment -%} data-contact-result is required: theme.js auto-opens the modal when it finds it. {%- endcomment -%}
+        <div class="contact-form__result contact-confirm" data-contact-result role="status">
+          <span class="contact-confirm__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="34" height="34" focusable="false"><path d="M20 6 9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          <h3>Message sent — thank you!</h3>
+          <p>We usually reply within <strong>{{ settings.contact_reply_eta | default: '24 hours' }}</strong> (often sooner) to the email you gave us.</p>
+          <p class="contact-confirm__spam">Can't find our reply? Please check your <strong>spam</strong> or <strong>junk</strong> folder, and add us to your contacts so future messages reach your inbox.</p>
+          <button type="button" class="button button-primary full" data-contact-close>Close</button>
         </div>
-      {%- elsif form.errors -%}
-        <div class="contact-form__result contact-form__result--error" data-contact-result role="alert">
-          {{ form.errors | default_errors }}
-        </div>
-      {%- endif -%}
+      {%- else -%}
+        {%- if form.errors -%}
+          <div class="contact-form__result contact-form__result--error" data-contact-result role="alert">
+            {{ form.errors | default_errors }}
+          </div>
+        {%- endif -%}
 
-      <div class="contact-form__field">
-        <label for="ContactName">Name</label>
-        <input type="text" id="ContactName" name="contact[name]" value="{{ form.name }}" autocomplete="name">
-      </div>
-      <div class="contact-form__field">
-        <label for="ContactEmail">Email <span aria-hidden="true">*</span></label>
-        <input type="email" id="ContactEmail" name="contact[email]" value="{{ form.email }}" autocomplete="email" required>
-      </div>
-      <div class="contact-form__field">
-        <label for="ContactPhone">Phone <span class="contact-form__optional">(optional)</span></label>
-        <input type="tel" id="ContactPhone" name="contact[phone]" value="{{ form.phone }}" autocomplete="tel">
-      </div>
-      <div class="contact-form__field">
-        <label for="ContactBody">Message <span aria-hidden="true">*</span></label>
-        <textarea id="ContactBody" name="contact[body]" rows="5" required>{{ form.body }}</textarea>
-      </div>
-      <button type="submit" class="button button-primary full">Send message</button>
+        <div class="contact-form__field">
+          <label for="ContactName">Name <span aria-hidden="true">*</span></label>
+          <input type="text" id="ContactName" name="contact[name]" value="{{ form.name | escape }}" autocomplete="name" required>
+        </div>
+        <div class="contact-form__field">
+          <label for="ContactEmail">Email <span aria-hidden="true">*</span></label>
+          <input type="email" id="ContactEmail" name="contact[email]" value="{{ form.email | escape }}" autocomplete="email" required>
+        </div>
+        <div class="contact-form__field">
+          <label for="ContactPhone">Phone <span class="contact-form__optional">(optional)</span></label>
+          <input type="tel" id="ContactPhone" name="contact[phone]" value="{{ form.phone | escape }}" autocomplete="tel">
+        </div>
+        <div class="contact-form__field">
+          <label for="ContactBody">Message <span aria-hidden="true">*</span></label>
+          <textarea id="ContactBody" name="contact[body]" rows="5" required>{{ form.body | escape }}</textarea>
+        </div>
+        <button type="submit" class="button button-primary full">Send message</button>
+      {%- endif -%}
     {%- endform -%}
   </div>
 </div>
