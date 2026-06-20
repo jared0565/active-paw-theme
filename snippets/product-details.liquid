@@ -66,8 +66,10 @@
 
   <h3>Specifications</h3>
   <dl class="pdp-details-specs">
-    {% if product.type != blank %}
-      <div><dt>Category</dt><dd>{{ product.type }}</dd></div>
+    {%- comment -%} Guard: never surface the word "dropship" even if a future import re-adds it to the type. {%- endcomment -%}
+    {%- assign category_label = product.type | replace: 'dropship', '' | replace: 'Dropship', '' | replace: 'DROPSHIP', '' | strip -%}
+    {% if category_label != blank %}
+      <div><dt>Category</dt><dd>{{ category_label }}</dd></div>
     {% endif %}
     {% unless product.has_only_default_variant %}
       {% for option in product.options_with_values %}
