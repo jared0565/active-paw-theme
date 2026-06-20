@@ -1491,6 +1491,30 @@ summary { cursor: pointer; font-weight: 800; }
   display: grid;
   gap: 12px;
 }
+/* Inline "Product details" block below the main image (replaces the old modal) */
+.pdp-details {
+  padding: 16px 18px;
+  background: #fffdf9;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.pdp-details__title { margin: 0; font-size: 18px; font-weight: 900; }
+.pdp-details h3 { margin: 14px 0 8px; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.pdp-details__excerpt { margin: 0; font-size: 14px; line-height: 1.6; }
+.pdp-details-bullets { margin: 0; padding-left: 18px; display: grid; gap: 7px; }
+.pdp-details-bullets li { font-size: 14px; line-height: 1.5; }
+.pdp-details-specs { margin: 0; }
+.pdp-details-specs > div {
+  display: grid;
+  grid-template-columns: minmax(86px, 0.42fr) 1fr;
+  gap: 14px;
+  padding: 9px 0;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+}
+.pdp-details-specs > div:first-child { border-top: 0; }
+.pdp-details-specs dt { margin: 0; font-weight: 800; color: var(--muted); }
+.pdp-details-specs dd { margin: 0; }
 .product-gallery-stage {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
