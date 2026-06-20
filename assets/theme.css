@@ -2598,7 +2598,8 @@ body.cart-drawer-open { overflow: hidden; }
 /* Header: Collections dropdown + Contact trigger */
 .header-collections { position: relative; display: inline-flex; }
 .header-collections-trigger,
-.header-contact-trigger {
+.header-contact-trigger,
+.header-share-trigger {
   background: transparent;
   border: 0;
   cursor: pointer;
@@ -2606,7 +2607,8 @@ body.cart-drawer-open { overflow: hidden; }
   font-weight: 800;
 }
 .header-collections-trigger > span:not(.header-action-icon),
-.header-contact-trigger > span:not(.header-action-icon) {
+.header-contact-trigger > span:not(.header-action-icon),
+.header-share-trigger > span:not(.header-action-icon) {
   display: grid;
   line-height: 1.05;
   text-align: left;
@@ -2657,6 +2659,36 @@ body.cart-drawer-open { overflow: hidden; }
 .header-collections-link:focus-visible { background: var(--surface); outline: 0; }
 .header-collections-link small { color: var(--muted); font-size: 12px; font-weight: 800; }
 .header-collections-empty { padding: 12px; color: var(--muted); font-size: 13px; }
+
+/* Header share dropdown — mirrors the collections menu but opens on click only */
+.header-share { position: relative; display: inline-flex; }
+.header-share-trigger[aria-expanded="true"] .header-collections-caret { transform: rotate(180deg); }
+.header-share-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: auto;
+  width: 300px;
+  max-width: calc(100vw - 32px);
+  margin-top: 0;
+  padding: 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 18px 44px rgba(16, 24, 32, 0.16);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px);
+  transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+  z-index: 40;
+}
+.header-share-trigger[aria-expanded="true"] + .header-share-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+.header-share-menu .social-share { margin-top: 0; }
+.header-share-menu .social-share__label { display: none; }
 
 /* Contact modal */
 .contact-modal { position: fixed; inset: 0; z-index: 70; visibility: hidden; pointer-events: none; }
@@ -2736,16 +2768,19 @@ body.contact-modal-open { overflow: hidden; }
 .social-share__btn svg { flex: 0 0 auto; fill: currentColor; }
 .social-share__qr[hidden] { display: none; } /* author rule above would otherwise defeat the [hidden] attribute */
 .social-share__qr { flex-basis: 100%; display: grid; justify-items: center; gap: 6px; margin-top: 6px; padding: 14px; max-width: 260px; border: 1px solid var(--line); border-radius: 12px; background: #fffdf9; }
-.social-share__qr-img { width: 200px; height: 200px; display: block; background: #fff; border-radius: 6px; }
+.social-share__qr-img { width: auto; max-width: 100%; height: auto; display: block; background: #fff; border-radius: 6px; }
 .social-share__qr-hint { margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); text-align: center; }
 
 @media (max-width: 900px) {
   .header-collections-trigger small,
-  .header-contact-trigger small { display: none; }
+  .header-contact-trigger small,
+  .header-share-trigger small { display: none; }
 }
 @media (max-width: 620px) {
   .header-collections { display: none; }
-  .header-contact-trigger span:not(.header-action-icon) { display: none; }
+  .header-contact-trigger span:not(.header-action-icon),
+  .header-share-trigger > span:not(.header-action-icon),
+  .header-share-trigger .header-collections-caret { display: none; }
 }
 
 /* PawScout supplier ghost-card preview modal (built by assets/pawscout.js).
