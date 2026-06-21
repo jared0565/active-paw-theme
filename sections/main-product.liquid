@@ -233,6 +233,17 @@
       >{{ selected_variant.price | default: product.price_min | money }}</strong>
     </div>
     {% form 'product', product %}
+      {%- comment -%}
+        Surface the per-product ACTUAL delivery estimate at the commitment point: a
+        line-item property flows to the cart + checkout order summary. Browsing (the
+        PDP delivery block) keeps the friendlier representative figure; here we prefer
+        the product's own actual band, falling back to the representative if not yet
+        synced. Only a real value is attached (rule: real & defensible).
+      {%- endcomment -%}
+      {%- assign checkout_estimate = product.metafields.supplier.delivery_days_actual.value | default: product.metafields.supplier.delivery_days.value -%}
+      {%- if checkout_estimate != blank -%}
+        <input type="hidden" name="properties[Estimated delivery]" value="{{ checkout_estimate }} days">
+      {%- endif -%}
       {% if product.has_only_default_variant == false %}
         <label for="ProductSelect">Size</label>
         <select id="ProductSelect" name="id">
