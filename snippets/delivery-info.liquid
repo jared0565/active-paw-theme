@@ -2,8 +2,9 @@
   PDP delivery information block (strategy decision 2026-06-12):
   honest sticker price + transparent delivery BEFORE checkout. Shows the
   UK rates, an origin-aware delivery estimate, and the returns promise.
-  "Ships from UK" badge appears when PawScout's nightly sync stamps
-  supplier.origin = GB (UK warehouse stocked above the floor).
+  Items stocked above the floor in the GB supplier warehouse get a faster
+  delivery estimate (supplier.origin = GB, stamped by PawScout's nightly sync);
+  no shipping-origin claim is shown to the customer.
 
   NB: rates below mirror Shopify Settings → Shipping. If the rates change
   there, update these assigns (single source kept deliberately simple —
@@ -18,20 +19,12 @@
 
   if origin == 'GB' or origin == 'UK'
     assign delivery_window = '2–4 working days'
-    assign ships_uk = true
   else
     assign delivery_window = '8–12 working days'
-    assign ships_uk = false
   endif
 -%}
 
 <div class="delivery-info" aria-label="Delivery information">
-  {%- if ships_uk -%}
-    <span class="di-badge">
-      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4ZM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5Zm13.5-9 1.96 2.5H17V9.5h2.5Zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5Z" fill="currentColor"/></svg>
-      Ships from UK
-    </span>
-  {%- endif -%}
   <ul class="di-rows">
     <li>
       <strong>FREE UK delivery</strong> on orders over {{ free_threshold | money }}
