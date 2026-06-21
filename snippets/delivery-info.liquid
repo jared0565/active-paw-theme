@@ -15,13 +15,11 @@
 {%- liquid
   assign free_threshold = 5000
   assign standard_rate = '£4.99'
-  assign origin = product.metafields.supplier.origin.value | upcase
-
-  if origin == 'GB' or origin == 'UK'
-    assign delivery_window = '2–4 working days'
-  else
-    assign delivery_window = '8–12 working days'
-  endif
+  # Delivery window: a single defensible estimate (CJ ships these CN-origin, ~8-12
+  # working days order-to-door). No faster claim is surfaced until PawScout can
+  # ground a per-product figure in synced CJ logistics data. See the CJ-logistics
+  # store feature. Rule: only surface what is real and defensible.
+  assign delivery_window = '8–12 working days'
 -%}
 
 <div class="delivery-info" aria-label="Delivery information">
