@@ -2747,6 +2747,7 @@ body.cart-drawer-open { overflow: hidden; }
 .contact-form__field label span[aria-hidden] { color: var(--accent-dark); }
 .contact-form__optional { color: var(--muted); font-weight: 600; }
 .contact-form input,
+.contact-form select,
 .contact-form textarea {
   width: 100%;
   min-height: 48px;
@@ -2760,6 +2761,7 @@ body.cart-drawer-open { overflow: hidden; }
 }
 .contact-form textarea { min-height: auto; resize: vertical; }
 .contact-form input:focus,
+.contact-form select:focus,
 .contact-form textarea:focus { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(240, 90, 40, 0.14); }
 .contact-form__result { padding: 12px 14px; border-radius: 10px; font-size: 14px; font-weight: 700; }
 .contact-form__result--ok { background: #e7f7ef; color: #1f7a5a; }
