@@ -51,6 +51,15 @@
           <input type="tel" id="ContactPhone" name="contact[phone]" value="{{ form.phone | escape }}" autocomplete="tel">
         </div>
         <div class="contact-form__field">
+          <label for="ContactReason">What's this about?</label>
+          <select id="ContactReason" name="contact[Reason]">
+            <option value="" selected>General enquiry</option>
+            <option value="order">Order help</option>
+            <option value="partnerships">Creator / affiliate partnership</option>
+            <option value="wholesale">Wholesale / bulk order</option>
+          </select>
+        </div>
+        <div class="contact-form__field">
           <label for="ContactBody">Message <span aria-hidden="true">*</span></label>
           <textarea id="ContactBody" name="contact[body]" rows="5" required>{{ form.body | escape }}</textarea>
         </div>
