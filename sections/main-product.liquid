@@ -20,7 +20,7 @@
     if pdp_max_order_qty <= 0
       assign pdp_sold_out = true
       assign pdp_status_label = 'Out of stock'
-      assign pdp_status_detail = 'Currently unavailable — check back soon.'
+      assign pdp_status_detail = 'Currently unavailable - check back soon.'
     elsif pdp_max_order_qty <= 3
       assign pdp_status_label = 'Low stock'
       assign pdp_status_detail = pdp_max_order_qty | append: ' available from tracked Shopify inventory.'
@@ -41,7 +41,7 @@
   unless selected_variant.available
     assign pdp_sold_out = true
     assign pdp_status_label = 'Out of stock'
-    assign pdp_status_detail = 'Currently unavailable — check back soon.'
+    assign pdp_status_detail = 'Currently unavailable - check back soon.'
   endunless
   # A max of 0 produces an invalid <input max="0" min="1"> that blocks the form;
   # sold-out states disable the buy controls outright instead.
@@ -209,7 +209,7 @@
       {{ pdp_lede }}
     </p>
     <div class="pdp-confidence-list" aria-label="Purchase confidence">
-      <div><strong>14-day returns</strong><span>Fair, contact-first returns — <a href="/policies/refund-policy">see our policy</a></span></div>
+      <div><strong>14-day returns</strong><span>Fair, contact-first returns - <a href="/policies/refund-policy">see our policy</a></span></div>
       <div><strong>Secure checkout</strong><span>Payment options are controlled by the store checkout settings</span></div>
       <div>
         <strong>{% if supplier_name != blank %}Supplier{% else %}Care add-ons{% endif %}</strong>
@@ -281,7 +281,7 @@
     {% endif %}
     {% render 'delivery-info', product: product %}
     {%- comment -%} W-ADDON: pawscout.js fills this with hidden filler products
-        (cheap add-ons, never browsable) — stays hidden when none exist. {%- endcomment -%}
+        (cheap add-ons, never browsable) - stays hidden when none exist. {%- endcomment -%}
     <div class="pdp-addons" data-pawscout-pdp-addons hidden>
       <h3>Complete the kit</h3>
       <div class="cart-addons__cards" data-addon-cards></div>
@@ -328,7 +328,7 @@
 <section class="pdp-detail-stack">
   <div class="section-heading">
     <h2>Good to know before you buy</h2>
-    <p>The essentials on everyday use, care, and delivery — so you can choose with confidence.</p>
+    <p>The essentials on everyday use, care, and delivery - so you can choose with confidence.</p>
   </div>
   <div class="pdp-info-grid">
     <article><span>01</span><h3>Everyday use</h3><p>Made for practical grooming, bath time, cleanup, walking, or play depending on the product.</p></article>

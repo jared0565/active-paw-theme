@@ -2684,7 +2684,7 @@ body.cart-drawer-open { overflow: hidden; }
 .header-collections-link small { color: var(--muted); font-size: 12px; font-weight: 800; }
 .header-collections-empty { padding: 12px; color: var(--muted); font-size: 13px; }
 
-/* Header share dropdown — mirrors the collections menu but opens on click only */
+/* Header share dropdown - mirrors the collections menu but opens on click only */
 .header-share { position: relative; display: inline-flex; }
 .header-share-trigger[aria-expanded="true"] .header-collections-caret { transform: rotate(180deg); }
 .header-share-menu {
@@ -2807,7 +2807,7 @@ body.contact-modal-open { overflow: hidden; }
   .header-contact-trigger span:not(.header-action-icon),
   .header-share-trigger > span:not(.header-action-icon),
   .header-share-trigger .header-collections-caret { display: none; }
-  /* Center the share dropdown in the viewport on mobile — the right-anchored
+  /* Center the share dropdown in the viewport on mobile - the right-anchored
      desktop position clipped it off the left edge (trigger sits mid-right). */
   .header-share-menu {
     position: fixed;

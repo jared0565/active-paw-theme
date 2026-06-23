@@ -1,8 +1,8 @@
 {% doc %}
-  Share menu — network links + copy + a bundled (offline) QR code. Rendered ONCE per
+  Share menu - network links + copy + a bundled (offline) QR code. Rendered ONCE per
   page, in the header dropdown ({% render 'social-share' %}, shares the current page).
   Pass a product to share that instead ({% render 'social-share', product: product %}).
-  NOTE: the inline script binds a single page-level [data-social-share] — do not render
+  NOTE: the inline script binds a single page-level [data-social-share] - do not render
   more than once per page without first scoping the script per instance. No third-party
   scripts/trackers: the QR is generated client-side by assets/qrcode.js (MIT), lazy-loaded
   on first open. Link previews come from snippets/meta-tags.liquid (og:*).
@@ -24,7 +24,7 @@
   endif
 -%}
 
-{%- comment -%} NB: root must not carry data-share-url — theme.js click-delegates on it. {%- endcomment -%}
+{%- comment -%} NB: root must not carry data-share-url - theme.js click-delegates on it. {%- endcomment -%}
 <div class="social-share" data-social-share data-ss-url="{{ share_url }}" data-ss-title="{{ share_text | escape }}" data-qr-src="{{ 'qrcode.js' | asset_url }}">
   <span class="social-share__label">Share</span>
   <a class="social-share__btn" href="https://www.facebook.com/sharer/sharer.php?u={{ share_url | url_encode }}" target="_blank" rel="noopener" aria-label="Share on Facebook">
@@ -89,7 +89,7 @@
         if (qrBuilt) return;
         var make = function () {
           try {
-            // Bundled MIT encoder (assets/qrcode.js) — no third-party request.
+            // Bundled MIT encoder (assets/qrcode.js) - no third-party request.
             var qr = window.qrcode(0, 'M');
             qr.addData(url);
             qr.make();
