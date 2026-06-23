@@ -19,8 +19,10 @@ Q = """query($c:String){ products(first:100, after:$c){
   nodes{ id title descriptionHtml seo{ description } }
 } }"""
 
-M = """mutation($input: ProductInput!){
-  productUpdate(input:$input){ product{ id } userErrors{ field message } }
+# API 2026-04: productUpdate takes `product: ProductUpdateInput!` (the legacy
+# `input: ProductInput!` arg was removed). Verified by introspection 2026-06-23.
+M = """mutation($product: ProductUpdateInput!){
+  productUpdate(product:$product){ product{ id } userErrors{ field message } }
 }"""
 
 cursor = None
@@ -45,7 +47,7 @@ while True:
                     inp["descriptionHtml"] = d
                 if sc:
                     inp["seo"] = {"description": s2}
-                res = sa.admin_graphql(M, {"input": inp})
+                res = sa.admin_graphql(M, {"product": inp})
                 errs = res["productUpdate"]["userErrors"]
                 if errs:
                     print("ERR", n["id"], errs)
