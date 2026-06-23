@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-**Active Paw** — a Shopify theme (custom Liquid) paired with a set of Python Admin API scripts. The theme powers a pet-care demo store hosted at `4qkudm-ez.myshopify.com`. The Python scripts handle one-off data operations (product import, inventory, collection setup) against the Shopify Admin API and the CJDropshipping API.
+**Active Paw** - a Shopify theme (custom Liquid) paired with a set of Python Admin API scripts. The theme powers a pet-care demo store hosted at `4qkudm-ez.myshopify.com`. The Python scripts handle one-off data operations (product import, inventory, collection setup) against the Shopify Admin API and the CJDropshipping API.
 
 The long-term direction is a **Supplier Intelligence Platform** (see `docs/supplier-intelligence-platform-prd.md`). The MVP scope and implementation sequence are tracked in `TASKS.md`.
 
@@ -15,7 +15,7 @@ The long-term direction is a **Supplier Intelligence Platform** (see `docs/suppl
 ## Theme structure
 
 ```
-layout/theme.liquid       # HTML shell — loads theme.css and theme.js
+layout/theme.liquid       # HTML shell - loads theme.css and theme.js
 assets/theme.css          # All styles (single file, no build step)
 assets/theme.js           # All client JS (single file, no build step, no framework)
 config/settings_schema.json  # Theme settings: brand name, logo, favicon, ink/accent/surface colors
@@ -29,7 +29,7 @@ There is no package.json, no bundler, and no build step. Edit `assets/theme.css`
 
 ## Supplier metafields (the core data contract)
 
-The theme reads supplier intelligence exclusively from Shopify-backed metafields — **never** from direct browser calls to supplier APIs.
+The theme reads supplier intelligence exclusively from Shopify-backed metafields - **never** from direct browser calls to supplier APIs.
 
 **Namespace:** `supplier`
 
@@ -74,7 +74,7 @@ Key scripts:
 | `create-home-collections.py` | Create collections with smart rules via Admin API |
 | `categorize-store-products.py` | Tag imported products with category metadata |
 
-`.graphql` files are standalone query/mutation files used for manual Shopify Admin API exploration (not executed by the Python scripts — those build queries inline).
+`.graphql` files are standalone query/mutation files used for manual Shopify Admin API exploration (not executed by the Python scripts - those build queries inline).
 
 ## Shopify CLI
 
@@ -92,7 +92,7 @@ shopify theme dev
 
 These require the Shopify CLI authenticated against the store. The store handle is `4qkudm-ez.myshopify.com`.
 
-**Known `theme dev` gotcha (read before debugging a wedged dev server):** editing a theme file while `shopify theme dev` is running can wedge its sync — pages return 500 with title "Failed to Upload Theme Files" and the log shows `*.liquid.tmp.<pid>.<hash> contains illegal characters`. Cause: Claude Code's atomic Edit/Write creates a temp file the watcher tries to upload (the `<pid>` is the `claude.exe` process — **never kill it**). Your real edit still syncs ("Synced » update …" appears in the log). Fix: finish edits, kill **only** the `node` process on port 9292, then restart `theme dev`. **Prevention: batch all edits, then run `theme dev` once to verify.** Full playbook with copy-paste commands (and the auth-expiry + "linters pass but page is broken" gotchas): `docs/shopify-theme-dev-troubleshooting.md`.
+**Known `theme dev` gotcha (read before debugging a wedged dev server):** editing a theme file while `shopify theme dev` is running can wedge its sync - pages return 500 with title "Failed to Upload Theme Files" and the log shows `*.liquid.tmp.<pid>.<hash> contains illegal characters`. Cause: Claude Code's atomic Edit/Write creates a temp file the watcher tries to upload (the `<pid>` is the `claude.exe` process - **never kill it**). Your real edit still syncs ("Synced » update …" appears in the log). Fix: finish edits, kill **only** the `node` process on port 9292, then restart `theme dev`. **Prevention: batch all edits, then run `theme dev` once to verify.** Full playbook with copy-paste commands (and the auth-expiry + "linters pass but page is broken" gotchas): `docs/shopify-theme-dev-troubleshooting.md`.
 
 ## Collections used in the theme
 
@@ -105,8 +105,8 @@ The PDP walks `product.collections` in that priority order to find a related col
 
 Configured in Shopify admin (Theme Editor) or via `config/settings_schema.json`:
 
-- `demo_brand_name` — display name replacing "Active Paw" throughout
-- `brand_logo` / `favicon` — image pickers
-- `color_ink` / `color_accent` / `color_surface` — CSS color tokens
+- `demo_brand_name` - display name replacing "Active Paw" throughout
+- `brand_logo` / `favicon` - image pickers
+- `color_ink` / `color_accent` / `color_surface` - CSS color tokens
 
 All Liquid reads `settings.demo_brand_name | default: 'Active Paw'` as the fallback.

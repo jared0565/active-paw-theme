@@ -1,11 +1,11 @@
-# Default-deny allowlist — GitHub publishes "theme + docs only".
+# Default-deny allowlist - GitHub publishes "theme + docs only".
 # The Python admin scripts (shopify_admin.py, cj_client.py, etc.) hardcode LIVE
 # Shopify/CJ credentials and must NEVER be pushed. node_modules/, output/, .env,
 # graphify tooling, and local .claude/ config are also excluded. Anything not
-# explicitly allowed below is ignored — the safe failure mode.
+# explicitly allowed below is ignored - the safe failure mode.
 /*
 
-# Theme source (Liquid/CSS/JS/JSON — verified secret-free, see
+# Theme source (Liquid/CSS/JS/JSON - verified secret-free, see
 # docs/shopify-theme-store-compliance.md)
 !/assets/
 !/config/

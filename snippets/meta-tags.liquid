@@ -4,7 +4,7 @@
   Shopify auto-injects og:image (+ secure_url/width/height) via content_for_header
   for every page type, using the admin "social sharing image" preference. It does NOT
   inject og:title/type/url/description, og:site_name/locale, or any twitter:* tags, nor
-  any JSON-LD. This snippet supplies exactly those gaps — and deliberately omits og:image
+  any JSON-LD. This snippet supplies exactly those gaps - and deliberately omits og:image
   so the page never carries a duplicate.
 
   Rendered once from layout/theme.liquid <head>.
@@ -71,7 +71,7 @@
 }
 </script>
 
-{%- comment -%} ---- Product (PDP only) — no aggregateRating: ratings are not yet from a real source ---- {%- endcomment -%}
+{%- comment -%} ---- Product (PDP only) - no aggregateRating: ratings are not yet from a real source ---- {%- endcomment -%}
 {%- if request.page_type == 'product' and product -%}
   {%- assign product_currency = cart.currency.iso_code | default: shop.currency -%}
 <script type="application/ld+json">

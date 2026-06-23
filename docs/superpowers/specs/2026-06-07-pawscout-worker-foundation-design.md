@@ -1,11 +1,11 @@
-# PawScout Worker — Multi-Tenant Foundation (Plan 2a) — design
+# PawScout Worker - Multi-Tenant Foundation (Plan 2a) - design
 
 **Date:** 2026-06-07
 **Status:** design (brainstormed, approved 2026-06-07)
 **Companion docs:**
-- `2026-06-07-pawscout-design.md` — the multi-tenant platform vision
-- `2026-06-07-pawscout-search-trigger-design.md` — the search-trigger path (Plan 2b builds this on the 2a foundation)
-- `2026-06-07-pawscout-timing-probe.md` (plan) + `pawscout-probe-report.json` — the validated latency numbers
+- `2026-06-07-pawscout-design.md` - the multi-tenant platform vision
+- `2026-06-07-pawscout-search-trigger-design.md` - the search-trigger path (Plan 2b builds this on the 2a foundation)
+- `2026-06-07-pawscout-timing-probe.md` (plan) + `pawscout-probe-report.json` - the validated latency numbers
 
 ---
 
@@ -17,14 +17,14 @@
 - D1 data model + an envelope-encrypted **credential vault** + a single-path **TenantStore** that enforces per-tenant isolation.
 - A **minimal embedded onboarding console**: connect CJ key, map collections, set quality gates.
 
-**Deliverable:** a merchant can install PawScout, connect their CJ key, map their collections, and configure quality gates — fully working, isolated, encrypted onboarding. *No search trigger or product creation yet.*
+**Deliverable:** a merchant can install PawScout, connect their CJ key, map their collections, and configure quality gates - fully working, isolated, encrypted onboarding. *No search trigger or product creation yet.*
 
 **Explicitly deferred to Plan 2b:** the App Proxy *endpoints*, the CJ `SupplierProvider`/search, the create pipeline, and the theme changes. (The App Proxy is *registered* on the app config in 2a; its routes land in 2b.)
 
 **Decided during brainstorming (2026-06-07):**
 - **Full multi-tenant BYOC from the start**, Active Paw as tenant #1.
-- **Shopify connection = PawScout public app via OAuth** (one app, many installs) — *not* per-merchant Dev-Dashboard credentials. **BYOC narrows to the CJ key**, which is the credential the CJ ToS reasoning ([[cj-tos-byoc]]) actually depends on (each merchant's own CJ account/wallet).
-- **The probe's client-credentials auth was Plan-1-only.** The production Worker uses standard per-shop OAuth, which is what App Proxy + embedded Polaris are built for. (See `shopify-custom-app-client-credentials` memory — that path was the probe's, not the Worker's.)
+- **Shopify connection = PawScout public app via OAuth** (one app, many installs) - *not* per-merchant Dev-Dashboard credentials. **BYOC narrows to the CJ key**, which is the credential the CJ ToS reasoning ([[cj-tos-byoc]]) actually depends on (each merchant's own CJ account/wallet).
+- **The probe's client-credentials auth was Plan-1-only.** The production Worker uses standard per-shop OAuth, which is what App Proxy + embedded Polaris are built for. (See `shopify-custom-app-client-credentials` memory - that path was the probe's, not the Worker's.)
 
 ---
 
@@ -56,7 +56,7 @@
 - **Scopes:** `write_products`, `read_products`, `write_publications`, `read_publications` (write implies read; these cover 2b's create/publish pipeline). Add fulfillment/order scopes only when the fulfillment module is built ([[pawscout-fulfillment]]).
 - **App URL:** the Worker's embedded console route; **embedded = true**.
 - **App Proxy:** registered (subpath prefix `apps`, subpath `pawscout` → the Worker); **endpoints implemented in 2b**.
-- **Webhooks:** `app/uninstalled` (mandatory), plus Shopify's mandatory compliance webhooks (`customers/data_request`, `customers/redact`, `shop/redact`) — answered minimally (PawScout stores no customer PII).
+- **Webhooks:** `app/uninstalled` (mandatory), plus Shopify's mandatory compliance webhooks (`customers/data_request`, `customers/redact`, `shop/redact`) - answered minimally (PawScout stores no customer PII).
 - **Distribution:** custom distribution initially (installed on Active Paw + pilot stores); App Store listing later.
 
 **Install flow**
@@ -114,7 +114,7 @@ CREATE TABLE tenant_config (
 BYOC CJ key **and** the Shopify offline token are encrypted at rest.
 
 - **Master key (KEK):** a 256-bit key in **CF Secrets** (`PAWSCOUT_MASTER_KEY`), imported into WebCrypto at runtime. Never in D1, never logged.
-- **Per-tenant data key (DEK):** generated at install — a random 256-bit AES-GCM key, **wrapped by the KEK** and stored in `tenants.dek_wrapped`.
+- **Per-tenant data key (DEK):** generated at install - a random 256-bit AES-GCM key, **wrapped by the KEK** and stored in `tenants.dek_wrapped`.
 - **Secrets:** each secret (CJ key, Shopify token) encrypted with the tenant DEK using AES-GCM with a fresh random 96-bit IV; stored as `base64(iv) || ':' || base64(ciphertext)`.
 - **Module interface:** `vault.seal(shop, plaintext) → blob` and `vault.open(shop, blob) → plaintext`, internally unwrapping the DEK via the KEK. Decryption happens **only inside the Worker**.
 
@@ -124,9 +124,9 @@ BYOC CJ key **and** the Shopify offline token are encrypted at rest.
 - A credential is stored only **after** a live validation call succeeds (§7).
 - The master key (KEK) and every test KEK must be **exactly 32 bytes** (AES-256-GCM rejects other lengths).
 
-**Hardening backlog (apply before production — surfaced by the 2a security review; greenfield, so no data migration cost):**
-- **Master-key length pre-check** in `Vault.fromMasterKey` — fail with a clear error if the decoded key ≠ 32 bytes (rather than the opaque WebCrypto `DataError`).
-- **AAD binding** — pass Additional Authenticated Data to AES-GCM so each ciphertext is cryptographically bound to its tenant context (`shop` for the DEK wrap, `shop:supplier` for a credential, `shop:token` for the Shopify token). This blocks cross-tenant ciphertext-transplant even if a row were mis-routed. Cheapest to add now, before any real tenant data exists; threads an `aad` arg through `seal`/`open` and their callers.
+**Hardening backlog (apply before production - surfaced by the 2a security review; greenfield, so no data migration cost):**
+- **Master-key length pre-check** in `Vault.fromMasterKey` - fail with a clear error if the decoded key ≠ 32 bytes (rather than the opaque WebCrypto `DataError`).
+- **AAD binding** - pass Additional Authenticated Data to AES-GCM so each ciphertext is cryptographically bound to its tenant context (`shop` for the DEK wrap, `shop:supplier` for a credential, `shop:token` for the Shopify token). This blocks cross-tenant ciphertext-transplant even if a row were mis-routed. Cheapest to add now, before any real tenant data exists; threads an `aad` arg through `seal`/`open` and their callers.
 
 ---
 
@@ -142,10 +142,10 @@ BYOC CJ key **and** the Shopify offline token are encrypted at rest.
 
 Minimal Polaris screens, all behind session-token auth:
 
-1. **Home / status** — install state, whether CJ is connected, config completeness.
-2. **Connect CJ** — paste the CJ API key → Worker calls CJ `getAccessToken` to **validate** → on success, `vault.seal` + store in `supplier_credentials` with `validated_at`; on failure, show the error and **store nothing**.
-3. **Map collections** — fetch the shop's collections via Admin API; let the merchant map each supplier category → a collection handle + its smart-collection tag (`cj-cat-*`). Active Paw's mapping is prefilled.
-4. **Gates** — form for `popularityFloor` (CJ `listedNum`), `priceMin`/`priceMax`, `relevance` strictness, with defaults (`listedNum ≥ 50`, price within the store's observed band, keyword-in-title relevance).
+1. **Home / status** - install state, whether CJ is connected, config completeness.
+2. **Connect CJ** - paste the CJ API key → Worker calls CJ `getAccessToken` to **validate** → on success, `vault.seal` + store in `supplier_credentials` with `validated_at`; on failure, show the error and **store nothing**.
+3. **Map collections** - fetch the shop's collections via Admin API; let the merchant map each supplier category → a collection handle + its smart-collection tag (`cj-cat-*`). Active Paw's mapping is prefilled.
+4. **Gates** - form for `popularityFloor` (CJ `listedNum`), `priceMin`/`priceMax`, `relevance` strictness, with defaults (`listedNum ≥ 50`, price within the store's observed band, keyword-in-title relevance).
 
 The console writes only through TenantStore; it never returns secrets to the client (it shows *"connected ✓"*, never the key).
 
@@ -175,15 +175,15 @@ The console writes only through TenantStore; it never returns secrets to the cli
 
 ## 10. Open decisions
 
-1. **Console hosting** — serve Polaris assets from Workers static assets vs a separate Cloudflare Pages deployment. *Lean: Workers static assets to keep it one deploy.*
-2. **Gating defaults** — exact `listedNum` floor and price band per category (merchant-tunable; defaults proposed in §7).
-3. **DEK rotation policy** — out of scope for 2a; the wrapped-DEK design makes later rotation possible.
-4. **Distribution** — custom distribution now; App Store listing (and Shopify-managed billing) later, which also interacts with the CJ-partnership question ([[cj-tos-byoc]]).
+1. **Console hosting** - serve Polaris assets from Workers static assets vs a separate Cloudflare Pages deployment. *Lean: Workers static assets to keep it one deploy.*
+2. **Gating defaults** - exact `listedNum` floor and price band per category (merchant-tunable; defaults proposed in §7).
+3. **DEK rotation policy** - out of scope for 2a; the wrapped-DEK design makes later rotation possible.
+4. **Distribution** - custom distribution now; App Store listing (and Shopify-managed billing) later, which also interacts with the CJ-partnership question ([[cj-tos-byoc]]).
 
 ---
 
 ## 11. Relationship to other plans
 
-- **2a is the prerequisite for 2b.** 2b adds: App Proxy endpoints (`search-signal`, `search-status`), the CJ `SupplierProvider` (listV2 search — confirmed to carry title/image/price/`listedNum`, so the hot path needs no per-product detail call), quality gating + dedup, the minimal-first create→publish→tag pipeline with async enrich, and the theme progressive-fill changes.
+- **2a is the prerequisite for 2b.** 2b adds: App Proxy endpoints (`search-signal`, `search-status`), the CJ `SupplierProvider` (listV2 search - confirmed to carry title/image/price/`listedNum`, so the hot path needs no per-product detail call), quality gating + dedup, the minimal-first create→publish→tag pipeline with async enrich, and the theme progressive-fill changes.
 - The 2a `tenant_config.gates` and `collection_map` are exactly the inputs 2b's gating and tagging consume.
 - Fulfillment ([[pawscout-fulfillment]]) is a separate, later module; its extra scopes are added to the app at that time, not now.

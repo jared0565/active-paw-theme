@@ -1,15 +1,15 @@
-# Active Paw — Design Improvements Log
+# Active Paw - Design Improvements Log
 
 **Rule:** Every change to the theme that affects aesthetics, UX, or compliance must be logged here before the task is considered done. Entries are append-only and dated.
 
 ---
 
-## Entry 1 — 2026-06-08: Mobile Announcement Bar Marquee
+## Entry 1 - 2026-06-08: Mobile Announcement Bar Marquee
 
 ### What changed
-- `sections/announcement-bar.liquid` — duplicated the 3 announcement items inside `.announcement-track` so the track contains 6 items total. The duplicated set has `aria-hidden="true"` to keep screen readers from double-announcing.
-- `assets/theme.css` — added `@keyframes announcement-marquee` and mobile-only styles under `@media (max-width: 620px)` that convert the 3-column grid into a single-row flex ticker with `animation: announcement-marquee 18s linear infinite`.
-- `assets/theme.css` — under `@media (prefers-reduced-motion: reduce)` the animation is disabled and the track becomes a horizontally scrollable strip (`overflow-x: auto`).
+- `sections/announcement-bar.liquid` - duplicated the 3 announcement items inside `.announcement-track` so the track contains 6 items total. The duplicated set has `aria-hidden="true"` to keep screen readers from double-announcing.
+- `assets/theme.css` - added `@keyframes announcement-marquee` and mobile-only styles under `@media (max-width: 620px)` that convert the 3-column grid into a single-row flex ticker with `animation: announcement-marquee 18s linear infinite`.
+- `assets/theme.css` - under `@media (prefers-reduced-motion: reduce)` the animation is disabled and the track becomes a horizontally scrollable strip (`overflow-x: auto`).
 
 ### Why it changed
 - The original 3-column grid on mobile wrapped each cell's title + body text into 3-4 lines, creating a tall (~70px), cluttered bar that pushed the hero down and felt broken.
@@ -25,8 +25,8 @@
 - `assets/theme.css` (`@keyframes` block added at line ~2219; mobile styles at lines ~2226-2263)
 
 ### Screenshots
-- Before: `announcement-bar-before.png` — tall multi-line wrapped text
-- After: `announcement-marquee-preview.png` — single compact scrolling ticker
+- Before: `announcement-bar-before.png` - tall multi-line wrapped text
+- After: `announcement-marquee-preview.png` - single compact scrolling ticker
 
 ### Shopify Theme Store compliance
 - ✅ No external dependencies
@@ -40,11 +40,11 @@
 
 ---
 
-## Entry 2 — 2026-06-08: Frontend Design Review + Mobile Validation
+## Entry 2 - 2026-06-08: Frontend Design Review + Mobile Validation
 
 ### What changed
-- `docs/frontend-design-review.md` created — comprehensive aesthetic review of the entire theme based on reading all Liquid sections, CSS, JS, and live mobile screenshots.
-- `docs/shopify-theme-store-compliance.md` created — checklist against Shopify's theme development requirements.
+- `docs/frontend-design-review.md` created - comprehensive aesthetic review of the entire theme based on reading all Liquid sections, CSS, JS, and live mobile screenshots.
+- `docs/shopify-theme-store-compliance.md` created - checklist against Shopify's theme development requirements.
 
 ### Why it changed
 - The user asked for a review of the frontend aesthetic design. The review identified 12 priority issues across color, typography, layout, visual hierarchy, component design, mobile UX, and brand identity.
@@ -84,7 +84,7 @@
 
 ---
 
-## Entry 3 — 2026-06-08: Batch Aesthetic Fixes (7 Changes)
+## Entry 3 - 2026-06-08: Batch Aesthetic Fixes (7 Changes)
 
 ### What changed
 
@@ -125,9 +125,9 @@
 - The batch fixes the most visible aesthetic and UX issues on mobile: color clash, filler copy, misleading stock signals, CTA prominence, grid readability, payment crowding, and share-button competition.
 
 ### Files touched
-- `assets/theme.css` — category showcase background, buybox border, stock dot styles, share button sizing, payment icon mobile limit, commerce grid 480px breakpoint
-- `snippets/product-card-commerce.liquid` — default benefit text removed
-- `sections/main-product.liquid` — conditional `is-low-stock` class on stock dot
+- `assets/theme.css` - category showcase background, buybox border, stock dot styles, share button sizing, payment icon mobile limit, commerce grid 480px breakpoint
+- `snippets/product-card-commerce.liquid` - default benefit text removed
+- `sections/main-product.liquid` - conditional `is-low-stock` class on stock dot
 
 ### Screenshots
 - Before/after previews captured via browser injection:
@@ -137,7 +137,7 @@
 ### Shopify Theme Store compliance
 - ✅ Blocker B1 resolved: placeholder "Ad-ready product page..." text removed
 - ✅ Blocker B3 resolved: stock dot color now conditionally orange for low stock
-- ✅ All changes use existing CSS tokens (`--surface`, `--accent`, `--ink`, `--green`) — no hardcoded mystery colors
+- ✅ All changes use existing CSS tokens (`--surface`, `--accent`, `--ink`, `--green`) - no hardcoded mystery colors
 - ✅ No external dependencies
 - ✅ Accessibility: contrast on category showcase headings is now AA-compliant (dark on cream)
 
@@ -147,7 +147,7 @@
 
 ---
 
-## Entry 4 — 2026-06-08: Batch Aesthetic Fixes Part 2 (5 Changes)
+## Entry 4 - 2026-06-08: Batch Aesthetic Fixes Part 2 (5 Changes)
 
 ### What changed
 
@@ -159,10 +159,10 @@
 #### 2. FAQ accordion animation (`assets/theme.css`)
 - Added smooth open/close animation using the modern `::details-content` pseudo-element with `interpolate-size: allow-keywords`.
 - `block-size` transitions from `0` to `auto` over 0.25s ease.
-- Falls back to instant open/close in browsers without support (Safari, older Chrome/Firefox) — no regression.
+- Falls back to instant open/close in browsers without support (Safari, older Chrome/Firefox) - no regression.
 
 #### 3. Differentiate card families (`assets/theme.css`)
-- **Product cards** (`.product-card`, `.commerce-card`): unchanged — retain shadow + hover lift + 8px radius as the interactive standard.
+- **Product cards** (`.product-card`, `.commerce-card`): unchanged - retain shadow + hover lift + 8px radius as the interactive standard.
 - **Info cards** (`.pdp-info-grid article`, `.faq-list details`, `.support-card`): radius reduced to 6px, shadow removed or minimized. Flat, subtle, informational.
 - **Feature/CTA cards** (`.bundle-card`, `.delivery-card`): radius increased to 12px, border removed, filled background retained. Visually distinct from both product and info cards.
 
@@ -186,8 +186,8 @@
 - These 5 items were the remaining medium-priority changes from the design review (Entry 2). They address emotional design (cart empty state), micro-interactions (FAQ animation), component differentiation (card families), typographic hierarchy (bold overuse), and hero readability (contrast + mobile sizing).
 
 ### Files touched
-- `assets/theme.css` — cart drawer empty state styles, FAQ accordion animation, card family radii/shadows, typographic weights, hero overlay and heading sizes
-- `snippets/cart-drawer-contents.liquid` — playful empty-state copy + paw icon SVG
+- `assets/theme.css` - cart drawer empty state styles, FAQ accordion animation, card family radii/shadows, typographic weights, hero overlay and heading sizes
+- `snippets/cart-drawer-contents.liquid` - playful empty-state copy + paw icon SVG
 
 ### Shopify Theme Store compliance
 - ✅ No external dependencies
@@ -197,11 +197,11 @@
 
 ### Graphify sync
 - **Attempted:** `graphify . --update` on 2026-06-08.
-- **Result:** Same as Entry 3 — semantic extraction requires an API key. The code changes are handled by AST extraction without a key; only the updated markdown doc blocks the pipeline. Set `GEMINI_API_KEY` or `GOOGLE_API_KEY` to enable full semantic updates.
+- **Result:** Same as Entry 3 - semantic extraction requires an API key. The code changes are handled by AST extraction without a key; only the updated markdown doc blocks the pipeline. Set `GEMINI_API_KEY` or `GOOGLE_API_KEY` to enable full semantic updates.
 
 ---
 
-## Entry 5 — 2026-06-08: Standardize Spacing System and Max-Width Tokens
+## Entry 5 - 2026-06-08: Standardize Spacing System and Max-Width Tokens
 
 ### What changed
 
@@ -232,11 +232,11 @@
 
 ### Why it changed
 - The theme had 10+ distinct max-width values (1780, 1720, 1420, 1020, 980, 860, 760, 720, 680, 650, 620, 560...) creating a "wandering margin" effect where sections felt disconnected.
-- Section padding was inconsistent: `clamp(48px, 7vw, 92px)` vs `clamp(48px, 8vw, 96px)` vs `clamp(48px, 7vw, 86px)` vs hardcoded values — there was no system.
+- Section padding was inconsistent: `clamp(48px, 7vw, 92px)` vs `clamp(48px, 8vw, 96px)` vs `clamp(48px, 7vw, 86px)` vs hardcoded values - there was no system.
 - By reducing to 3 max-widths and 3 vertical padding sizes, the layout now has predictable rhythm. Every section aligns to the same grid, making the design feel intentional rather than accidental.
 
 ### Files touched
-- `assets/theme.css` — added 8 CSS custom properties to `:root`; replaced ~20 scattered max-width and padding values throughout the file
+- `assets/theme.css` - added 8 CSS custom properties to `:root`; replaced ~20 scattered max-width and padding values throughout the file
 
 ### Shopify Theme Store compliance
 - ✅ CSS custom properties are a standard CSS feature (no polyfills needed)
@@ -245,22 +245,22 @@
 
 ---
 
-## Entry 6 — 2026-06-08: Zero-LLM Incremental Graphify Pipeline
+## Entry 6 - 2026-06-08: Zero-LLM Incremental Graphify Pipeline
 
 ### What changed
-- Created `graphify/` package — standalone, portable CLI for any codebase:
-  - `graphify/incremental.py` — main orchestrator with SHA256 manifest and surgical merge.
-  - `graphify/extractors.py` — deterministic rule-based extractors for Liquid, CSS, JS, Python, Markdown, JSON, and GraphQL.
-  - `graphify/graph.py` — graph merge, conditional Louvain community detection, community consolidation, and HTML/Report generation.
-  - `graphify/cli.py` — argparse CLI with `build` and `serve` commands.
-  - `graphify/__main__.py` — enables `python -m graphify`.
-  - `pyproject.toml` — pip-installable package (`pip install -e .`) registering the `graphify` console script.
+- Created `graphify/` package - standalone, portable CLI for any codebase:
+  - `graphify/incremental.py` - main orchestrator with SHA256 manifest and surgical merge.
+  - `graphify/extractors.py` - deterministic rule-based extractors for Liquid, CSS, JS, Python, Markdown, JSON, and GraphQL.
+  - `graphify/graph.py` - graph merge, conditional Louvain community detection, community consolidation, and HTML/Report generation.
+  - `graphify/cli.py` - argparse CLI with `build` and `serve` commands.
+  - `graphify/__main__.py` - enables `python -m graphify`.
+  - `pyproject.toml` - pip-installable package (`pip install -e .`) registering the `graphify` console script.
 - Key architectural decisions:
-  - **Manifest tracking** (`graphify-out/.graphify_manifest.json`) — only re-extracts files whose hash changed.
-  - **Surgical merge** — removes stale nodes for changed files, injects new ones, preserves the rest.
-  - **Conditional community detection** — only re-runs Louvain if >5% of nodes changed; otherwise assigns new nodes to nearest neighbor community.
-  - **Community consolidation** — merges tiny communities into nearest large neighbor or a catch-all misc bucket.
-  - **Cross-file edges** — JSON templates extract Shopify section references as `includes` edges; Liquid `render`/`section` tags create `renders`/`includes` edges; Python imports create `imports` edges (stdlib filtered); Markdown code spans create `references` edges.
+  - **Manifest tracking** (`graphify-out/.graphify_manifest.json`) - only re-extracts files whose hash changed.
+  - **Surgical merge** - removes stale nodes for changed files, injects new ones, preserves the rest.
+  - **Conditional community detection** - only re-runs Louvain if >5% of nodes changed; otherwise assigns new nodes to nearest neighbor community.
+  - **Community consolidation** - merges tiny communities into nearest large neighbor or a catch-all misc bucket.
+  - **Cross-file edges** - JSON templates extract Shopify section references as `includes` edges; Liquid `render`/`section` tags create `renders`/`includes` edges; Python imports create `imports` edges (stdlib filtered); Markdown code spans create `references` edges.
 
 ### Why it changed
 - The existing `/graphify update` Skill burned **~60,000 tokens per run** by dispatching Claude subagents for every markdown file. For a project with 100+ files, this was unsustainable for daily use.
@@ -290,14 +290,14 @@
 
 ---
 
-## Entry 7 — 2026-06-08: Logo Redesign + Announcement Bar Duplicate Fix
+## Entry 7 - 2026-06-08: Logo Redesign + Announcement Bar Duplicate Fix
 
 ### What changed
-- `assets/active-paw-logo.svg` — redesigned from a simple paw-print icon to a **shopping basket + paw print** icon matching the ad creative style.
+- `assets/active-paw-logo.svg` - redesigned from a simple paw-print icon to a **shopping basket + paw print** icon matching the ad creative style.
   - Dark navy rounded-square background (`#101820`)
   - White basket body with handle and rim
   - Orange paw print (`#f05a28`) centered on the basket
-- `assets/theme.css` — fixed duplicate announcement bar rows on desktop.
+- `assets/theme.css` - fixed duplicate announcement bar rows on desktop.
   - Added `.announcement-track p[aria-hidden="true"] { display: none; }` in base CSS to hide mobile marquee duplicates on desktop.
   - Added override `.announcement-track p[aria-hidden="true"] { display: flex; }` inside `@media (max-width: 620px)` so the seamless marquee loop still works on mobile.
 
@@ -307,7 +307,7 @@
 - The announcement bar was showing 6 items in a 3-column grid (2 rows) because the mobile marquee duplicates were not hidden on desktop.
 
 ### How it was solved
-- **Logo:** Pure SVG with simple shapes (rect, path, ellipse) — no external assets, scales perfectly, matches theme color tokens.
+- **Logo:** Pure SVG with simple shapes (rect, path, ellipse) - no external assets, scales perfectly, matches theme color tokens.
 - **Duplicate fix:** Used CSS `display: none` for `aria-hidden` items on desktop, restoring `display: flex` on mobile where the marquee animation needs the duplicated set for a seamless loop.
 
 ### Files touched
@@ -315,8 +315,8 @@
 - `assets/theme.css` (2 lines added)
 
 ### Screenshots
-- Preview: `logo-preview.html` — 320×320 logo on theme surface background
-- Live: `http://127.0.0.1:9292` — new logo in header, single-row announcement bar
+- Preview: `logo-preview.html` - 320×320 logo on theme surface background
+- Live: `http://127.0.0.1:9292` - new logo in header, single-row announcement bar
 
 ### Shopify Theme Store compliance
 - ✅ No external dependencies
@@ -333,21 +333,21 @@
 
 ---
 
-## Entry 8 — 2026-06-08: Hero Section Refinement
+## Entry 8 - 2026-06-08: Hero Section Refinement
 
 ### What changed
-- `assets/theme.css` — refined the hero section layout and background treatment:
-  - `min-height` reduced from `calc(100vh - 72px)` to `calc(58vh - 72px)` — trims excess bottom margin.
-  - `background-size` changed from `cover` with `center` position to `cover` with `78% 50%` position — shifts the focal point rightward so pets are visible at a comfortable scale without cropping.
-  - Removed artificial `background-color: #c45a1c` — the image's own warm orange left edge now extends naturally across the left side.
+- `assets/theme.css` - refined the hero section layout and background treatment:
+  - `min-height` reduced from `calc(100vh - 72px)` to `calc(58vh - 72px)` - trims excess bottom margin.
+  - `background-size` changed from `cover` with `center` position to `cover` with `78% 50%` position - shifts the focal point rightward so pets are visible at a comfortable scale without cropping.
+  - Removed artificial `background-color: #c45a1c` - the image's own warm orange left edge now extends naturally across the left side.
   - Softened `::before` gradient overlay (`0.45 → 0.25`) to let the image's natural tones show through while keeping text readable.
-  - Grid columns tightened from `0.92fr / 1.08fr` to `1fr / 0.65fr` — brings text and image closer together.
+  - Grid columns tightened from `0.92fr / 1.08fr` to `1fr / 0.65fr` - brings text and image closer together.
   - `.hero-background-spacer` min-height reduced from `clamp(460px, 52vw, 660px)` to `clamp(220px, 26vw, 340px)`.
 
 ### Why it changed
 - The original hero used `background-size: cover` with `center` positioning, which made the pets enormous and cropped the dog's head.
 - Previous attempts to fix this with `contain` + `background-color` created an abrupt artificial edge on the left.
-- The image itself has a warm orange left half — using that as the natural text canvas is cleaner than any CSS overlay.
+- The image itself has a warm orange left half - using that as the natural text canvas is cleaner than any CSS overlay.
 
 ### How it was solved
 - **Use the image's own composition:** The ad creative image has a smooth orange→beige→pet transition built in. By positioning the background at `78% 50%` with `cover`, the left side naturally fills with the image's warm tones while the pets sit comfortably on the right.
@@ -362,7 +362,7 @@
 | Pet size | Giant, head cropped | Smaller, fully visible |
 | Bottom margin | ~104px empty | ~32px, tight |
 | Left side | Dark muddy gradient | Image's natural warm orange |
-| Color edge | — | Seamless (native to image) |
+| Color edge | - | Seamless (native to image) |
 | Text | Over dark area | Over image's natural orange |
 | Column gap | Wide | Tighter |
 
@@ -372,21 +372,21 @@
 
 ---
 
-## Entry 9 — 2026-06-08: Hero Full-Image Display (No Crop)
+## Entry 9 - 2026-06-08: Hero Full-Image Display (No Crop)
 
 ### What changed
-- `assets/theme.css` — changed `.hero-marketplace` background technique from `cover` to full-height containment:
+- `assets/theme.css` - changed `.hero-marketplace` background technique from `cover` to full-height containment:
   - `background-size: cover` → `100% 100%, auto 100%` (first layer = gradient overlay, second = hero image)
-  - `background-position: 78% 50%` → `0 0, right center` — aligns the full image to the right side of the section
+  - `background-position: 78% 50%` → `0 0, right center` - aligns the full image to the right side of the section
   - Added `background-repeat: no-repeat`
-  - Added `background-color: #ff6a1a` — matches the image's native warm orange left edge so the empty space left of the image blends seamlessly
-  - Added `gap: clamp(16px, 2.5vw, 40px)` — brings the text and image columns closer (down from `clamp(28px, 5vw, 72px)`)
+  - Added `background-color: #ff6a1a` - matches the image's native warm orange left edge so the empty space left of the image blends seamlessly
+  - Added `gap: clamp(16px, 2.5vw, 40px)` - brings the text and image columns closer (down from `clamp(28px, 5vw, 72px)`)
   - Added `display: grid` explicitly to `.hero-marketplace` for clarity
-- `assets/theme.css` — mobile breakpoint updated `background-position: 63% center` → `0 0, 63% center` to match the multi-layer background syntax.
+- `assets/theme.css` - mobile breakpoint updated `background-position: 63% center` → `0 0, 63% center` to match the multi-layer background syntax.
 
 ### Why it changed
-- Entry 8 used `background-size: cover` with `78% 50%` positioning. At wide PC resolutions (1920×1080), the container aspect ratio (~3.5:1) was much wider than the image (~1.94:1), so `cover` still zoomed in and cropped the image — the dog appeared oversized and parts of the scene were lost.
-- The user explicitly asked for "the original whole image surface, just shrinked" — meaning zero cropping, full scene visible, pets smaller.
+- Entry 8 used `background-size: cover` with `78% 50%` positioning. At wide PC resolutions (1920×1080), the container aspect ratio (~3.5:1) was much wider than the image (~1.94:1), so `cover` still zoomed in and cropped the image - the dog appeared oversized and parts of the scene were lost.
+- The user explicitly asked for "the original whole image surface, just shrinked" - meaning zero cropping, full scene visible, pets smaller.
 - Previous attempts with `contain` + a mismatched `background-color` created an abrupt artificial edge. This time the background color was sampled directly from the image's left edge (`#ff6a1a` / `#fd5f03` range) so the transition is invisible.
 
 ### How it was solved
@@ -405,7 +405,7 @@
 | Cat | Visible but zoomed | Fully visible, natural size |
 | Bottom products | Partially cropped | Fully visible (brush, towel, ball, cup) |
 | Image surface | Cropped by `cover` | Entire 1744×901 image shown |
-| Left side | Image's own orange | Seamless — image orange matches CSS orange |
+| Left side | Image's own orange | Seamless - image orange matches CSS orange |
 | Column gap | ~72px at 1920px | ~40px at 1920px |
 | PC (1920×1080) | Pets oversized | Pets appropriately sized |
 | Tablet (1280×900) | Good | Good |
@@ -423,10 +423,10 @@
 
 ---
 
-## Entry 10 — 2026-06-08: Remove Support Icon from Header
+## Entry 10 - 2026-06-08: Remove Support Icon from Header
 
 ### What changed
-- `sections/site-header.liquid` — removed the `.header-action-support` anchor block (lines 83–92) containing the headset icon and "Support / Help centre" label.
+- `sections/site-header.liquid` - removed the `.header-action-support` anchor block (lines 83–92) containing the headset icon and "Support / Help centre" label.
 
 ### Why it changed
 - The Support icon duplicated functionality already available via the Contact button (`.header-contact-trigger`, lines 73–81) and the footer links.
@@ -445,11 +445,11 @@
 
 ---
 
-## Entry 11 — 2026-06-08: Tighten Gap Between Trust Bar and Category Showcase
+## Entry 11 - 2026-06-08: Tighten Gap Between Trust Bar and Category Showcase
 
 ### What changed
-- `assets/theme.css` — `.trust-bar` vertical padding reduced from `16px 0` → `6px 0`.
-- `assets/theme.css` — `.category-showcase` top padding reduced from `var(--section-pad-small)` (`clamp(28px, 5vw, 58px)`) → `clamp(10px, 2vw, 18px)`.
+- `assets/theme.css` - `.trust-bar` vertical padding reduced from `16px 0` → `6px 0`.
+- `assets/theme.css` - `.category-showcase` top padding reduced from `var(--section-pad-small)` (`clamp(28px, 5vw, 58px)`) → `clamp(10px, 2vw, 18px)`.
 
 ### Why it changed
 - The scrolling trust bar (`.trust-bar`) and the first product category section (`.category-showcase`) felt visually disconnected due to excessive combined padding (~44–74px gap).
@@ -468,14 +468,14 @@
 
 ---
 
-## Entry 12 — 2026-06-08: Remaining Theme Polish Batch (Footer, FAQ, Cart Drawer, Product Card Uniformity)
+## Entry 12 - 2026-06-08: Remaining Theme Polish Batch (Footer, FAQ, Cart Drawer, Product Card Uniformity)
 
 ### What changed
 
 #### 1. Footer mobile layout (`assets/theme.css`)
-- `.footer-nav` on mobile (≤620px): changed from `grid-template-columns: 1fr` (single dense column) to `repeat(2, minmax(0, 1fr))` — a 2-column grid that spreads links across the width, reducing vertical scrolling and the "corporate dense list" feel.
+- `.footer-nav` on mobile (≤620px): changed from `grid-template-columns: 1fr` (single dense column) to `repeat(2, minmax(0, 1fr))` - a 2-column grid that spreads links across the width, reducing vertical scrolling and the "corporate dense list" feel.
 - `.footer-nav div` gap reduced from `9px` to `6px` on mobile for tighter grouping.
-- `.footer-brand h2` reduced from `clamp(30px, 3vw, 44px)` to `clamp(24px, 5vw, 30px)` on mobile — less overwhelming at the bottom of the page.
+- `.footer-brand h2` reduced from `clamp(30px, 3vw, 44px)` to `clamp(24px, 5vw, 30px)` on mobile - less overwhelming at the bottom of the page.
 - `.footer-trust-row span` badges: padding reduced from `7px 10px` to `5px 8px`, font-size from `12px` to `11px` on mobile.
 - `.footer-bottom` gap tightened to `6px`, padding-top to `14px` for a more compact finish.
 
@@ -491,10 +491,10 @@
 - Panel width capped at `380px` instead of `420px` on mobile for better screen usage.
 
 #### 4. Product card uniformity (`sections/main-collection.liquid` + `snippets/demo-product-card.liquid` + `assets/theme.css`)
-- **Collection page** (`main-collection.liquid`): replaced inline `.product-card` markup with `{% render 'product-card-commerce', product: product %}` — collection cards now show the same rich content as homepage cards (image, badge, rating, title, benefit, price, footer).
+- **Collection page** (`main-collection.liquid`): replaced inline `.product-card` markup with `{% render 'product-card-commerce', product: product %}` - collection cards now show the same rich content as homepage cards (image, badge, rating, title, benefit, price, footer).
 - **Demo cards** (`demo-product-card.liquid`): completely rewritten to match `product-card-commerce.liquid` structure exactly, using `.commerce-card` classes. Demo cards (empty collections + demo grid) now look identical to real product cards.
-- **Grid alignment**: `.product-grid` breakpoints now match `.commerce-grid` exactly — both use 4/2/2/1 column progression across breakpoints with identical gaps.
-- **Purchase action as universal default** (`snippets/product-card-commerce.liquid`): changed `show_purchase_action` default from `false` to `true`. Every product card now includes the conversion action ("Add to cart" for single-variant, "Choose options" for multi-variant, "Sold out" when unavailable) — previously only search results had this.
+- **Grid alignment**: `.product-grid` breakpoints now match `.commerce-grid` exactly - both use 4/2/2/1 column progression across breakpoints with identical gaps.
+- **Purchase action as universal default** (`snippets/product-card-commerce.liquid`): changed `show_purchase_action` default from `false` to `true`. Every product card now includes the conversion action ("Add to cart" for single-variant, "Choose options" for multi-variant, "Sold out" when unavailable) - previously only search results had this.
 - **Demo cards** (`snippets/demo-product-card.liquid`): added a "Add to cart" CTA button below the footer so demo cards match the full commerce-card structure.
 - **Search results** (`sections/main-search.liquid`): kept `show_purchase_action: true` on both main results and offer grids.
 
@@ -506,11 +506,11 @@
 - Product cards had diverged between homepage (commerce-card) and collection page (simple product-card), creating an inconsistent shopping experience.
 
 ### Files touched
-- `assets/theme.css` — footer nav grid, footer heading sizes, trust row badges, FAQ heading, support card padding, cart drawer padding, panel width
-- `sections/main-collection.liquid` — unified product card rendering
-- `sections/main-search.liquid` — kept `show_purchase_action: true` on search + offer grids
-- `snippets/product-card-commerce.liquid` — changed `show_purchase_action` default from `false` to `true`
-- `snippets/demo-product-card.liquid` — rewritten to match commerce-card markup, added CTA button
+- `assets/theme.css` - footer nav grid, footer heading sizes, trust row badges, FAQ heading, support card padding, cart drawer padding, panel width
+- `sections/main-collection.liquid` - unified product card rendering
+- `sections/main-search.liquid` - kept `show_purchase_action: true` on search + offer grids
+- `snippets/product-card-commerce.liquid` - changed `show_purchase_action` default from `false` to `true`
+- `snippets/demo-product-card.liquid` - rewritten to match commerce-card markup, added CTA button
 
 ### Shopify Theme Store compliance
 - ✅ No external dependencies
@@ -523,7 +523,7 @@
 
 ---
 
-## Entry 13 — 2026-06-08: Title-Price Gap + Oversized Heading Audit + Hero Layout
+## Entry 13 - 2026-06-08: Title-Price Gap + Oversized Heading Audit + Hero Layout
 
 ### What changed
 
@@ -538,13 +538,13 @@
 - `.ad-pdp-buybox h1`: `clamp(42px, 5vw, 76px)` → `clamp(24px, 2.8vw, 36px)`.
 
 #### 3. Hero layout refinement (`assets/theme.css`)
-- `.hero-marketplace` `padding-left` added: `clamp(28px, 5vw, 72px)` — pushes content inward from left edge.
-- `.hero-marketplace h1` max-width reduced from `760px` to `520px` — forces the title "Smart Pet Finds for Grooming, Play & Walks" to break into 3 lines.
+- `.hero-marketplace` `padding-left` added: `clamp(28px, 5vw, 72px)` - pushes content inward from left edge.
+- `.hero-marketplace h1` max-width reduced from `760px` to `520px` - forces the title "Smart Pet Finds for Grooming, Play & Walks" to break into 3 lines.
 - `.hero-marketplace-copy` max-width matched to `520px` for alignment.
 
 ### Why it changed
 - The gap between product title and price created a stretched, disconnected feel when benefit text was empty.
-- The hero title at 104px was the biggest headline in the entire theme — disproportionate to the rest of the design.
+- The hero title at 104px was the biggest headline in the entire theme - disproportionate to the rest of the design.
 - The ad-PDP buybox title at 76px was oversized for a product name inside a card.
 - The hero title sat too close to the left edge and ran as a single long line; adding left margin and constraining width improves readability and visual balance.
 
@@ -561,24 +561,24 @@
 
 ---
 
-## Entry 14 — 2026-06-09: Graphify Performance Fix + TF-IDF Semantic Overlay
+## Entry 14 - 2026-06-09: Graphify Performance Fix + TF-IDF Semantic Overlay
 
 ### What changed
-- `graphify/extractors.py` (and the `scripts/graphify_extractors.py` duplicate) — replaced the O(n²) `_find_enclosing_function` (it re-walked the whole AST per call node) with a single-pass child→parent map, and collapsed three full tree-walks (parent-map + imports + calls) into one. Output is byte-identical.
-- `graphify/semantic.py` (new) — pure, stdlib-only TF-IDF similarity layer producing additive `semantically_similar_to` edges between lexically-similar files. 0 LLM tokens, offline, deterministic.
-- `graphify/incremental.py`, `graphify/cli.py` — new opt-in `--semantic` / `--semantic-threshold` / `--semantic-top-n` flags; overlay injected *after* community detection (never influences clustering).
-- `graphify/graph.py` — "Cross-cutting semantic links" section in `GRAPH_REPORT.md` (bucketed cross-area vs. same-area, per-file diversity cap) + dashed-amber styling for semantic edges in `graph.html`.
-- `tests/test_semantic.py` (new) — 9 unit tests for the TF-IDF layer.
+- `graphify/extractors.py` (and the `scripts/graphify_extractors.py` duplicate) - replaced the O(n²) `_find_enclosing_function` (it re-walked the whole AST per call node) with a single-pass child→parent map, and collapsed three full tree-walks (parent-map + imports + calls) into one. Output is byte-identical.
+- `graphify/semantic.py` (new) - pure, stdlib-only TF-IDF similarity layer producing additive `semantically_similar_to` edges between lexically-similar files. 0 LLM tokens, offline, deterministic.
+- `graphify/incremental.py`, `graphify/cli.py` - new opt-in `--semantic` / `--semantic-threshold` / `--semantic-top-n` flags; overlay injected *after* community detection (never influences clustering).
+- `graphify/graph.py` - "Cross-cutting semantic links" section in `GRAPH_REPORT.md` (bucketed cross-area vs. same-area, per-file diversity cap) + dashed-amber styling for semantic edges in `graph.html`.
+- `tests/test_semantic.py` (new) - 9 unit tests for the TF-IDF layer.
 
 ### Why it changed
 - **Performance:** the docs claimed "<10ms per file" but the Python extractor took ~300ms on a 10 KB file (quadratic). Verified empirically, then fixed.
-- **Accuracy/recall:** the zero-LLM build has near-zero cross-file semantic recall (it only sees structural relationships). The overlay recovers *some* of that — at the same ~0 token cost as the original zero-LLM build, far below the LLM Graphify's ~42k/run — without sacrificing the structural truth the coding workflow relies on.
+- **Accuracy/recall:** the zero-LLM build has near-zero cross-file semantic recall (it only sees structural relationships). The overlay recovers *some* of that - at the same ~0 token cost as the original zero-LLM build, far below the LLM Graphify's ~42k/run - without sacrificing the structural truth the coding workflow relies on.
 
 ### How it was solved
 - Parent-map lookup is O(1) per call; verified identical `calls` edges across all 29 Python files (0 mismatches). `incremental.py` 299ms→5ms (~60×).
 - Overlay is strictly additive: a plain `build` adds 0 semantic edges; structural edge count is unchanged (1106) whether or not `--semantic` is passed. Decoupled from Louvain so the community map is never reshuffled by lexical noise.
 - Calibrated defaults (threshold 0.12, top_n 4) so the motivating cross-file link (`import-cj-category-products.py` ↔ `2026-06-08-pawscout-collection-mapping-design.md`) is recovered as a graph edge (cosine 0.245).
-- **Honest limitation documented:** TF-IDF recovers that files are *related* but cannot rank which link is *important* — reasoning-grade conflict detection still needs an LLM pass. See `docs/graphify-documentation.md`.
+- **Honest limitation documented:** TF-IDF recovers that files are *related* but cannot rank which link is *important* - reasoning-grade conflict detection still needs an LLM pass. See `docs/graphify-documentation.md`.
 
 ### Files touched
 - `graphify/semantic.py` (new), `graphify/extractors.py`, `graphify/incremental.py`, `graphify/cli.py`, `graphify/graph.py`, `scripts/graphify_extractors.py`, `tests/test_semantic.py`, `docs/graphify-documentation.md`

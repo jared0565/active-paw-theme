@@ -2,7 +2,7 @@
  *
  * 1) Search backfill: when the store answers a search with fewer than the grid
  *    cap (12), fetch gated supplier candidates via the Shopify App Proxy
- *    (/apps/pawscout/*, HMAC-signed by Shopify — never call the worker domain
+ *    (/apps/pawscout/*, HMAC-signed by Shopify - never call the worker domain
  *    directly) and append "ghost" cards. Ghost products do NOT exist in the
  *    store yet.
  * 2) Preview: clicking a ghost card opens an instant preview built from cached
@@ -16,7 +16,7 @@
 
   const PROXY = '/apps/pawscout';
   // Merchant-approved supplier framing: backfill ONLY a thin native grid
-  // (< 4 real matches) and never show more than 3 ghost cards — supplement,
+  // (< 4 real matches) and never show more than 3 ghost cards - supplement,
   // never flood. Mirrors the Stage-1 Liquid thin-gate/cap in main-search.liquid.
   const SUPPLIER_THIN_MAX = 4;
   const SUPPLIER_LIMIT = 3;
@@ -95,7 +95,7 @@
     if (!host) return;
     const terms = host.getAttribute('data-terms') || '';
     const have = parseInt(host.getAttribute('data-have') || '0', 10) || 0;
-    const exclude = host.getAttribute('data-shown-pids') || ''; // pids already on the page — never duplicate
+    const exclude = host.getAttribute('data-shown-pids') || ''; // pids already on the page - never duplicate
     if (!terms || have >= SUPPLIER_THIN_MAX) return;
 
     proxyGet('/search', { q: terms, have: String(have), limit: String(SUPPLIER_LIMIT), exclude: exclude })
@@ -114,7 +114,7 @@
         }
         r.products.forEach((p) => grid.appendChild(buildGhostCard(p)));
       })
-      .catch(() => { /* backfill is additive — never break the search page */ });
+      .catch(() => { /* backfill is additive - never break the search page */ });
   };
 
   /* ---------- ghost preview ---------- */
@@ -201,7 +201,7 @@
           if (r && r.ok && r.state === 'imported' && r.url) { activateCta(btn, r.url); return; }
           if (r && r.ok && r.state === 'failed') { btn.textContent = 'Currently unavailable'; return; }
           if (polls < POLL_MAX) setTimeout(poll, POLL_MS);
-          else btn.textContent = 'Taking longer than usual — check back shortly';
+          else btn.textContent = 'Taking longer than usual - check back shortly';
         })
         .catch(() => { if (polls < POLL_MAX) setTimeout(poll, POLL_MS); });
     };
@@ -336,7 +336,7 @@
     if (pdpRow) fillAddonContainer(pdpRow, 3);
 
     // Cart drawer nudge: the drawer content is server-re-rendered on every
-    // cart change, wiping our cards — observe and refill.
+    // cart change, wiping our cards - observe and refill.
     const drawerContent = document.querySelector('[data-cart-drawer-content]');
     if (drawerContent) {
       const refill = () => {

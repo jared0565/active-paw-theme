@@ -1,9 +1,9 @@
-# Graphify — Zero-LLM Incremental Knowledge Graph Builder
+# Graphify - Zero-LLM Incremental Knowledge Graph Builder
 
 Graphify scans any codebase and builds an interactive, explorable knowledge graph without calling a single LLM. It is deterministic, fast (~1s for a single-file change), and produces two primary artifacts:
 
-1. **`graph.html`** — an interactive D3 force-directed graph you open in a browser
-2. **`GRAPH_REPORT.md`** — a Markdown summary of communities, node counts, and file clusters
+1. **`graph.html`** - an interactive D3 force-directed graph you open in a browser
+2. **`GRAPH_REPORT.md`** - a Markdown summary of communities, node counts, and file clusters
 
 ## Installation
 
@@ -68,7 +68,7 @@ python -m graphify build .          # via module invocation
 
 By default graphify only records relationships it can see *structurally* (a heading contains a sub-heading, a file imports a module, a doc mentions a file in backticks). It has no way to notice that two files are *about the same thing* when neither references the other.
 
-`--semantic` adds a low-cost recall layer: it computes a TF-IDF vector over each file's full text (docs + source — `.md/.py/.js/.css/.liquid`; data/config JSON is excluded as noise) and links the most lexically-similar files with `semantically_similar_to` edges. This is implemented in `graphify/semantic.py` — pure Python, **0 LLM tokens, fully offline, deterministic**.
+`--semantic` adds a low-cost recall layer: it computes a TF-IDF vector over each file's full text (docs + source - `.md/.py/.js/.css/.liquid`; data/config JSON is excluded as noise) and links the most lexically-similar files with `semantically_similar_to` edges. This is implemented in `graphify/semantic.py` - pure Python, **0 LLM tokens, fully offline, deterministic**.
 
 Design guarantees:
 - **Additive and opt-in.** Without the flag, output is unchanged. The overlay only *adds* `semantically_similar_to` edges; it never touches `contains`/`imports`/`calls`.
@@ -76,9 +76,9 @@ Design guarantees:
 - **Sparse by construction.** `--semantic-top-n` caps links per file; `--semantic-threshold` filters weak matches. Defaults yield ≈2–3 edges/file.
 - **Refreshed only when requested.** A plain `build` leaves an existing overlay untouched; re-run with `--semantic` to recompute it.
 
-**Honest limitation — similarity is not reasoning.** This recovers that two files are *related* (e.g. a CJ-import script and the collection-mapping design doc both discuss `ensure_collections`/`ruleSet`/`cj-cat`). It will surface that link as an edge in `graph.json` (searchable in `graph.html`), but it **cannot rank it as the *important* one** — a genuinely critical cross-file conflict and an incidental vocabulary overlap can score the same. Reasoning-grade conflict detection still needs an LLM pass. Use this layer for *discovery hints*, not as a substitute for that judgment.
+**Honest limitation - similarity is not reasoning.** This recovers that two files are *related* (e.g. a CJ-import script and the collection-mapping design doc both discuss `ensure_collections`/`ruleSet`/`cj-cat`). It will surface that link as an edge in `graph.json` (searchable in `graph.html`), but it **cannot rank it as the *important* one** - a genuinely critical cross-file conflict and an incidental vocabulary overlap can score the same. Reasoning-grade conflict detection still needs an LLM pass. Use this layer for *discovery hints*, not as a substitute for that judgment.
 
-Cost note: pairwise cosine is O(N²) in the number of files in the semantic corpus — negligible for hundreds of files; revisit (inverted index) for thousands.
+Cost note: pairwise cosine is O(N²) in the number of files in the semantic corpus - negligible for hundreds of files; revisit (inverted index) for thousands.
 
 ### `graphify serve [PATH]`
 
@@ -106,17 +106,17 @@ Graphify has four core modules:
 
 ### The Incremental Pipeline (`incremental.py`)
 
-1. **Discover** — walk the project root for all files matching registered extensions (`EXTRACTORS` keys).
-2. **Skip** — ignore `.git`, `node_modules`, `__pycache__`, `*.tmp`, `*.log`, `dist`, `build`, and anything starting with `.`.
-3. **Hash & Diff** — compare SHA256 of every file against `.graphify_manifest.json`. Only changed files are re-extracted.
-4. **Surgical Remove** — for each changed file, delete all nodes whose `source_file` matches that file.
-5. **Extract** — run the file-type-specific extractor to get `(nodes, edges, hyperedges)`.
-6. **Inject** — add new nodes/edges into the existing NetworkX graph, deduping by `id` and `(source, target, relation)`.
-7. **Prune Orphans** — remove code-type nodes that have zero edges (usually stale imports from removed files).
-8. **Community Detection** — run Louvain only if >5% of the graph changed, a bridge node changed, or this is a cold start. Otherwise assign new nodes to their neighbors' communities.
-9. **Consolidate** — merge communities smaller than 10 nodes into larger neighbors or a catch-all "misc" bucket.
-10. **Label** — auto-name communities from dominant file prefixes (e.g., `sections/` → "Theme Sections", `docs/` → "Docs").
-11. **Emit** — write `graph.json`, `graph.html`, `GRAPH_REPORT.md`, and update the manifest.
+1. **Discover** - walk the project root for all files matching registered extensions (`EXTRACTORS` keys).
+2. **Skip** - ignore `.git`, `node_modules`, `__pycache__`, `*.tmp`, `*.log`, `dist`, `build`, and anything starting with `.`.
+3. **Hash & Diff** - compare SHA256 of every file against `.graphify_manifest.json`. Only changed files are re-extracted.
+4. **Surgical Remove** - for each changed file, delete all nodes whose `source_file` matches that file.
+5. **Extract** - run the file-type-specific extractor to get `(nodes, edges, hyperedges)`.
+6. **Inject** - add new nodes/edges into the existing NetworkX graph, deduping by `id` and `(source, target, relation)`.
+7. **Prune Orphans** - remove code-type nodes that have zero edges (usually stale imports from removed files).
+8. **Community Detection** - run Louvain only if >5% of the graph changed, a bridge node changed, or this is a cold start. Otherwise assign new nodes to their neighbors' communities.
+9. **Consolidate** - merge communities smaller than 10 nodes into larger neighbors or a catch-all "misc" bucket.
+10. **Label** - auto-name communities from dominant file prefixes (e.g., `sections/` → "Theme Sections", `docs/` → "Docs").
+11. **Emit** - write `graph.json`, `graph.html`, `GRAPH_REPORT.md`, and update the manifest.
 
 ### Extractors (`extractors.py`)
 
@@ -129,7 +129,7 @@ Every extractor returns a 3-tuple: `(nodes, edges, hyperedges)`.
 | **CSS (`.css`)** | Selectors (as `concept` nodes), `@media` / `@keyframes` blocks, CSS custom properties (`--var`) | `contains`, `in_media`, `in_keyframes`, `custom_property` |
 | **Liquid/JSON (`.liquid`, `.json`)** | Block names, section settings, schema definitions, nested keys | `contains`, `configures` |
 
-All extraction is pure regex/AST. No LLM. A typical file (<10 KB) extracts in well under 1ms; the largest files in a repo (tens of KB) take ~10–15ms, dominated by Python's own `ast.parse`. There are no quadratic hot paths — Python call-graph extraction uses a single-pass child→parent map, so cost scales linearly with file size.
+All extraction is pure regex/AST. No LLM. A typical file (<10 KB) extracts in well under 1ms; the largest files in a repo (tens of KB) take ~10–15ms, dominated by Python's own `ast.parse`. There are no quadratic hot paths - Python call-graph extraction uses a single-pass child→parent map, so cost scales linearly with file size.
 
 #### Adding a new extractor
 
@@ -164,24 +164,24 @@ A quick proxy for "how much does this node connect different communities?" Compu
 
 A self-contained D3 v7 force-directed graph with:
 - **Zoom & pan**
-- **Search box** — filters nodes/links by label or ID
-- **Community legend** — click a community to isolate it
-- **Hover tooltips** — shows label, file type, source file, community ID
-- **Node sizing** — `rationale` nodes (H1/H2) are largest, `concept` next, code nodes smallest
+- **Search box** - filters nodes/links by label or ID
+- **Community legend** - click a community to isolate it
+- **Hover tooltips** - shows label, file type, source file, community ID
+- **Node sizing** - `rationale` nodes (H1/H2) are largest, `concept` next, code nodes smallest
 
 The file has zero external dependencies beyond the D3 CDN script.
 
 ## Reading the Outputs
 
-### `graph.html` — Interactive Graph
+### `graph.html` - Interactive Graph
 
 1. Open it directly in a browser, or run `graphify serve .`
 2. Nodes are colored by community.
 3. Search for any file name, function, heading, or CSS class.
-4. Click a community in the sidebar to fade out everything else — this is the fastest way to see "what lives together."
+4. Click a community in the sidebar to fade out everything else - this is the fastest way to see "what lives together."
 5. Drag nodes to reposition. Scroll to zoom.
 
-### `GRAPH_REPORT.md` — Text Report
+### `GRAPH_REPORT.md` - Text Report
 
 Contains:
 - Total nodes, edges, and community count

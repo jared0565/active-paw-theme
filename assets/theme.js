@@ -359,7 +359,7 @@ const closeCartDrawer = () => {
 };
 
 // `html` is first-party markup from Shopify's same-origin Section Rendering API
-// (the cart-drawer section, server-rendered via Liquid) — the same trust level as the
+// (the cart-drawer section, server-rendered via Liquid) - the same trust level as the
 // page itself, not third-party/user input. We parse it in an inert document and only
 // ever read back the [data-cart-drawer-content] payload. This matches Shopify Dawn's
 // getSectionInnerHTML pattern; textContent can't be used as we must inject rendered markup.
@@ -558,7 +558,7 @@ const closeCollectionsMenu = () => {
     .querySelectorAll('[data-collections-trigger][aria-expanded="true"]')
     .forEach((trigger) => trigger.setAttribute('aria-expanded', 'false'));
 };
-// Header share dropdown — click-only (it holds interactive controls), mutually
+// Header share dropdown - click-only (it holds interactive controls), mutually
 // exclusive with the collections menu, and closed by an outside click or Esc.
 const closeShareMenu = () => {
   document
@@ -698,7 +698,7 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
-// After the contact form posts, Shopify reloads with the result rendered in the modal —
+// After the contact form posts, Shopify reloads with the result rendered in the modal -
 // auto-open it so the visitor sees the success/error without hunting for it.
 if (getContactModal() && getContactModal().querySelector('[data-contact-result]')) {
   openContactModal();

@@ -1,11 +1,11 @@
 # Shopify `theme dev` troubleshooting (Windows + Claude Code)
 
 A reference for recurring issues hit while running `shopify theme dev` to verify theme changes
-locally. **Read the "Fast path" for each issue and act — do not re-diagnose from scratch.**
+locally. **Read the "Fast path" for each issue and act - do not re-diagnose from scratch.**
 
 ---
 
-## Issue 1 — "Failed to Upload Theme Files" / `*.tmp.<pid>.<hash>` sync errors
+## Issue 1 - "Failed to Upload Theme Files" / `*.tmp.<pid>.<hash>` sync errors
 
 ### Symptom
 - Pages served by the dev server return **HTTP 500** and/or the page `<title>` is
@@ -19,7 +19,7 @@ locally. **Read the "Fast path" for each issue and act — do not re-diagnose fr
 - It appears **right after editing a theme file** (via Claude Code's Edit/Write).
 - `Glob **/*.tmp.*` finds **nothing on disk** (the temp files are transient).
 
-### Root cause (confirmed — do not re-investigate)
+### Root cause (confirmed - do not re-investigate)
 Claude Code's Edit/Write performs **atomic writes** via a temp file named
 `<path>.tmp.<pid>.<hash>`, then renames it to the real file. The `shopify theme dev` **file
 watcher** catches that temp file in the split second before the rename and tries to sync it to
@@ -28,13 +28,13 @@ characters" / "must have a .liquid extension"), which **wedges the sync** and ma
 server serve its error overlay.
 
 - The `<pid>` in the temp filename is the **`claude.exe`** process (verified:
-  `Get-Process -Id <pid>` → `claude.exe`). **NEVER kill that PID — it is Claude Code itself.**
+  `Get-Process -Id <pid>` → `claude.exe`). **NEVER kill that PID - it is Claude Code itself.**
 - **Your real edit still syncs fine.** The same log shows `Synced » update sections/<file>.liquid`
   next to the temp-file errors. The wedge is the leftover failed temp upload, not your change.
 
-### Fast path (resolution — ~2 commands, minimal tokens)
+### Fast path (resolution - ~2 commands, minimal tokens)
 1. Finish **all** edits first (don't edit again until after verifying).
-2. Restart the dev server — kill **only** the `node` process on port 9292 (never `claude.exe`):
+2. Restart the dev server - kill **only** the `node` process on port 9292 (never `claude.exe`):
    ```powershell
    $c = Get-NetTCPConnection -LocalPort 9292 -State Listen -ErrorAction SilentlyContinue
    if ($c) { $p = Get-Process -Id $c.OwningProcess -ErrorAction SilentlyContinue
@@ -50,17 +50,17 @@ server serve its error overlay.
    ```
    A real `<title>` (no "Failed to Upload") = healthy.
 
-### Prevention (the real fix — saves the most tokens)
+### Prevention (the real fix - saves the most tokens)
 **Batch every edit, then start/restart `theme dev` ONCE for verification.** Do not edit files
 while the watcher is running. Workflow:
 1. Make all Liquid/JS/CSS edits.
-2. `shopify theme check` (catches syntax/Liquid-schema only — see Issue 3).
+2. `shopify theme check` (catches syntax/Liquid-schema only - see Issue 3).
 3. Start `theme dev`, verify in browser.
 4. If another edit is needed → edit → **restart** `theme dev` (one restart per edit-batch).
 
 ---
 
-## Issue 2 — `theme dev` asks for device-code login even though `theme list` worked earlier
+## Issue 2 - `theme dev` asks for device-code login even though `theme list` worked earlier
 
 ### Symptom
 ```
@@ -74,13 +74,13 @@ The CLI session token **expired** between commands. A cached token can satisfy `
 and then lapse before `theme dev`.
 
 ### Fast path
-This is **user-action-required** — the agent cannot complete a browser OAuth. Surface the code +
+This is **user-action-required** - the agent cannot complete a browser OAuth. Surface the code +
 link to the user and wait. Device codes are short-lived (~15 min); if it expires, restart the
 command to get a fresh one. Once the user approves, `theme dev` proceeds automatically.
 
 ---
 
-## Issue 3 — Linters pass but the page is broken at runtime
+## Issue 3 - Linters pass but the page is broken at runtime
 
 `node --check` (JS syntax) and `shopify theme check` (Liquid/schema lint) **do not** catch:
 - render-time Liquid errors (e.g. literal `{` `}` in a `{{ }}` tag → 500 on every page), or

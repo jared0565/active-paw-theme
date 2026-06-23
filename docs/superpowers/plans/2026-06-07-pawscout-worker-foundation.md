@@ -1,4 +1,4 @@
-# PawScout Worker — Multi-Tenant Foundation (Plan 2a) Implementation Plan
+# PawScout Worker - Multi-Tenant Foundation (Plan 2a) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -12,9 +12,9 @@
 
 ## Scope notes (read first)
 
-- **New repo.** Code lives in `f:\Projects\Shopify\pawscout-worker` — a *fresh git repository*, separate from the `demo-store2` theme repo. Unlike the Plan 1 probe, normal `git init` + commit steps apply here.
-- **Console = minimal embedded page, not a React/Polaris SPA.** 2a delivers the secure backend + a functional embedded console (App Bridge session token → vanilla-JS forms → API). The richer Polaris React SPA is a deliberate later layer against the same stable API endpoints (YAGNI for the foundation). This is the one place this plan narrows the spec's "Polaris" — the *API contract* the SPA would need is fully built and tested here.
-- **Deferred to Plan 2b** (not in this plan): App Proxy *route handlers*, the CJ `SupplierProvider`/search, the create pipeline, theme changes. The App Proxy is *declared* in the app config here; its routes 404 until 2b (safe — the theme is strictly additive).
+- **New repo.** Code lives in `f:\Projects\Shopify\pawscout-worker` - a *fresh git repository*, separate from the `demo-store2` theme repo. Unlike the Plan 1 probe, normal `git init` + commit steps apply here.
+- **Console = minimal embedded page, not a React/Polaris SPA.** 2a delivers the secure backend + a functional embedded console (App Bridge session token → vanilla-JS forms → API). The richer Polaris React SPA is a deliberate later layer against the same stable API endpoints (YAGNI for the foundation). This is the one place this plan narrows the spec's "Polaris" - the *API contract* the SPA would need is fully built and tested here.
+- **Deferred to Plan 2b** (not in this plan): App Proxy *route handlers*, the CJ `SupplierProvider`/search, the create pipeline, theme changes. The App Proxy is *declared* in the app config here; its routes 404 until 2b (safe - the theme is strictly additive).
 - **Paths** below are relative to `f:\Projects\Shopify\pawscout-worker`.
 
 ---
@@ -23,20 +23,20 @@
 
 | File | Responsibility | Tested |
 |---|---|---|
-| `package.json`, `wrangler.toml`, `tsconfig.json`, `vitest.config.ts`, `.gitignore`, `.dev.vars` | Project scaffold, bindings, local secrets | — |
+| `package.json`, `wrangler.toml`, `tsconfig.json`, `vitest.config.ts`, `.gitignore`, `.dev.vars` | Project scaffold, bindings, local secrets | - |
 | `migrations/0001_init.sql` | D1 schema: `tenants`, `supplier_credentials`, `tenant_config` | via store tests |
-| `src/types.ts` | `Env` bindings + row/domain types | — |
+| `src/types.ts` | `Env` bindings + row/domain types | - |
 | `src/vault.ts` | Envelope encryption: KEK→DEK, `seal`/`open` | `tests/vault.test.ts` |
 | `src/tenant-store.ts` | **Only** D1 access path; auto-scopes by shop | `tests/tenant-store.test.ts` |
-| `src/shopify.ts` | `shopifyApi()` init + cf-worker adapter | — (exercised by callback test) |
+| `src/shopify.ts` | `shopifyApi()` init + cf-worker adapter | - (exercised by callback test) |
 | `src/cj.ts` | Validate a CJ API key via live auth call | `tests/cj.test.ts` |
-| `src/auth/install.ts` | OAuth begin | — (manual install test) |
+| `src/auth/install.ts` | OAuth begin | - (manual install test) |
 | `src/auth/callback.ts` | OAuth callback → seal token, upsert tenant, seed config | `tests/callback.test.ts` |
 | `src/auth/uninstall.ts` | `app/uninstalled` webhook → purge secrets | `tests/uninstall.test.ts` |
 | `src/console/session.ts` | App-Bridge session-token verification → resolve shop | `tests/session.test.ts` |
 | `src/console/routes.ts` | API: connect-cj, collections, gates (read/write config) | `tests/config.test.ts` |
-| `src/console/page.ts` | Minimal embedded HTML console (App Bridge + forms) | — |
-| `src/index.ts` | Hono app: wire routes, env | — (manual) |
+| `src/console/page.ts` | Minimal embedded HTML console (App Bridge + forms) | - |
+| `src/index.ts` | Hono app: wire routes, env | - (manual) |
 | `tests/guard.test.ts` | CI guard: no raw D1 outside `tenant-store.ts` | self |
 
 ---
@@ -80,7 +80,7 @@ mkdir -p f:/Projects/Shopify/pawscout-worker && cd f:/Projects/Shopify/pawscout-
 
 Run `npm install`. (If a published version differs, take the latest in that major line; pin after install.)
 
-- [ ] **Step 3: `wrangler.toml`** — D1 binding + the env vars/secrets the Worker reads.
+- [ ] **Step 3: `wrangler.toml`** - D1 binding + the env vars/secrets the Worker reads.
 
 ```toml
 name = "pawscout-worker"
@@ -151,14 +151,14 @@ node_modules/
 dist/
 ```
 
-`.dev.vars` (local secrets, gitignored — generate a real 32-byte key):
+`.dev.vars` (local secrets, gitignored - generate a real 32-byte key):
 ```
 SHOPIFY_API_SECRET=replace_with_app_client_secret
 PAWSCOUT_MASTER_KEY=replace_with_base64_of_32_random_bytes
 ```
 Generate the master key: `node -e "console.log(crypto.randomBytes(32).toString('base64'))"`.
 
-- [ ] **Step 7: D1 database id — local placeholder (real create deferred to Task 13)**
+- [ ] **Step 7: D1 database id - local placeholder (real create deferred to Task 13)**
 
 `wrangler d1 create` needs Cloudflare auth and is **not** required for Tasks 0–12: the vitest Workers pool and `wrangler dev --local` use a local in-memory D1 and ignore `database_id`. Leave the placeholder in `wrangler.toml` for now:
 ```toml
@@ -210,9 +210,9 @@ CREATE TABLE tenant_config (
 );
 ```
 
-- [ ] **Step 2: No command needed now — migrations are applied by the test harness**
+- [ ] **Step 2: No command needed now - migrations are applied by the test harness**
 
-The vitest Workers pool applies this migration automatically (`readD1Migrations('./migrations')` in `vitest.config.ts` → `applyD1Migrations(env.DB, env.TEST_MIGRATIONS)` in tests, wired in Task 3). So the SQL is validated the first time Task 3's tests run. `npm run migrate:local` (for manual `wrangler dev`) needs Cloudflare-free local D1 and is exercised in **Task 13**. Nothing to run here — just confirm the file saved.
+The vitest Workers pool applies this migration automatically (`readD1Migrations('./migrations')` in `vitest.config.ts` → `applyD1Migrations(env.DB, env.TEST_MIGRATIONS)` in tests, wired in Task 3). So the SQL is validated the first time Task 3's tests run. `npm run migrate:local` (for manual `wrangler dev`) needs Cloudflare-free local D1 and is exercised in **Task 13**. Nothing to run here - just confirm the file saved.
 
 - [ ] **Step 3: `src/types.ts`**
 
@@ -268,11 +268,11 @@ git add -A && git commit -m "feat: d1 schema + domain types"
 
 ---
 
-## Task 2: Vault (envelope encryption) — TDD
+## Task 2: Vault (envelope encryption) - TDD
 
 **Files:** Create `src/vault.ts`, `tests/vault.test.ts`.
 
-- [ ] **Step 1: Write the failing test** — `tests/vault.test.ts`
+- [ ] **Step 1: Write the failing test** - `tests/vault.test.ts`
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -307,7 +307,7 @@ describe('Vault', () => {
 });
 ```
 
-- [ ] **Step 2: Run — expect FAIL** (`npm test -- vault`) with "Cannot find module '../src/vault'".
+- [ ] **Step 2: Run - expect FAIL** (`npm test -- vault`) with "Cannot find module '../src/vault'".
 
 - [ ] **Step 3: Implement `src/vault.ts`**
 
@@ -364,17 +364,17 @@ export class Vault {
 }
 ```
 
-- [ ] **Step 4: Run — expect PASS** (all 3 vault tests).
+- [ ] **Step 4: Run - expect PASS** (all 3 vault tests).
 
 - [ ] **Step 5: Commit** `git add -A && git commit -m "feat: webcrypto envelope-encryption vault"`
 
 ---
 
-## Task 3: TenantStore — TDD
+## Task 3: TenantStore - TDD
 
 **Files:** Create `src/tenant-store.ts`, `tests/tenant-store.test.ts`.
 
-- [ ] **Step 1: Write the failing test** — `tests/tenant-store.test.ts` (uses the Workers pool `env.DB`)
+- [ ] **Step 1: Write the failing test** - `tests/tenant-store.test.ts` (uses the Workers pool `env.DB`)
 
 ```ts
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -419,7 +419,7 @@ describe('TenantStore', () => {
 });
 ```
 
-Add the migrations binding to `vitest.config.ts` miniflare bindings so `env.TEST_MIGRATIONS` is available — append to Task 0 Step 5's config:
+Add the migrations binding to `vitest.config.ts` miniflare bindings so `env.TEST_MIGRATIONS` is available - append to Task 0 Step 5's config:
 ```ts
 // inside miniflare: {...}
             bindings: {
@@ -434,9 +434,9 @@ const migrations = await readD1Migrations('./migrations');
 // then in miniflare.bindings add: TEST_MIGRATIONS: migrations
 ```
 
-- [ ] **Step 2: Run — expect FAIL** (`npm test -- tenant-store`) with "Cannot find module '../src/tenant-store'".
+- [ ] **Step 2: Run - expect FAIL** (`npm test -- tenant-store`) with "Cannot find module '../src/tenant-store'".
 
-- [ ] **Step 3: Implement `src/tenant-store.ts`** — the ONLY file allowed to touch D1.
+- [ ] **Step 3: Implement `src/tenant-store.ts`** - the ONLY file allowed to touch D1.
 
 ```ts
 import type { TenantRow, TenantConfig } from './types';
@@ -518,17 +518,17 @@ export class TenantStore {
 }
 ```
 
-- [ ] **Step 4: Run — expect PASS** (all 4 tenant-store tests).
+- [ ] **Step 4: Run - expect PASS** (all 4 tenant-store tests).
 
 - [ ] **Step 5: Commit** `git add -A && git commit -m "feat: tenant-isolated D1 store"`
 
 ---
 
-## Task 4: CI guard — no raw D1 outside TenantStore — TDD
+## Task 4: CI guard - no raw D1 outside TenantStore - TDD
 
 **Files:** Create `tests/guard.test.ts`.
 
-- [ ] **Step 1: Write the test** — `tests/guard.test.ts`
+- [ ] **Step 1: Write the test** - `tests/guard.test.ts`
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -557,7 +557,7 @@ describe('tenant isolation guard', () => {
 });
 ```
 
-- [ ] **Step 2: Run — expect PASS** (only `tenant-store.ts` uses `.prepare(`, and it's excluded). `npm test -- guard`.
+- [ ] **Step 2: Run - expect PASS** (only `tenant-store.ts` uses `.prepare(`, and it's excluded). `npm test -- guard`.
 
 - [ ] **Step 3: Commit** `git add -A && git commit -m "test: CI guard against unscoped D1 access"`
 
@@ -597,11 +597,11 @@ export type ShopifyApp = ReturnType<typeof makeShopify>;
 
 ---
 
-## Task 6: CJ key validation — TDD
+## Task 6: CJ key validation - TDD
 
 **Files:** Create `src/cj.ts`, `tests/cj.test.ts`.
 
-- [ ] **Step 1: Write the failing test** — `tests/cj.test.ts` (inject the fetch so no live call in tests)
+- [ ] **Step 1: Write the failing test** - `tests/cj.test.ts` (inject the fetch so no live call in tests)
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -627,7 +627,7 @@ describe('validateCjKey', () => {
 });
 ```
 
-- [ ] **Step 2: Run — expect FAIL** (`npm test -- cj`) with "Cannot find module '../src/cj'".
+- [ ] **Step 2: Run - expect FAIL** (`npm test -- cj`) with "Cannot find module '../src/cj'".
 
 - [ ] **Step 3: Implement `src/cj.ts`**
 
@@ -652,7 +652,7 @@ export async function validateCjKey(apiKey: string, fetchImpl: typeof fetch = fe
 }
 ```
 
-- [ ] **Step 4: Run — expect PASS** (all 3 cj tests).
+- [ ] **Step 4: Run - expect PASS** (all 3 cj tests).
 
 - [ ] **Step 5: Commit** `git add -A && git commit -m "feat: CJ key validation"`
 
@@ -681,11 +681,11 @@ export async function beginAuth(shopify: ShopifyApp, request: Request): Promise<
 
 ---
 
-## Task 8: OAuth callback → seal token, upsert tenant, seed config — TDD
+## Task 8: OAuth callback → seal token, upsert tenant, seed config - TDD
 
 **Files:** Create `src/auth/callback.ts`, `tests/callback.test.ts`.
 
-- [ ] **Step 1: Write the failing test** — `tests/callback.test.ts`. We test the *persistence* logic (`persistInstall`) with a fake session, not the Shopify HMAC exchange (that's library-owned and covered by the live test).
+- [ ] **Step 1: Write the failing test** - `tests/callback.test.ts`. We test the *persistence* logic (`persistInstall`) with a fake session, not the Shopify HMAC exchange (that's library-owned and covered by the live test).
 
 ```ts
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -712,7 +712,7 @@ describe('persistInstall', () => {
 });
 ```
 
-- [ ] **Step 2: Run — expect FAIL** (`npm test -- callback`) with "Cannot find module '../src/auth/callback'".
+- [ ] **Step 2: Run - expect FAIL** (`npm test -- callback`) with "Cannot find module '../src/auth/callback'".
 
 - [ ] **Step 3: Implement `src/auth/callback.ts`**
 
@@ -745,30 +745,30 @@ export async function persistInstall(
   }
 }
 
-/** GET /auth/callback — completes OAuth, persists, redirects into the embedded app. Returns a Response. */
+/** GET /auth/callback - completes OAuth, persists, redirects into the embedded app. Returns a Response. */
 export async function handleCallback(shopify: ShopifyApp, db: D1Database, vault: Vault, request: Request): Promise<Response> {
   const { session, headers } = await shopify.auth.callback<Headers>({ rawRequest: request });
   if (!session.accessToken) return new Response('No access token from OAuth', { status: 400 });
   await persistInstall(db, vault, { shop: session.shop, accessToken: session.accessToken, scope: session.scope ?? '' });
   // Register the uninstall webhook (best-effort; safe to re-register).
-  // (Webhook registration call omitted here for brevity — see Task 9 note.)
+  // (Webhook registration call omitted here for brevity - see Task 9 note.)
   const host = new URL(request.url).searchParams.get('host') ?? '';
   const redirect = `/app?shop=${encodeURIComponent(session.shop)}&host=${encodeURIComponent(host)}`;
   return new Response('', { status: 302, headers: [...(headers as unknown as [string, string][]), ['Location', redirect]] });
 }
 ```
 
-- [ ] **Step 4: Run — expect PASS** (the `persistInstall` test).
+- [ ] **Step 4: Run - expect PASS** (the `persistInstall` test).
 
 - [ ] **Step 5: Commit** `git add -A && git commit -m "feat: oauth callback persists sealed token + seeds config"`
 
 ---
 
-## Task 9: Uninstall webhook → purge secrets — TDD
+## Task 9: Uninstall webhook → purge secrets - TDD
 
 **Files:** Create `src/auth/uninstall.ts`, `tests/uninstall.test.ts`.
 
-- [ ] **Step 1: Write the failing test** — `tests/uninstall.test.ts`
+- [ ] **Step 1: Write the failing test** - `tests/uninstall.test.ts`
 
 ```ts
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -794,7 +794,7 @@ describe('handleUninstall', () => {
 });
 ```
 
-- [ ] **Step 2: Run — expect FAIL** (`npm test -- uninstall`).
+- [ ] **Step 2: Run - expect FAIL** (`npm test -- uninstall`).
 
 - [ ] **Step 3: Implement `src/auth/uninstall.ts`**
 
@@ -808,19 +808,19 @@ export async function handleUninstall(db: D1Database, shop: string): Promise<voi
 }
 ```
 
-(The HTTP webhook route — verifying the `app/uninstalled` HMAC via `shopify.webhooks.validate` and calling `handleUninstall(env.DB, shop)` — is wired in `src/index.ts`, Task 12.)
+(The HTTP webhook route - verifying the `app/uninstalled` HMAC via `shopify.webhooks.validate` and calling `handleUninstall(env.DB, shop)` - is wired in `src/index.ts`, Task 12.)
 
-- [ ] **Step 4: Run — expect PASS.**
+- [ ] **Step 4: Run - expect PASS.**
 
 - [ ] **Step 5: Commit** `git add -A && git commit -m "feat: uninstall webhook purges tenant secrets"`
 
 ---
 
-## Task 10: Console session-token middleware — TDD
+## Task 10: Console session-token middleware - TDD
 
 **Files:** Create `src/console/session.ts`, `tests/session.test.ts`.
 
-- [ ] **Step 1: Write the failing test** — `tests/session.test.ts`. Inject a fake decoder so we test *our* resolution logic, not the library's JWT crypto.
+- [ ] **Step 1: Write the failing test** - `tests/session.test.ts`. Inject a fake decoder so we test *our* resolution logic, not the library's JWT crypto.
 
 ```ts
 import { describe, it, expect } from 'vitest';
@@ -844,7 +844,7 @@ describe('resolveShopFromToken', () => {
 });
 ```
 
-- [ ] **Step 2: Run — expect FAIL** (`npm test -- session`).
+- [ ] **Step 2: Run - expect FAIL** (`npm test -- session`).
 
 - [ ] **Step 3: Implement `src/console/session.ts`**
 
@@ -873,19 +873,19 @@ export async function resolveShopFromToken(
 }
 ```
 
-- [ ] **Step 4: Run — expect PASS.**
+- [ ] **Step 4: Run - expect PASS.**
 
 - [ ] **Step 5: Commit** `git add -A && git commit -m "feat: session-token shop resolution"`
 
 ---
 
-## Task 11: Console API routes (connect-cj, collections, gates) — TDD
+## Task 11: Console API routes (connect-cj, collections, gates) - TDD
 
 **Files:** Create `src/console/routes.ts`, `tests/config.test.ts`.
 
 These are Hono routes mounted under `/api`. Each resolves the shop (Task 10), then uses TenantStore + Vault. We TDD the **handlers** with injected deps; the live install test exercises the real session token.
 
-- [ ] **Step 1: Write the failing test** — `tests/config.test.ts`
+- [ ] **Step 1: Write the failing test** - `tests/config.test.ts`
 
 ```ts
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -936,7 +936,7 @@ describe('console handlers', () => {
 });
 ```
 
-- [ ] **Step 2: Run — expect FAIL** (`npm test -- config`).
+- [ ] **Step 2: Run - expect FAIL** (`npm test -- config`).
 
 - [ ] **Step 3: Implement `src/console/routes.ts`**
 
@@ -987,7 +987,7 @@ export async function getStatus(db: D1Database, shop: string): Promise<{ cjConne
 }
 ```
 
-- [ ] **Step 4: Run — expect PASS** (all 3 config tests).
+- [ ] **Step 4: Run - expect PASS** (all 3 config tests).
 
 - [ ] **Step 5: Commit** `git add -A && git commit -m "feat: console API handlers (connect-cj, gates, collections, status)"`
 
@@ -1025,9 +1025,9 @@ refresh();
   return new Response(html, { headers: { 'Content-Type': 'text/html' } });
 }
 ```
-*(App Bridge global/API names can shift between versions — confirm the exact `getToken`/`createApp` calls against the App Bridge version the CDN serves during the live test in Task 13; the server contract the page depends on is fully tested in Tasks 10–11.)*
+*(App Bridge global/API names can shift between versions - confirm the exact `getToken`/`createApp` calls against the App Bridge version the CDN serves during the live test in Task 13; the server contract the page depends on is fully tested in Tasks 10–11.)*
 
-**Subresource Integrity note:** the two CDN assets above are loaded **without** SRI deliberately. Shopify's `app-bridge.js` is **evergreen and must be loaded unpinned** — an `integrity` hash breaks it the moment Shopify ships an update (this is Shopify's own guidance), so do **not** add SRI to it. For the Polaris stylesheet, either (a) pin a **versioned** Polaris CSS URL and add `integrity="sha384-…" crossorigin="anonymous"`, or (b) **self-host** the CSS from the Worker's static assets (preferred — removes the third-party CDN dependency entirely). Apply SRI/self-hosting to any *pinnable* third-party asset; App Bridge is the one deliberate exception.
+**Subresource Integrity note:** the two CDN assets above are loaded **without** SRI deliberately. Shopify's `app-bridge.js` is **evergreen and must be loaded unpinned** - an `integrity` hash breaks it the moment Shopify ships an update (this is Shopify's own guidance), so do **not** add SRI to it. For the Polaris stylesheet, either (a) pin a **versioned** Polaris CSS URL and add `integrity="sha384-…" crossorigin="anonymous"`, or (b) **self-host** the CSS from the Worker's static assets (preferred - removes the third-party CDN dependency entirely). Apply SRI/self-hosting to any *pinnable* third-party asset; App Bridge is the one deliberate exception.
 
 - [ ] **Step 2: Implement `src/index.ts`** (Hono app wiring everything)
 
@@ -1139,6 +1139,6 @@ git add -A && git commit -m "docs: live install runbook + env notes"
 ## Self-Review (completed during planning)
 
 - **Spec coverage:** §2 stack → Task 0/5; §3 OAuth/app config → Tasks 5,7,8,13; §4 D1 schema → Task 1; §5 vault → Task 2; §6 TenantStore + CI guard → Tasks 3,4; §7 console (connect-cj/collections/gates) → Tasks 11,12; §8 error handling → covered in callback (no token→400), cj (validation fails→store nothing), uninstall, session (401s); §9 testing → every TDD task + Task 13 integration. **Deviation flagged:** §7's "Polaris" is delivered as a minimal embedded page (scope note up top), with the full API contract built+tested so a React/Polaris SPA can replace the page later with zero backend change.
-- **Placeholder scan:** The only intentional placeholders are the `database_id` (filled by `wrangler d1 create` in Task 0/7) and the deployed Worker URL (filled at Task 13) — both are values that can only exist after a real resource is created, and each is clearly marked. Two "confirm against live version" notes (App Bridge call names; latest dep versions) are real verification steps, not vague requirements.
+- **Placeholder scan:** The only intentional placeholders are the `database_id` (filled by `wrangler d1 create` in Task 0/7) and the deployed Worker URL (filled at Task 13) - both are values that can only exist after a real resource is created, and each is clearly marked. Two "confirm against live version" notes (App Bridge call names; latest dep versions) are real verification steps, not vague requirements.
 - **Type consistency:** `Vault.fromMasterKey`, `vault.newTenantDek/seal/open`, `TenantStore` method names (`upsertTenant`, `getTenant`, `seedConfig`, `getConfig`, `putSupplierCredential`, `getSupplierCredential`, `setStatus`, `deleteAllSecrets`), `persistInstall`, `resolveShopFromToken`, `connectCj/saveGates/saveCollectionMap/getStatus`, `validateCjKey`, and the `Gates`/`TenantConfig`/`Env` types are used identically across every task and test.
 - **Proportional testing:** TDD covers the security-critical, logic-bearing units (vault crypto round-trip, tenant scoping, install persistence, uninstall purge, session resolution, config handlers, the isolation guard). Library-owned crypto (Shopify OAuth HMAC exchange, JWT verification) and the HTML page are validated by the Task 13 live install rather than mocked.

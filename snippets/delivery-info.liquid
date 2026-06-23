@@ -7,10 +7,10 @@
   days, e.g. "6-21") into supplier.delivery_days from the synced CJ logistics
   matrix. When present it's shown verbatim; when blank (stale / not yet synced)
   a conservative static window is shown. Rule: only surface what is real and
-  defensible — the synced figure when we have it, a conservative window otherwise.
+  defensible - the synced figure when we have it, a conservative window otherwise.
 
   NB: rates below mirror Shopify Settings → Shipping. If the rates change
-  there, update these assigns (single source kept deliberately simple —
+  there, update these assigns (single source kept deliberately simple -
   Liquid cannot read shipping settings).
   @param {product} product - Product being viewed
 {% enddoc %}

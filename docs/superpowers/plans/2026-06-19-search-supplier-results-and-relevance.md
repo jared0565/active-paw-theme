@@ -1,22 +1,22 @@
-# Search Relevance + Supplier Results in the Main Listing — Implementation Plan
+# Search Relevance + Supplier Results in the Main Listing - Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Stop the search page surfacing off-topic items, and bring supplemental supplier products into the main results listing (above the fold, esp. mobile) — but only when relevant and only when the native grid is thin.
+**Goal:** Stop the search page surfacing off-topic items, and bring supplemental supplier products into the main results listing (above the fold, esp. mobile) - but only when relevant and only when the native grid is thin.
 
 **Architecture:** Two stages. **Stage 1 (Liquid/CSS, ships independently, no infra):** make the existing collection-backed "offer" block query-relevant, capped, deduped, gated to thin results, and rendered *inside* the main grid as clearly-labelled "Suggested" cards; plus restrict native Shopify search fields to kill description/tag noise. **Stage 2 (theme.js + App Proxy, gated on a Partner-Dashboard setting):** wire the already-built live worker feed (`/apps/pawscout/proxy/search`) so genuinely query-relevant supplier *ghost cards* stream into the same grid, with the no-quick-add → PDP-import handshake.
 
-**Tech Stack:** Shopify Liquid (no build step — edit `assets/*` and `sections/*` directly), vanilla `assets/theme.js` (no framework), `assets/theme.css` (single file). Cloudflare Worker `pawscout-worker` (already built/deployed) reached via Shopify App Proxy.
+**Tech Stack:** Shopify Liquid (no build step - edit `assets/*` and `sections/*` directly), vanilla `assets/theme.js` (no framework), `assets/theme.css` (single file). Cloudflare Worker `pawscout-worker` (already built/deployed) reached via Shopify App Proxy.
 
 ## Global Constraints
 
 - This work is in the **theme** repo `F:\Projects\Shopify\demo-store2` (NOT `pawscout-worker`). The worker is already built; Stage 2 changes are theme-side only.
 - Live storefront is **`https://activepaw.co.uk`** (the `4qkudm-ez.myshopify.com` domain 301-redirects there). Store handle for CLI is `4qkudm-ez.myshopify.com`.
 - No build step, no test framework for the theme. "Tests" = verification against `shopify theme dev` (`http://127.0.0.1:9292`) via curl+grep and a visual check. Heed the `shopify theme dev` sync gotcha in `docs/shopify-theme-dev-troubleshooting.md`: **batch all edits, then run `theme dev` once to verify**; never kill the `claude.exe`/`node` watcher mid-edit.
-- Worker endpoints (live, via App Proxy `/apps/pawscout/*` → worker root): `GET /proxy/search?q=&have=&limit=&exclude=` → `{ ok, products: GhostCard[] }`; `GET /proxy/product?pid=` (triggers background import); `GET /proxy/import-status?pid=` → `{ ok, state, url }`. `GhostCard = { pid:string, title:string, image:string, price:number /* GBP */, state:'ghost'|'imported', url:string|null }`. Every `/proxy/*` response is **HTTP 200 with an `ok` flag** — check `ok`, never the status.
-- Ghost cards (not yet real products) must have **NO quick-add/express button** — the visitor must open the PDP, which triggers the import (spec rule, `2026-06-07-pawscout-search-trigger-design.md` §1).
+- Worker endpoints (live, via App Proxy `/apps/pawscout/*` → worker root): `GET /proxy/search?q=&have=&limit=&exclude=` → `{ ok, products: GhostCard[] }`; `GET /proxy/product?pid=` (triggers background import); `GET /proxy/import-status?pid=` → `{ ok, state, url }`. `GhostCard = { pid:string, title:string, image:string, price:number /* GBP */, state:'ghost'|'imported', url:string|null }`. Every `/proxy/*` response is **HTTP 200 with an `ok` flag** - check `ok`, never the status.
+- Ghost cards (not yet real products) must have **NO quick-add/express button** - the visitor must open the PDP, which triggers the import (spec rule, `2026-06-07-pawscout-search-trigger-design.md` §1).
 - Reuse existing card markup/styles: cards are `{% render 'product-card-commerce', product:, badge:, show_purchase_action: %}` → `<article class="commerce-card">`; grid is `.commerce-grid` (4 cols desktop / 2 cols ≤900px / 2 cols ≤620px). Match these exactly for visual consistency.
-- Suggestion/supplier framing decision (merchant-approved): show supplemental cards **only when native results are thin (< 4)**, **cap 3**, framed as **labelled "Suggested" cards** with a subtle in-grid separator — never as undifferentiated equal matches.
+- Suggestion/supplier framing decision (merchant-approved): show supplemental cards **only when native results are thin (< 4)**, **cap 3**, framed as **labelled "Suggested" cards** with a subtle in-grid separator - never as undifferentiated equal matches.
 
 ---
 
@@ -25,13 +25,13 @@
 | File | Responsibility | Stage |
 |---|---|---|
 | `sections/main-search.liquid` | Result grid + the suggestion/supplier render logic (query-relevance, dedup, thin-gate, cap, in-grid merge, Stage-2 mount node) | 1 & 2 |
-| `sections/site-header.liquid` | The search form — add `options[fields]` to restrict native matching | 1 |
+| `sections/site-header.liquid` | The search form - add `options[fields]` to restrict native matching | 1 |
 | `assets/theme.css` | In-grid suggestion separator; Stage-2 ghost-card badge + spinner styles | 1 & 2 |
 | `assets/theme.js` | Stage-2 supplier-feed fetch/render + ghost-card click→import→poll→redirect | 2 |
 
 ---
 
-# STAGE 1 — Liquid/CSS relevance + in-grid merge (ships now)
+# STAGE 1 - Liquid/CSS relevance + in-grid merge (ships now)
 
 ### Task 1: Query-relevant, capped, thin-gated suggestions merged into the main grid
 
@@ -86,15 +86,15 @@ Replace lines 16–115 (from `{% liquid` through the `{% else %}…</div>` empty
           assign offer_collection = collections[offer_collection_handle]
 
           # Suggestions fill in ONLY when the native grid is thin (< 4 real matches),
-          # capped at 3, and only when query-relevant (a query token — 4-char prefix
-          # for longer tokens — appears in the product title). This is what stops a
+          # capped at 3, and only when query-relevant (a query token - 4-char prefix
+          # for longer tokens - appears in the product title). This is what stops a
           # 'feeding' search surfacing leashes.
           assign suggestions_cap = 3
           assign show_suggestions = false
           if product_count > 0 and product_count < 4 and offer_collection != blank and offer_collection.products_count > 0
             assign show_suggestions = true
           endif
-          # Comma-wrapped stop set (matched against ',token,') — generic words that
+          # Comma-wrapped stop set (matched against ',token,') - generic words that
           # must not drive a "relevant" match. Tokens < 3 chars are dropped anyway.
           assign stop_tokens = ',pet,pets,for,the,and,with,your,'
           assign q_tokens = normalized_terms | split: ' '
@@ -170,11 +170,11 @@ Replace lines 16–115 (from `{% liquid` through the `{% else %}…</div>` empty
         {% endif %}
 ```
 
-Note: this removes the `data-bundle-add` "Add recommended set" button (it lived in the old offer section and is out of scope). The `data-bundle-add` handler in `assets/theme.js:250` becomes dormant on search — leave it; it is harmless with no button present.
+Note: this removes the `data-bundle-add` "Add recommended set" button (it lived in the old offer section and is out of scope). The `data-bundle-add` handler in `assets/theme.js:250` becomes dormant on search - leave it; it is harmless with no button present.
 
 - [ ] **Step 3: Add the in-grid separator style to `assets/theme.css`**
 
-Add near the other `.search-*`/`.commerce-grid` rules. First open `assets/theme.css` and read the `.search-results-meta span` rule to copy its exact muted color token (the theme's own variable) — do not invent a variable name. Then add (substituting the muted color you found for `<MUTED>` and the border color for `<BORDER>`):
+Add near the other `.search-*`/`.commerce-grid` rules. First open `assets/theme.css` and read the `.search-results-meta span` rule to copy its exact muted color token (the theme's own variable) - do not invent a variable name. Then add (substituting the muted color you found for `<MUTED>` and the border color for `<BORDER>`):
 ```css
 .search-suggested-sep {
   grid-column: 1 / -1;
@@ -202,9 +202,9 @@ shopify theme dev --store 4qkudm-ez.myshopify.com
 curl -s "http://127.0.0.1:9292/search?q=pet+feeding&type=product" \
   | grep -o "search-suggested-sep\|Suggested<\|Pairs well\|Search match" | sort | uniq -c
 ```
-Expected AFTER fix: **zero** `Pairs well`; at most **3** `Suggested`; the `search-suggested-sep` appears only if ≥1 suggestion survived the query filter. Repeat for `q=dog+toy` (expect toy-relevant suggestions only), `q=shampoo` (cleaning-relevant), and a query with ≥4 real results (expect **no** suggestions at all — thin-gate off).
+Expected AFTER fix: **zero** `Pairs well`; at most **3** `Suggested`; the `search-suggested-sep` appears only if ≥1 suggestion survived the query filter. Repeat for `q=dog+toy` (expect toy-relevant suggestions only), `q=shampoo` (cleaning-relevant), and a query with ≥4 real results (expect **no** suggestions at all - thin-gate off).
 
-Also confirm a suggestion's title actually shares a query token (open the page in a browser via the dev URL and eyeball the trailing "Suggested" cards) — no leashes under a feeding search.
+Also confirm a suggestion's title actually shares a query token (open the page in a browser via the dev URL and eyeball the trailing "Suggested" cards) - no leashes under a feeding search.
 
 - [ ] **Step 5: Commit**
 
@@ -253,7 +253,7 @@ for q in "pet+feeding" "dog" "brush" "clean"; do
     | grep -o "result[s]* found" | head -1
 done
 ```
-Expected: result counts are **equal or lower** than baseline, and spot-checking a previously-irrelevant query no longer returns the description-only matches. **If any legitimate query drops to 0**, widen the field list (e.g. add `vendor`) and re-verify — do not ship a restriction that hides real products. If `options[fields]` does not change behavior at all on this store, fall back to recommending Shopify **Search & Discovery** ranking config to the merchant and revert this input.
+Expected: result counts are **equal or lower** than baseline, and spot-checking a previously-irrelevant query no longer returns the description-only matches. **If any legitimate query drops to 0**, widen the field list (e.g. add `vendor`) and re-verify - do not ship a restriction that hides real products. If `options[fields]` does not change behavior at all on this store, fall back to recommending Shopify **Search & Discovery** ranking config to the merchant and revert this input.
 
 - [ ] **Step 4: Commit**
 
@@ -264,15 +264,15 @@ git commit -m "fix(search): restrict native search to title/type/tag/variant-tit
 
 ---
 
-# STAGE 2 — Live supplier feed (ghost cards) in the grid (gated on App Proxy)
+# STAGE 2 - Live supplier feed (ghost cards) in the grid (gated on App Proxy)
 
-> **PREREQUISITE — Task 3 below.** Stage 2 cannot be verified live until the `/apps/pawscout` App Proxy routes to the worker; today `https://activepaw.co.uk/apps/pawscout/proxy/search` returns **404**. Build Tasks 4–7, but their live verification waits on Task 3.
+> **PREREQUISITE - Task 3 below.** Stage 2 cannot be verified live until the `/apps/pawscout` App Proxy routes to the worker; today `https://activepaw.co.uk/apps/pawscout/proxy/search` returns **404**. Build Tasks 4–7, but their live verification waits on Task 3.
 >
-> **MUST-FIX BEFORE WIRING — Task 3b (worker pet-scoping).** The live feed as built is NOT pet-safe: `searchBackfill` calls `cj.search(keyword)` with the RAW keyword (no category filter), and the live gate `liveCjPasses` only checks popularity/price/species/title-token — it "trusts CJ's relevance". The pet guard `isLikelyPetProduct()` + LLM curation run ONLY on the import path (`jobs.ts:348`, `proxy/import.ts`), so a `shampoo` search would DISPLAY human/baby/car shampoo as ghost cards (rejected only on click → show-then-fail). Task 3b must land before any ghost card is shown.
+> **MUST-FIX BEFORE WIRING - Task 3b (worker pet-scoping).** The live feed as built is NOT pet-safe: `searchBackfill` calls `cj.search(keyword)` with the RAW keyword (no category filter), and the live gate `liveCjPasses` only checks popularity/price/species/title-token - it "trusts CJ's relevance". The pet guard `isLikelyPetProduct()` + LLM curation run ONLY on the import path (`jobs.ts:348`, `proxy/import.ts`), so a `shampoo` search would DISPLAY human/baby/car shampoo as ghost cards (rejected only on click → show-then-fail). Task 3b must land before any ghost card is shown.
 
 ### Task 3 (ops prerequisite): Enable + verify the App Proxy
 
-**Not a code change — a Shopify Partner Dashboard setting the merchant performs.**
+**Not a code change - a Shopify Partner Dashboard setting the merchant performs.**
 
 - [ ] **Step 1:** In the Partner Dashboard → the PawScout app → **App setup → App proxy**, set: Subpath prefix = `apps`, Subpath = `pawscout`, Proxy URL = `https://pawscout.activepaw.co.uk`. (This is documented as previously registered in `docs/superpowers/specs/2026-06-07-pawscout-worker-foundation-design.md:58`, but is currently not routing.)
 - [ ] **Step 2: Verify it forwards + signs (the test):**
@@ -286,17 +286,17 @@ Expected: JSON `{"ok":true,"products":[...]}` (Shopify adds the HMAC `signature`
 ### Task 3b (worker, must-fix): pet-scope the supplier search so non-pet products never display
 
 **Files:**
-- Modify: `pawscout-worker/src/cj.ts` (`search`/`searchV2` — accept an optional pet category scope)
-- Modify: `pawscout-worker/src/proxy/search.ts` (`searchBackfill` — scope the CJ query + apply a strengthened pet floor to live results)
-- Modify: `pawscout-worker/src/proxy/search.ts` (`isLikelyPetProduct` — add a strict variant that REQUIRES a pet signal)
+- Modify: `pawscout-worker/src/cj.ts` (`search`/`searchV2` - accept an optional pet category scope)
+- Modify: `pawscout-worker/src/proxy/search.ts` (`searchBackfill` - scope the CJ query + apply a strengthened pet floor to live results)
+- Modify: `pawscout-worker/src/proxy/search.ts` (`isLikelyPetProduct` - add a strict variant that REQUIRES a pet signal)
 - Test: `pawscout-worker/tests/search.test.ts`
 
-**Why:** verified in code — the live feed returns whatever CJ's keyword search returns. CJ sells human/baby/car products; `cj.search("shampoo")` includes human shampoo. The store catalog is safe (import-time pet gate), but the *display* feed is not. This is independent of the App Proxy and is **testable now** (mock the CJ client).
+**Why:** verified in code - the live feed returns whatever CJ's keyword search returns. CJ sells human/baby/car products; `cj.search("shampoo")` includes human shampoo. The store catalog is safe (import-time pet gate), but the *display* feed is not. This is independent of the App Proxy and is **testable now** (mock the CJ client).
 
 **Interfaces:**
-- Produces: `searchBackfill` returns only pet-relevant `GhostCard`s. Add `isPetProductStrict(text): boolean` — returns true only when a PET_TOKEN is present (no "ambiguous admits"), used on the live feed where false positives are worst.
+- Produces: `searchBackfill` returns only pet-relevant `GhostCard`s. Add `isPetProductStrict(text): boolean` - returns true only when a PET_TOKEN is present (no "ambiguous admits"), used on the live feed where false positives are worst.
 
-- [ ] **Step 1: Write the failing test** — a mocked CJ client returns `[{ pid:'h1', nameEn:'Moisturizing Argan Hair Shampoo 500ml', ... }, { pid:'p1', nameEn:'Pet Dog Shampoo Oatmeal', ... }]` for query `shampoo`; assert `searchBackfill(...)` returns only `p1` (the human shampoo is dropped). Test fails today (both returned).
+- [ ] **Step 1: Write the failing test** - a mocked CJ client returns `[{ pid:'h1', nameEn:'Moisturizing Argan Hair Shampoo 500ml', ... }, { pid:'p1', nameEn:'Pet Dog Shampoo Oatmeal', ... }]` for query `shampoo`; assert `searchBackfill(...)` returns only `p1` (the human shampoo is dropped). Test fails today (both returned).
 
 - [ ] **Step 2: Implement the strict pet floor** in `proxy/search.ts`:
 ```ts
@@ -308,9 +308,9 @@ export function isPetProductStrict(text: string): boolean {
 ```
 Apply it in `searchBackfill`'s live-CJ branch: `const gated = items.filter((i) => !seen.has(i.pid) && liveCjPasses(i, cfg.gates, kw) && isPetProductStrict(i.nameEn));`. (Warehouse rows are already admission-gated, so the strict floor is only needed on the live-CJ items.)
 
-- [ ] **Step 3: Category-scope the CJ query (primary fix).** Add an optional `categoryId?: string` to `cj.search`/`searchV2`, passing CJ listV2's category filter param when present (confirm the exact param name against CJ's listV2 API — likely `categoryId`; verify before relying on it). In `searchBackfill`, resolve the pet category for the query from `getKeywordMeta(...).category` (or the keyword→collection map) and pass its CJ category id. If no category resolves, fall back to keyword-only + the strict floor from Step 2.
+- [ ] **Step 3: Category-scope the CJ query (primary fix).** Add an optional `categoryId?: string` to `cj.search`/`searchV2`, passing CJ listV2's category filter param when present (confirm the exact param name against CJ's listV2 API - likely `categoryId`; verify before relying on it). In `searchBackfill`, resolve the pet category for the query from `getKeywordMeta(...).category` (or the keyword→collection map) and pass its CJ category id. If no category resolves, fall back to keyword-only + the strict floor from Step 2.
 
-- [ ] **Step 4: Run the test** — `npx vitest run tests/search.test.ts`; expect the human shampoo dropped, pet shampoo kept. Add a case asserting a query that resolves to a pet category scopes the CJ call.
+- [ ] **Step 4: Run the test** - `npx vitest run tests/search.test.ts`; expect the human shampoo dropped, pet shampoo kept. Add a case asserting a query that resolves to a pet category scopes the CJ call.
 
 - [ ] **Step 5: Commit** (worker repo):
 ```bash
@@ -335,7 +335,7 @@ git commit -m "fix(search): pet-scope the live supplier feed (strict pet floor +
                data-have="{{ product_count }}"
                hidden></div>
 ```
-(`exclude` of already-shown CJ pids is omitted in v1 — the worker dedups by warehouse/title signature, and the feed only runs on thin grids where overlap is unlikely. Add `data-exclude` later if duplicates are observed.)
+(`exclude` of already-shown CJ pids is omitted in v1 - the worker dedups by warehouse/title signature, and the feed only runs on thin grids where overlap is unlikely. Add `data-exclude` later if duplicates are observed.)
 
 - [ ] **Step 2: Commit**
 ```bash
@@ -355,7 +355,7 @@ git commit -m "feat(search): emit #supplier-feed mount node for the live supplie
 - Consumes: `#supplier-feed` (Task 4); `GET /apps/pawscout/proxy/search?q=&have=&limit=3` → `{ ok, products: GhostCard[] }`.
 - Produces: up to 3 `<article class="commerce-card commerce-card--ghost">` appended to `.search-results-grid`, each carrying `data-pid`, `data-state`, `data-url`. No quick-add form.
 
-- [ ] **Step 1:** Add this module to `assets/theme.js` (append near the other init code; uses the existing global patterns — plain DOM, `fetch`):
+- [ ] **Step 1:** Add this module to `assets/theme.js` (append near the other init code; uses the existing global patterns - plain DOM, `fetch`):
 ```js
 // --- Live supplier feed on the search page (ghost cards) ---
 (function supplierFeed() {
@@ -418,7 +418,7 @@ git commit -m "feat(search): emit #supplier-feed mount node for the live supplie
 ```bash
 curl -s "http://127.0.0.1:9292/search?q=automatic+feeder&type=product" | grep -c "supplier-feed"
 ```
-Confirm the mount node renders; then load the dev URL in a browser on a thin-result query and confirm up to 3 "From our network" cards append after the native results, none with a quick-add button. If the proxy is not yet live, the module no-ops gracefully (the `.catch`/`!data.ok` paths) — confirm the page still renders native results with no console error.
+Confirm the mount node renders; then load the dev URL in a browser on a thin-result query and confirm up to 3 "From our network" cards append after the native results, none with a quick-add button. If the proxy is not yet live, the module no-ops gracefully (the `.catch`/`!data.ok` paths) - confirm the page still renders native results with no console error.
 
 - [ ] **Step 4: Commit**
 ```bash
@@ -476,10 +476,10 @@ git commit -m "feat(search): fetch + render live supplier ghost cards into the r
   }
   function failGhost(card, hint) {
     card.classList.remove('is-loading');
-    if (hint) hint.textContent = 'Temporarily unavailable — try again';
+    if (hint) hint.textContent = 'Temporarily unavailable - try again';
   }
 ```
-(Note: `/proxy/product` returns `{ ok, product }` where `product` is a preview object; if it already carries a `url` (already-imported), redirect immediately; otherwise poll `/proxy/import-status` for the handle. If the worker's preview shape lacks `url`, rely solely on the poll — verify the actual field name against `buildPreview` in the worker during implementation.)
+(Note: `/proxy/product` returns `{ ok, product }` where `product` is a preview object; if it already carries a `url` (already-imported), redirect immediately; otherwise poll `/proxy/import-status` for the handle. If the worker's preview shape lacks `url`, rely solely on the poll - verify the actual field name against `buildPreview` in the worker during implementation.)
 
 - [ ] **Step 2:** Add a loading spinner style to `assets/theme.css`:
 ```css
@@ -505,4 +505,4 @@ git commit -m "feat(search): ghost-card click triggers import, polls, redirects 
 - **Spec coverage:** relevance bug → Task 1 (offer query-filter) + Task 2 (native fields); merge into main listing → Task 1 (suggested cards in grid) + Tasks 4–6 (live supplier ghost cards in grid); above-the-fold/mobile → in-grid render replaces the below-fold `.search-offer` section; thin-only + cap 3 + labelled → Task 1 gate/cap/badge + Stage-2 reuse; dedup bug → Task 1 Step 2 (comma-wrapped membership).
 - **Stage independence:** Stage 1 ships and fixes the live complaint with zero infra. Stage 2 is purely additive and gated on Task 3 (App Proxy), which is currently 404.
 - **Type consistency:** GhostCard fields (`pid,title,image,price,state,url`) used identically in Tasks 5–6; `#supplier-feed[data-q][data-have]` produced in Task 4, consumed in Task 5.
-- **Known approximations (acceptable for v1, documented not hidden):** Stage-1 relevance uses a 4-char-prefix title contains-match (no real stemming/synonyms — that's Stage 2's worker); `exclude` of shown CJ pids is omitted in v1 (worker dedups). Both err toward under-showing (relevant) rather than over-showing (irrelevant).
+- **Known approximations (acceptable for v1, documented not hidden):** Stage-1 relevance uses a 4-char-prefix title contains-match (no real stemming/synonyms - that's Stage 2's worker); `exclude` of shown CJ pids is omitted in v1 (worker dedups). Both err toward under-showing (relevant) rather than over-showing (irrelevant).

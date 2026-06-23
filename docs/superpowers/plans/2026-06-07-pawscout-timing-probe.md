@@ -1,20 +1,20 @@
-# PawScout Timing Probe — Implementation Plan
+# PawScout Timing Probe - Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a self-contained measurement script that creates, publishes, and tears down real CJ→Shopify products against the live Active Paw store, and reports P50/P90 latency for every phase of the search-trigger pipeline — so the progressive-fill UX (poll interval, per-product cadence, spinner copy) is designed against real numbers instead of estimates.
+**Goal:** Build a self-contained measurement script that creates, publishes, and tears down real CJ→Shopify products against the live Active Paw store, and reports P50/P90 latency for every phase of the search-trigger pipeline - so the progressive-fill UX (poll interval, per-product cadence, spinner copy) is designed against real numbers instead of estimates.
 
-**Architecture:** A thin runnable entrypoint (`pawscout-timing-probe.py`) orchestrates four layers: (1) CJ candidate fetch via the existing `cj_client.py`; (2) a new `shopify_admin.py` that talks to the Shopify Admin GraphQL API over **direct HTTP** (token from `.env`) — this is the first real piece of PawScout's Admin layer, not a throwaway, because BYOC needs it anyway; (3) pure, unit-tested logic in `probe_lib.py` (percentiles, the poll-until-ready loop, minimal-product payload builders, metric derivation); (4) the live measurement of two distinct things — **single-product isolation latency** (one product start-to-buyable, drives the "first product ~3–5s" + spinner) and **sustained throughput** (back-to-back creation under Shopify's throttle, drives the "~2s apart" grid-fill cadence). Ground truth for "PDP-ready & buyable" is a real storefront `GET /products/{handle}` polled until HTTP 200 — not the Admin API's publication flags, which can lag. Every product the probe creates is tagged `pawscout-probe-temp` and deleted in a `finally` block, with a `--cleanup-only` safety net.
+**Architecture:** A thin runnable entrypoint (`pawscout-timing-probe.py`) orchestrates four layers: (1) CJ candidate fetch via the existing `cj_client.py`; (2) a new `shopify_admin.py` that talks to the Shopify Admin GraphQL API over **direct HTTP** (token from `.env`) - this is the first real piece of PawScout's Admin layer, not a throwaway, because BYOC needs it anyway; (3) pure, unit-tested logic in `probe_lib.py` (percentiles, the poll-until-ready loop, minimal-product payload builders, metric derivation); (4) the live measurement of two distinct things - **single-product isolation latency** (one product start-to-buyable, drives the "first product ~3–5s" + spinner) and **sustained throughput** (back-to-back creation under Shopify's throttle, drives the "~2s apart" grid-fill cadence). Ground truth for "PDP-ready & buyable" is a real storefront `GET /products/{handle}` polled until HTTP 200 - not the Admin API's publication flags, which can lag. Every product the probe creates is tagged `pawscout-probe-temp` and deleted in a `finally` block, with a `--cleanup-only` safety net.
 
-**Tech Stack:** Python 3 standard library only (`urllib`, `json`, `time`, `pathlib`, `re`, `argparse`) — matching the repo convention of zero third-party deps. Tests use the stdlib `unittest` module (the repo has no pytest). Shopify Admin GraphQL API version **2026-04**. Reuses existing `.graphql` query files unchanged.
+**Tech Stack:** Python 3 standard library only (`urllib`, `json`, `time`, `pathlib`, `re`, `argparse`) - matching the repo convention of zero third-party deps. Tests use the stdlib `unittest` module (the repo has no pytest). Shopify Admin GraphQL API version **2026-04**. Reuses existing `.graphql` query files unchanged.
 
 ---
 
 ## Scope note (read first)
 
-This is **Plan 1 of the search-trigger path**, not the whole path. The design doc (`docs/superpowers/specs/2026-06-07-pawscout-search-trigger-design.md`) §9 makes the timing probe **build step 0** — the explicit prerequisite to everything else — because the progressive-fill UX numbers (poll interval ≈1.5s, cadence ≈2s, parallelization) are estimates that must be validated before they're baked into the Cloudflare Worker and theme code. Writing those plans now would hardcode unvalidated constants. **This plan produces the numbers; Plan 2 (PawScout Worker) and Plan 3 (theme progressive fill) get written once the probe has run.**
+This is **Plan 1 of the search-trigger path**, not the whole path. The design doc (`docs/superpowers/specs/2026-06-07-pawscout-search-trigger-design.md`) §9 makes the timing probe **build step 0** - the explicit prerequisite to everything else - because the progressive-fill UX numbers (poll interval ≈1.5s, cadence ≈2s, parallelization) are estimates that must be validated before they're baked into the Cloudflare Worker and theme code. Writing those plans now would hardcode unvalidated constants. **This plan produces the numbers; Plan 2 (PawScout Worker) and Plan 3 (theme progressive fill) get written once the probe has run.**
 
-**Not a git repository.** `f:\Projects\Shopify\demo-store2` is not under git (verified: `git rev-parse` fails). The standard "commit" step is therefore replaced throughout by a **Checkpoint** note (run tests green, eyeball the diff). If you want version control, `git init` is a separate decision out of scope here — do not `git add` blindly, the directory contains `node_modules/`, `output/`, and `graphify-out/`.
+**Not a git repository.** `f:\Projects\Shopify\demo-store2` is not under git (verified: `git rev-parse` fails). The standard "commit" step is therefore replaced throughout by a **Checkpoint** note (run tests green, eyeball the diff). If you want version control, `git init` is a separate decision out of scope here - do not `git add` blindly, the directory contains `node_modules/`, `output/`, and `graphify-out/`.
 
 ---
 
@@ -24,12 +24,12 @@ This is **Plan 1 of the search-trigger path**, not the whole path. The design do
 
 | File | Responsibility | Tested? |
 |---|---|---|
-| `probe_lib.py` | Pure logic: `percentile`, `summarize`, `poll_until`, `minimal_product_payload`, `minimal_variant_update`, `product_critical_path`, `format_summary`. No I/O. | Yes — `tests/test_probe_lib.py` |
-| `shopify_admin.py` | Direct Admin GraphQL HTTP client: `read_admin_token`, `load_query`, `admin_graphql` (with THROTTLED/429 backoff), `storefront_status`. Constants `STORE`, `API_VERSION`, `ONLINE_STORE_PUBLICATION_ID`. | Live smoke check only (not mock-unit-tested — it's thin I/O) |
+| `probe_lib.py` | Pure logic: `percentile`, `summarize`, `poll_until`, `minimal_product_payload`, `minimal_variant_update`, `product_critical_path`, `format_summary`. No I/O. | Yes - `tests/test_probe_lib.py` |
+| `shopify_admin.py` | Direct Admin GraphQL HTTP client: `read_admin_token`, `load_query`, `admin_graphql` (with THROTTLED/429 backoff), `storefront_status`. Constants `STORE`, `API_VERSION`, `ONLINE_STORE_PUBLICATION_ID`. | Live smoke check only (not mock-unit-tested - it's thin I/O) |
 | `product-probe-state.graphql` | One query returning `onlineStoreUrl`, `publishedOnPublication`, and `media{status}` for a single product by ID (serves the media-ready poll + the API-vs-storefront comparison). | n/a (query file) |
 | `pawscout-timing-probe.py` | Runnable orchestrator: CJ fetch → `measure_single` ×N → `measure_burst` → cleanup → summarize → write `pawscout-probe-report.json` + print. `--cleanup-only` mode. | Validated by the live run (Task 8) |
-| `tests/__init__.py` | Empty — makes `tests` an importable package. | n/a |
-| `tests/test_probe_lib.py` | Unit tests for all `probe_lib` pure functions. | — |
+| `tests/__init__.py` | Empty - makes `tests` an importable package. | n/a |
+| `tests/test_probe_lib.py` | Unit tests for all `probe_lib` pure functions. | - |
 
 **Reused unchanged:** `cj_client.py` (`get_token`, `request_json`), `shopify_product.py` (`handleize`, `retail_price`, `money`), and the query files `product-create.graphql`, `product-variants-update.graphql`, `publish-product.graphql`, `product-update-media.graphql`, `product-delete-variable.graphql`.
 
@@ -46,28 +46,28 @@ This is **Plan 1 of the search-trigger path**, not the whole path. The design do
 | `t_product_create` | `productCreate` mutation | minimal-first create cost |
 | `t_variant_update` | `productVariantsBulkUpdate` (price, untracked inventory) | makes the product buyable |
 | `t_publish` | `publishablePublish` to Online Store | publish cost |
-| `t_pdp_live` | storefront `GET /products/{handle}` polled until **HTTP 200** | **the load-bearing number** — "PDP-ready & buyable" (§4). This is ground truth, not an Admin flag. |
-| `t_image_ready` | media `status` polled until `READY` (off critical path) | validates "image off the critical path" (§4) — must be safely larger than `t_pdp_live` |
+| `t_pdp_live` | storefront `GET /products/{handle}` polled until **HTTP 200** | **the load-bearing number** - "PDP-ready & buyable" (§4). This is ground truth, not an Admin flag. |
+| `t_image_ready` | media `status` polled until `READY` (off critical path) | validates "image off the critical path" (§4) - must be safely larger than `t_pdp_live` |
 | burst inter-arrival + throttle onset | back-to-back create→publish→live cadence | the "~2s apart" grid-fill rate (§4) and the throttle ceiling |
 
-**Cold-search first-product latency** (the exact thing the user asked about — "how long until the first product is fully present") = `t_cj_query + product_critical_path(first sample)` where `product_critical_path = t_cj_detail + t_product_create + t_variant_update + t_publish + t_pdp_live`.
+**Cold-search first-product latency** (the exact thing the user asked about - "how long until the first product is fully present") = `t_cj_query + product_critical_path(first sample)` where `product_critical_path = t_cj_detail + t_product_create + t_variant_update + t_publish + t_pdp_live`.
 
 **Measurement-fidelity rules** (from review):
-- The probe polls **tight (≈300 ms)**, NOT production's ≈1.5 s — otherwise you get ±1.5 s resolution on a 3–5 s budget.
+- The probe polls **tight (≈300 ms)**, NOT production's ≈1.5 s - otherwise you get ±1.5 s resolution on a 3–5 s budget.
 - Single-product runs are **spaced ≈3 s apart** to avoid self-throttling and get clean isolation numbers; the burst is deliberately back-to-back to *characterize* the throttle.
 - Caveat recorded in the report: local-PC→Shopify RTT ≠ Cloudflare-Worker→Shopify RTT. Shopify-side processing (create + publish + storefront propagation) dominates the multi-second budget, so it's a fair proxy, but the absolute floor will be a touch lower from a Worker.
 
 ---
 
-## Task 0: Prerequisites (manual setup — no code)
+## Task 0: Prerequisites (manual setup - no code)
 
-**Files:** `.env` (add two lines; gitignored — never commit, never print the secret).
+**Files:** `.env` (add two lines; gitignored - never commit, never print the secret).
 
 > **Platform change (Jan 1, 2026):** Shopify no longer lets you create custom apps in the admin, and there is no static `shpat_` token in the UI anymore. New apps are created in the **Dev Dashboard** and expose a **Client ID + Client Secret**, which `shopify_admin.py` exchanges for a 24h Admin API token via the client-credentials grant (own-store app). The code also still accepts a legacy `SHOPIFY_ADMIN_TOKEN` if one exists.
 
 - [ ] **Step 1: Create a Dev Dashboard app + get Client ID/Secret**
 
-In the Shopify admin for `4qkudm-ez.myshopify.com`: **Settings → Apps and sales channels** → **Build apps in Dev Dashboard** → **Create app** (name it `pawscout-probe`). Then, in the app: (a) under **Versions/Access → Scopes**, set `write_products,read_products,write_publications,read_publications` and **Release** the version; (b) **install it on the store** via the app **Overview → Installs → Install app** (select Active Paw) — *required: the client-credentials grant returns HTTP 400 `app_not_installed` until the app is installed*; (c) copy the **Client ID** and **Client Secret** from **Settings → Credentials**.
+In the Shopify admin for `4qkudm-ez.myshopify.com`: **Settings → Apps and sales channels** → **Build apps in Dev Dashboard** → **Create app** (name it `pawscout-probe`). Then, in the app: (a) under **Versions/Access → Scopes**, set `write_products,read_products,write_publications,read_publications` and **Release** the version; (b) **install it on the store** via the app **Overview → Installs → Install app** (select Active Paw) - *required: the client-credentials grant returns HTTP 400 `app_not_installed` until the app is installed*; (c) copy the **Client ID** and **Client Secret** from **Settings → Credentials**.
 
 - [ ] **Step 2: Add both to `.env`**
 
@@ -96,13 +96,13 @@ The constant `gid://shopify/Publication/350644961618` is reused from `publish-pr
 shopify store execute --store 4qkudm-ez.myshopify.com --query-file list-publications.graphql
 ```
 
-Expected: the JSON output contains a publication named "Online Store" with id `gid://shopify/Publication/350644961618`. If the id differs, note the new value — you'll update the constant in `shopify_admin.py` (Task 5) and the `product-probe-state.graphql` literal (Task 6).
+Expected: the JSON output contains a publication named "Online Store" with id `gid://shopify/Publication/350644961618`. If the id differs, note the new value - you'll update the constant in `shopify_admin.py` (Task 5) and the `product-probe-state.graphql` literal (Task 6).
 
 - [ ] **Checkpoint:** token in `.env`, modules import, publication id confirmed.
 
 ---
 
-## Task 1: `probe_lib` — percentile + summarize (pure stats)
+## Task 1: `probe_lib` - percentile + summarize (pure stats)
 
 **Files:**
 - Create: `probe_lib.py`
@@ -238,7 +238,7 @@ Expected: all tests in `TestPercentile` and `TestSummarize` PASS.
 
 ---
 
-## Task 2: `probe_lib.poll_until` — injectable poll-until-ready loop
+## Task 2: `probe_lib.poll_until` - injectable poll-until-ready loop
 
 **Files:**
 - Modify: `probe_lib.py`
@@ -346,7 +346,7 @@ Expected: both tests PASS.
 
 ---
 
-## Task 3: `probe_lib` — minimal product + variant payload builders
+## Task 3: `probe_lib` - minimal product + variant payload builders
 
 **Files:**
 - Modify: `probe_lib.py`
@@ -476,7 +476,7 @@ Expected: all four tests PASS.
 
 ---
 
-## Task 4: `probe_lib` — critical-path metric + summary formatting
+## Task 4: `probe_lib` - critical-path metric + summary formatting
 
 **Files:**
 - Modify: `probe_lib.py`
@@ -564,7 +564,7 @@ Expected: every test across all four classes PASSES.
 
 ---
 
-## Task 5: `shopify_admin.py` — direct Admin GraphQL HTTP client (+ live smoke check)
+## Task 5: `shopify_admin.py` - direct Admin GraphQL HTTP client (+ live smoke check)
 
 **Files:**
 - Create: `shopify_admin.py`
@@ -690,13 +690,13 @@ Expected: a dict like `{'shop': {'name': '...', 'myshopifyDomain': '4qkudm-ez.my
 
 ---
 
-## Task 6: Orchestrator — CJ fetch, single + burst measurement, cleanup
+## Task 6: Orchestrator - CJ fetch, single + burst measurement, cleanup
 
 **Files:**
 - Create: `product-probe-state.graphql`
 - Create: `pawscout-timing-probe.py`
 
-This task wires the live pipeline. It is validated by the live run (Task 8), not by mocks — the pure logic it depends on is already tested.
+This task wires the live pipeline. It is validated by the live run (Task 8), not by mocks - the pure logic it depends on is already tested.
 
 - [ ] **Step 1: Create the combined state query**
 
@@ -723,7 +723,7 @@ query ProductProbeState($id: ID!) {
 Create `pawscout-timing-probe.py`:
 
 ```python
-"""PawScout timing probe — measures the real search-trigger pipeline latency.
+"""PawScout timing probe - measures the real search-trigger pipeline latency.
 
 Run from the repo root:
     python pawscout-timing-probe.py                  # full run (default N=5, K=8)
@@ -997,7 +997,7 @@ Expected: `parse OK`.
 
 ---
 
-## Task 7: Cleanup safety net — verify `--cleanup-only` works
+## Task 7: Cleanup safety net - verify `--cleanup-only` works
 
 **Files:** none (uses `pawscout-timing-probe.py` from Task 6).
 
@@ -1010,13 +1010,13 @@ python pawscout-timing-probe.py --cleanup-only
 ```
 
 Expected: `Found 0 leftover probe products.` then `Deleted 0 leftover probe products.`
-- If it errors on the `products(query:)` call, the token lacks `read_products` — fix scopes (Task 0).
+- If it errors on the `products(query:)` call, the token lacks `read_products` - fix scopes (Task 0).
 
 - [ ] **Checkpoint:** the safety net runs and reports zero leftovers (confirms tag-search + delete wiring before any real products exist).
 
 ---
 
-## Task 8: The live run — capture real numbers (the deliverable)
+## Task 8: The live run - capture real numbers (the deliverable)
 
 **Files:** writes `pawscout-probe-report.json`.
 
@@ -1047,26 +1047,26 @@ Expected: `Found 0 leftover probe products.` (the `finally` block already delete
 
 Open `pawscout-probe-report.json` and verify the shape of the results:
 - `single_summary.t_pdp_live.p50` is present and non-null (the headline PDP-live number).
-- `cold_search_first_product_seconds` is the end-to-end "first product" number — compare to the design's ~3–5s estimate.
-- For each single, `t_image_ready` should be **larger** than `t_pdp_live` (confirms the image is safely off the critical path). If `t_image_ready` is frequently `null` (timed out at 30s), that's an even stronger confirmation — note it.
-- `burst.inter_arrival_p50` is the real "~2s apart" cadence — compare to the design's estimate.
+- `cold_search_first_product_seconds` is the end-to-end "first product" number - compare to the design's ~3–5s estimate.
+- For each single, `t_image_ready` should be **larger** than `t_pdp_live` (confirms the image is safely off the critical path). If `t_image_ready` is frequently `null` (timed out at 30s), that's an even stronger confirmation - note it.
+- `burst.inter_arrival_p50` is the real "~2s apart" cadence - compare to the design's estimate.
 
 - [ ] **Step 4: If every single shows `t_pdp_live` is null (timed out)**
 
-First suspect **storefront password protection** (Online Store → Preferences → "Restrict access… with a password"). With it on, `/products/{handle}` serves a password page, the handle never appears in the body, and the probe correctly times out rather than reporting a false ~0s. Disable it for the run, then re-run. If a *few* (not all) singles time out with protection off, that's a real finding — publish→storefront propagation is slower than assumed, which directly affects the no-quick-add UX; record it as a risk in Task 9. Do not paper over it.
+First suspect **storefront password protection** (Online Store → Preferences → "Restrict access… with a password"). With it on, `/products/{handle}` serves a password page, the handle never appears in the body, and the probe correctly times out rather than reporting a false ~0s. Disable it for the run, then re-run. If a *few* (not all) singles time out with protection off, that's a real finding - publish→storefront propagation is slower than assumed, which directly affects the no-quick-add UX; record it as a risk in Task 9. Do not paper over it.
 
 - [ ] **Checkpoint:** `pawscout-probe-report.json` exists with real P50/P90 for every phase; store confirmed clean.
 
 ---
 
-## Task 9: Close the loop — write measured numbers back into the design
+## Task 9: Close the loop - write measured numbers back into the design
 
 **Files:**
 - Modify: `docs/superpowers/specs/2026-06-07-pawscout-search-trigger-design.md`
 
 - [ ] **Step 1: Replace the §4 estimate table with measured numbers**
 
-In the search-trigger design doc, find §4 ("Latency budget (estimates — confirm via §9 probe)"). Replace the estimate values with the measured P50/P90 from `pawscout-probe-report.json`, and retitle it `## 4. Latency budget (measured 2026-06-07 — see pawscout-probe-report.json)`. Keep the rows; fill real numbers. Add a one-line note with the local-RTT caveat from the report.
+In the search-trigger design doc, find §4 ("Latency budget (estimates - confirm via §9 probe)"). Replace the estimate values with the measured P50/P90 from `pawscout-probe-report.json`, and retitle it `## 4. Latency budget (measured 2026-06-07 - see pawscout-probe-report.json)`. Keep the rows; fill real numbers. Add a one-line note with the local-RTT caveat from the report.
 
 Example shape (fill with YOUR measured values):
 
@@ -1088,8 +1088,8 @@ differ slightly; Shopify-side create/publish/propagation dominates. Full data:
 - [ ] **Step 2: Resolve the §11 open questions that the probe answers**
 
 In §11 ("Open decisions"), update items 2 and 3 with data:
-- **Poll interval** — set the production default based on the measured `t_pdp_live` (e.g., if P90 PDP-live is ~1.5s, a 1.5s production poll surfaces each product within ~one extra interval; state the chosen value and why).
-- **Target / minimum** — note the measured burst cadence and how long filling 16 tiles actually takes, which informs whether 16 is reachable inside a tolerable search wait.
+- **Poll interval** - set the production default based on the measured `t_pdp_live` (e.g., if P90 PDP-live is ~1.5s, a 1.5s production poll surfaces each product within ~one extra interval; state the chosen value and why).
+- **Target / minimum** - note the measured burst cadence and how long filling 16 tiles actually takes, which informs whether 16 is reachable inside a tolerable search wait.
 
 - [ ] **Step 3: Note any surprises as risks**
 
@@ -1103,14 +1103,14 @@ If Task 8 surfaced anything off-estimate (slow propagation, early throttle, freq
 
 The user asked to fold a fulfillment-latency hook into the probe. Split into a safe part (done) and a gated part (deferred).
 
-**Done — freight latency (read-only, zero side effects):** `--freight-only` mode added to `pawscout-timing-probe.py` (`cj_freight` + `measure_freight`, using `CJ_FREIGHT_URL = /logistic/freightCalculate`). Needs only the CJ key; places no orders. First live run (4 "dog brush" variants): **t_cj_freight P50 1.36s / P90 1.41s**, all `result=True`, 9–24 options each. Report: `pawscout-freight-report.json`. This proves CJ logistics connectivity for real variants and measures the synchronous pre-order step.
+**Done - freight latency (read-only, zero side effects):** `--freight-only` mode added to `pawscout-timing-probe.py` (`cj_freight` + `measure_freight`, using `CJ_FREIGHT_URL = /logistic/freightCalculate`). Needs only the CJ key; places no orders. First live run (4 "dog brush" variants): **t_cj_freight P50 1.36s / P90 1.41s**, all `result=True`, 9–24 options each. Report: `pawscout-freight-report.json`. This proves CJ logistics connectivity for real variants and measures the synchronous pre-order step.
 
-**Deferred — `createOrderV2` functional spike (pending user now-vs-defer decision):** The safe path is `payType=3` (create unpaid order, no wallet charge, no confirmation) → measure → `deleteOrder` cleanup. NOT yet written, by intent: (1) its latency is near-worthless as a metric (async, post-checkout, not customer-facing); (2) its real value is *functional proof* for the fulfillment module, which is 2–3 plans away; (3) it creates unpaid orders on the user's live CJ account and needs 1–3 live iterations to settle the exact payload (CJ v2 order docs are login-gated; the stale third-party client uses v1 `createOrders`). Per review: do this deliberately with consent, never as a delegated live-iteration loop. If the user defers, it lives in the future fulfillment plan, not here (YAGNI — don't leave unvalidated order-placing code in the repo).
+**Deferred - `createOrderV2` functional spike (pending user now-vs-defer decision):** The safe path is `payType=3` (create unpaid order, no wallet charge, no confirmation) → measure → `deleteOrder` cleanup. NOT yet written, by intent: (1) its latency is near-worthless as a metric (async, post-checkout, not customer-facing); (2) its real value is *functional proof* for the fulfillment module, which is 2–3 plans away; (3) it creates unpaid orders on the user's live CJ account and needs 1–3 live iterations to settle the exact payload (CJ v2 order docs are login-gated; the stale third-party client uses v1 `createOrders`). Per review: do this deliberately with consent, never as a delegated live-iteration loop. If the user defers, it lives in the future fulfillment plan, not here (YAGNI - don't leave unvalidated order-placing code in the repo).
 
 ## Self-Review (completed during planning)
 
-- **Spec coverage:** The probe validates §4 (latency budget — every row now has a measuring phase), §3a (CJ query timing), the §3/§4 "minimal-first create + image off critical path" claim (separate `t_pdp_live` vs `t_image_ready`), the §1/§3 "PDP is safe / publish makes it live" claim (real storefront 200 poll — the load-bearing measurement), and §9 (this *is* build step 0). It answers the user's literal question ("average time for the first product to become fully present") via `cold_search_first_product_seconds`. Quality gating (§5), collection tagging (§6), dedup (§7), and caching (§8) are **out of scope for the probe** — they belong to Plan 2 (the Worker), which this plan explicitly precedes.
-- **Placeholder scan:** No TBD/TODO. The only intentional blanks are the measured values in Task 9 (which can only exist after Task 8 runs) — these are clearly marked "fill with YOUR measured values."
+- **Spec coverage:** The probe validates §4 (latency budget - every row now has a measuring phase), §3a (CJ query timing), the §3/§4 "minimal-first create + image off critical path" claim (separate `t_pdp_live` vs `t_image_ready`), the §1/§3 "PDP is safe / publish makes it live" claim (real storefront 200 poll - the load-bearing measurement), and §9 (this *is* build step 0). It answers the user's literal question ("average time for the first product to become fully present") via `cold_search_first_product_seconds`. Quality gating (§5), collection tagging (§6), dedup (§7), and caching (§8) are **out of scope for the probe** - they belong to Plan 2 (the Worker), which this plan explicitly precedes.
+- **Placeholder scan:** No TBD/TODO. The only intentional blanks are the measured values in Task 9 (which can only exist after Task 8 runs) - these are clearly marked "fill with YOUR measured values."
 - **Type consistency:** Phase keys (`t_cj_detail`, `t_product_create`, `t_variant_update`, `t_publish`, `t_pdp_live`, `t_image_ready`, `critical_path`) are identical across `probe_lib.ALL_PHASES`, `measure_single`, `summarize`, and the tests. `admin.ONLINE_STORE_PUBLICATION_ID`, `admin.API_VERSION`, `admin.load_query`, `admin.admin_graphql`, `admin.storefront_status` are referenced consistently. `poll_until` signature matches all three call sites.
 - **Proportional testing:** TDD covers the bug-prone pure logic (percentile edge cases, the inject-clock poll loop, payload builders, metric math); thin HTTP wrappers and live orchestration are validated by smoke check + the live run, not mocks.
 ```

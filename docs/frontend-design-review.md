@@ -1,4 +1,4 @@
-# Active Paw — Frontend Design Review Report
+# Active Paw - Frontend Design Review Report
 
 **Date:** 2026-06-08
 **Scope:** Aesthetic design review (no code changes)
@@ -6,7 +6,7 @@
 
 ---
 
-## 1. Color Palette — Cohesive but Under-Utilized
+## 1. Color Palette - Cohesive but Under-Utilized
 
 ### What works
 - The core palette is well-chosen: warm cream (`#fffdf9`), deep ink (`#101820`), and burnt orange (`#f05a28`) create a premium pet-care feel.
@@ -14,7 +14,7 @@
 - `--green` (`#1f7a5a`) for stock/availability signals is a good functional choice.
 
 ### What needs improvement
-- **Surface token is barely used.** `--surface: #f7f4ef` appears in the body background fallback and a few panels, but the site overwhelmingly relies on `#fffdf9` and white. This makes the design feel flatter than intended — there is not enough tonal variation between page background and card backgrounds.
+- **Surface token is barely used.** `--surface: #f7f4ef` appears in the body background fallback and a few panels, but the site overwhelmingly relies on `#fffdf9` and white. This makes the design feel flatter than intended - there is not enough tonal variation between page background and card backgrounds.
 - **The dark conversion section is visually jarring.** `.conversion` (`#101820`) with lime-green stats (`#b8ff9f`) feels like a different brand. The lime green clashes with the warm orange accent used everywhere else. Consider using a warm amber or muted peach for stats on dark backgrounds to stay in the same emotional register.
 - **Category showcase background (`#b8792d`) is problematic.** This muddy brown-gold clashes with the clean cream-and-orange palette. It sits between the warm orange and the surface cream without harmonizing with either. The heading text inside it is forced to use `--accent` (orange) on brown, which reduces contrast and feels muddy.
 - **No mid-tone gray.** Everything is either `#fffdf9` (warm white), `white`, or `#101820` (near-black). There is no neutral gray for secondary backgrounds or dividers. `--line: #ded8cf` is warm, which is fine, but it cannot serve as a background tone.
@@ -23,7 +23,7 @@
 
 ---
 
-## 2. Typography — Functional but Lacks Character
+## 2. Typography - Functional but Lacks Character
 
 ### What works
 - Inter is a safe, readable sans-serif.
@@ -31,8 +31,8 @@
 - `--pdp-title-max` dynamic sizing logic ( Liquid + JS ) is clever.
 
 ### What needs improvement
-- **Only one font family is used.** Every single text element — headings, body, labels, badges, nav, buttons — uses Inter (or the system fallback stack). This creates a monotonous, flat hierarchy. A secondary display typeface (even just a different weight distribution) would give the brand personality.
-- **Font weight is over-relied on for hierarchy.** The design uses `font-weight: 800` and `900` constantly — headings, nav links, badges, labels, button text, card titles, footer headings. When everything is bold, nothing is bold. Reserve `800+` for CTAs and primary headings only.
+- **Only one font family is used.** Every single text element - headings, body, labels, badges, nav, buttons - uses Inter (or the system fallback stack). This creates a monotonous, flat hierarchy. A secondary display typeface (even just a different weight distribution) would give the brand personality.
+- **Font weight is over-relied on for hierarchy.** The design uses `font-weight: 800` and `900` constantly - headings, nav links, badges, labels, button text, card titles, footer headings. When everything is bold, nothing is bold. Reserve `800+` for CTAs and primary headings only.
 - **The `h1` hero sizing is oversized on desktop.** `clamp(44px, 7vw, 92px)` with `line-height: 0.96` creates extremely tight leading that can cause ascenders/descenders to collide on longer words, especially in the marketplace hero variant where the title is dark text on a light background (no text-shadow safety net).
 - **Small text sizes are inconsistent.** Body text ranges from `12px` to `18px` across the theme with no clear scale system. There appear to be at least 7 distinct text sizes below `16px`, which fragments the rhythm.
 - **No uppercase/text-transform discipline.** The eyebrow uses uppercase + `letter-spacing: 0`, which looks cramped. Footer headings use uppercase with tight spacing. Category nav buttons use uppercase. This scattered use of uppercase feels like a crutch for weak hierarchy rather than a deliberate design choice.
@@ -41,11 +41,11 @@
 
 ---
 
-## 3. Layout & Spacing — Generous but Inconsistent
+## 3. Layout & Spacing - Generous but Inconsistent
 
 ### What works
 - Max-width containers (`1780px`, `1720px`, `1420px`) are sensible for large screens.
-- Section padding uses `clamp()` for fluid responsiveness — good modern CSS.
+- Section padding uses `clamp()` for fluid responsiveness - good modern CSS.
 - The sticky header offset variable synced via JS is a nice touch.
 
 ### What needs improvement
@@ -58,7 +58,7 @@
 
 ---
 
-## 4. Visual Hierarchy — Weak on the Homepage
+## 4. Visual Hierarchy - Weak on the Homepage
 
 ### What works
 - The PDP (product detail page) has a strong hierarchy: gallery → summary → buybox is a proven pattern.
@@ -71,11 +71,11 @@
 - **The routine builder (landing section) gets lost.** It has the same background as the FAQ section (`--surface`), so the transition between them is invisible. The section heading is only marginally larger than the FAQ heading, making it feel like a continuation rather than a distinct value proposition.
 - **Conversion stack (dark section) breaks the warm flow.** After the warm cream hero and trust bar, the sudden `#101820` dark section is a tonal whiplash. The testimonials inside it use the same card structure as the light sections but inverted, which is not enough to make them feel special.
 
-**Recommendation:** Make the hero more visual — consider a split layout with a strong product image on the right. Give the trust bar more visual weight (darker border, icon size increase, or a subtle background tint). Vary section backgrounds more deliberately: alternate between warm cream, pure white, and one accent-tinted surface.
+**Recommendation:** Make the hero more visual - consider a split layout with a strong product image on the right. Give the trust bar more visual weight (darker border, icon size increase, or a subtle background tint). Vary section backgrounds more deliberately: alternate between warm cream, pure white, and one accent-tinted surface.
 
 ---
 
-## 5. Component Design — Polished but Repetitive
+## 5. Component Design - Polished but Repetitive
 
 ### What works
 - Cards (`.product-card`, `.commerce-card`) have consistent hover states (`translateY(-3px)`, shadow lift, border color shift).
@@ -84,7 +84,7 @@
 - The contact modal has a clean dialog shape with rounded corners (`18px`) and a soft shadow.
 
 ### What needs improvement
-- **All cards use the exact same radius, shadow, and border treatment.** `.product-card`, `.commerce-card`, `.cart-item`, `.cart-summary-card`, `.search-offer`, `.routine-paths a`, `.faq-list details`, `.support-card`, `.pdp-info-grid article`, `.review-bars`, `.quote-card` — all share `border-radius: 8px`, a `1px solid` border, and a subtle shadow. This creates a "samey" visual landscape where nothing stands out. The user cannot tell at a glance what is interactive vs. decorative vs. informational.
+- **All cards use the exact same radius, shadow, and border treatment.** `.product-card`, `.commerce-card`, `.cart-item`, `.cart-summary-card`, `.search-offer`, `.routine-paths a`, `.faq-list details`, `.support-card`, `.pdp-info-grid article`, `.review-bars`, `.quote-card` - all share `border-radius: 8px`, a `1px solid` border, and a subtle shadow. This creates a "samey" visual landscape where nothing stands out. The user cannot tell at a glance what is interactive vs. decorative vs. informational.
 - **The quantity control is the only element with `overflow: hidden` + squared internal buttons.** This creates an awkward "pill with square buttons inside" shape. The `-` and `+` buttons have `border-radius: 0` inside a rounded container. It looks like a design oversight.
 - **Badges are all the same green pill.** The product media badge, commerce media badge, and stock dot all use near-identical styling: rounded pill, green background or text, `font-size: 12px`. Consider different badge styles for different meanings (e.g., outline for "in stock", filled for "sale", dot-only for "new").
 - **The "Show more" button uses a `+` symbol in a circle.** This is fine, but the styling (`background: var(--ink)`, white text) makes it look like a primary CTA rather than a secondary toggle. It competes with "Add to cart" buttons visually.
@@ -94,7 +94,7 @@
 
 ---
 
-## 6. Mobile Design — Functional but Compressed
+## 6. Mobile Design - Functional but Compressed
 
 ### What works
 - Breakpoints at `900px` and `620px` are sensible.
@@ -104,20 +104,20 @@
 ### What needs improvement
 - **The announcement bar becomes horizontally scrollable on mobile.** The 3-column grid collapses to a scrollable track, but the borders between items and the tight padding make it feel like a bug rather than an intentional carousel. Users may not realize it scrolls.
 - **Mobile hero heading is huge.** `clamp(48px, 15vw, 62px)` with `line-height: 0.92` on narrow screens means the heading can take up 3-4 lines and push everything else below the fold.
-- **Product grid collapses to 2 columns on tablet but 1 column is missing on small mobile.** At `620px`, `.product-grid` goes to `1fr` (single column) but `.commerce-grid` stays at `repeat(2, 1fr)` with `gap: 12px`. Commerce cards at 50% width on a 375px phone are extremely narrow — roughly 170px per card with padding. Product titles in `-webkit-line-clamp: 2` become almost illegible at that width.
-- **The PDP on mobile stacks to a single column but keeps the sticky buybox logic hidden.** The `.mobile-sticky-atc` appears, but it shows "Choose options" as a button linking to `#ProductQuantity` — which is a confusing affordance if the user is already on the PDP. It should say "Add to cart" or reflect the actual variant state.
+- **Product grid collapses to 2 columns on tablet but 1 column is missing on small mobile.** At `620px`, `.product-grid` goes to `1fr` (single column) but `.commerce-grid` stays at `repeat(2, 1fr)` with `gap: 12px`. Commerce cards at 50% width on a 375px phone are extremely narrow - roughly 170px per card with padding. Product titles in `-webkit-line-clamp: 2` become almost illegible at that width.
+- **The PDP on mobile stacks to a single column but keeps the sticky buybox logic hidden.** The `.mobile-sticky-atc` appears, but it shows "Choose options" as a button linking to `#ProductQuantity` - which is a confusing affordance if the user is already on the PDP. It should say "Add to cart" or reflect the actual variant state.
 - **Cart drawer on mobile is full-width but the overlay is very dark (`rgba(16,24,32,0.5)`).** On a phone, the drawer + dark overlay can feel oppressive. Consider a lighter overlay or a bottom-sheet pattern instead of a side drawer on narrow screens.
 
 **Recommendation:** Make the announcement bar a true single-row swipeable carousel with snap points, or stack vertically. Reduce mobile hero heading size by ~20%. Force commerce grid to 1 column below `480px`. Consider a bottom-sheet cart for mobile.
 
 ---
 
-## 7. Micro-Interactions & Motion — Sparse but Acceptable
+## 7. Micro-Interactions & Motion - Sparse but Acceptable
 
 ### What works
 - Card hover lifts (`translateY`, shadow, border-color`) feel smooth.
 - The trust marquee animation is gentle.
-- Focus-visible styles are present (orange outline) — good for accessibility.
+- Focus-visible styles are present (orange outline) - good for accessibility.
 
 ### What needs improvement
 - **No page transition or loading states.** AJAX cart updates happen silently. While functional, a brief skeleton or shimmer on the drawer re-render would make the app feel more responsive.
@@ -130,7 +130,7 @@
 
 ---
 
-## 8. Photography & Imagery — The Biggest Gap
+## 8. Photography & Imagery - The Biggest Gap
 
 ### What works
 - The hero background image concept is there.
@@ -146,23 +146,23 @@
 
 ---
 
-## 9. Brand Identity & Emotional Design — Neutral, Not Warm
+## 9. Brand Identity & Emotional Design - Neutral, Not Warm
 
 ### What works
 - The brand name "Active Paw" and the paw iconography are clear.
 - The orange accent is energetic and pet-appropriate.
 
 ### What needs improvement
-- **The design feels like a generic SaaS template, not a pet brand.** There are no organic shapes, no playful curves, no paw motifs beyond the logo, no warm hand-drawn elements. Every single component is a sharp-cornered rectangle (`border-radius: 8px`) with a 1px border. A pet brand should feel friendly and approachable — this feels clinical.
+- **The design feels like a generic SaaS template, not a pet brand.** There are no organic shapes, no playful curves, no paw motifs beyond the logo, no warm hand-drawn elements. Every single component is a sharp-cornered rectangle (`border-radius: 8px`) with a 1px border. A pet brand should feel friendly and approachable - this feels clinical.
 - **Copy tone is utilitarian, not emotional.** Headings like "Useful pet care finds, bundled for everyday routines" and "Shop by the routine, not by guessing single items" are informative but lack warmth. Compare to: "Happy paws start here" or "Everything your best friend needs."
 - **No brand pattern or texture.** The surface is flat cream. There is no subtle dot pattern, paw-print watermark, or organic wave shape to break up the flat planes.
-- **The footer is overly corporate.** Dark background, 3-column grid, newsletter form — it looks like a B2B software footer. A pet brand footer could use warmer typography, maybe a mascot illustration, or a "Made with love for pets" sign-off.
+- **The footer is overly corporate.** Dark background, 3-column grid, newsletter form - it looks like a B2B software footer. A pet brand footer could use warmer typography, maybe a mascot illustration, or a "Made with love for pets" sign-off.
 
 **Recommendation:** Introduce organic shapes or a subtle brand pattern. Consider slightly larger border radii (12-16px) for primary containers to soften the edges. Add a playful illustration or mascot to the footer or empty states.
 
 ---
 
-## 10. Accessibility (Visual/Aesthetic) — Mostly Good, Some Gaps
+## 10. Accessibility (Visual/Aesthetic) - Mostly Good, Some Gaps
 
 ### What works
 - Skip link is present and styled.
@@ -171,7 +171,7 @@
 - Reduced motion media query is respected.
 
 ### What needs improvement
-- **The `.hero-marketplace` variant has dark text (`#101820`) on a variable background image.** If the uploaded hero image is light in the text area, contrast is fine — but if it is medium-toned or busy, the text could fail WCAG AA. There is no text-shadow or overlay gradient guaranteed to cover the text region.
+- **The `.hero-marketplace` variant has dark text (`#101820`) on a variable background image.** If the uploaded hero image is light in the text area, contrast is fine - but if it is medium-toned or busy, the text could fail WCAG AA. There is no text-shadow or overlay gradient guaranteed to cover the text region.
 - **The review panel (dark background) uses `color: rgba(255,255,255,0.74)` for paragraph text.** At `font-size: 13px` and `font-weight: 750`, this is borderline for WCAG AA contrast. The `0.74` alpha on white over `#101820` gives roughly a 4.2:1 ratio, which is at the threshold.
 - **The `.category-showcase` background (`#b8792d`) with orange headings (`--accent`) fails contrast.** Orange on brown-gold is likely below WCAG AA for large text.
 - **The trust bar gradient fade edges can obscure the first/last card text** if the card text happens to align with the fade zone. This is a minor issue but worth noting.
@@ -180,7 +180,7 @@
 
 ---
 
-## 11. PDP (Product Detail Page) — Strong Structure, Weak Personality
+## 11. PDP (Product Detail Page) - Strong Structure, Weak Personality
 
 ### What works
 - The 3-column layout (gallery / summary / buybox) is excellent for desktop.
@@ -188,16 +188,16 @@
 - The confidence list and delivery banner are well-placed.
 
 ### What needs improvement
-- **The buybox is visually heavy but not delightful.** It is a white card with a border and shadow, which is the same treatment as every other card on the site. The most important CTA on the entire site ("Add to cart") should feel special — consider a filled accent background, a subtle glow, or a larger radius.
+- **The buybox is visually heavy but not delightful.** It is a white card with a border and shadow, which is the same treatment as every other card on the site. The most important CTA on the entire site ("Add to cart") should feel special - consider a filled accent background, a subtle glow, or a larger radius.
 - **The bundle card is static and fake.** "Silk Coat Detangling Spray" with "Add GBP13.50" is hardcoded. Visually, it looks identical to the delivery card below it. If this is meant to be a cross-sell, it needs visual prominence (accent border, icon, or different background).
 - **The "Everything buyers need" info grid is generic filler.** Four cards with numbers `01-04` and generic text ("Everyday use", "Easy care") do not add value. They look like Lorem Ipsum placeholders. Either populate them with real product data or remove them.
 - **The review panel is visually disconnected.** It sits at the bottom of the PDP with a dark background, but the meter bars (`<meter>`) are unstyled browser defaults, which look primitive against the polished UI.
 
-**Recommendation:** Style the buybox as a premium feature — accent tint top border, larger shadow, or subtle background pattern. Redesign the info grid to either be dynamic or removed. Style `<meter>` elements or replace them with custom CSS bars.
+**Recommendation:** Style the buybox as a premium feature - accent tint top border, larger shadow, or subtle background pattern. Redesign the info grid to either be dynamic or removed. Style `<meter>` elements or replace them with custom CSS bars.
 
 ---
 
-## 12. Cart & Checkout Flow — Clean but Unremarkable
+## 12. Cart & Checkout Flow - Clean but Unremarkable
 
 ### What works
 - Cart drawer is well-structured.
@@ -205,7 +205,7 @@
 - Sticky summary on desktop is convenient.
 
 ### What needs improvement
-- **The cart drawer empty state is generic.** "Your cart is empty" with a "Shop all products" button. No illustration, no suggested products, no playful copy. For a pet brand: "Your basket is feeling lonely — let's find something for your furry friend."
+- **The cart drawer empty state is generic.** "Your cart is empty" with a "Shop all products" button. No illustration, no suggested products, no playful copy. For a pet brand: "Your basket is feeling lonely - let's find something for your furry friend."
 - **The cart item cards are plain.** White box, border, small image. There is no visual delight in reviewing your selections.
 - **The mobile sticky ATC bar is purely functional.** It shows the title and price in small text with a small button. No urgency messaging, no stock indicator, no "Free shipping over GBP150" nudge.
 
@@ -230,7 +230,7 @@
 
 #### 3. Hero heading is oversized on mobile
 - **Screenshot:** `mobile-homepage-hero.png`
-- "Smart Pet Finds for Grooming, Play & Walks" dominates the entire first viewport. The dog photo is partially visible behind the text. While the specific photo used has enough light area for the dark text to be readable, this is a accident of the current image — a different hero photo could cause a serious contrast failure.
+- "Smart Pet Finds for Grooming, Play & Walks" dominates the entire first viewport. The dog photo is partially visible behind the text. While the specific photo used has enough light area for the dark text to be readable, this is a accident of the current image - a different hero photo could cause a serious contrast failure.
 - **New finding:** The hero is actually more image-rich than the static code review suggested (there is a golden retriever background), but the text overlay still obscures the emotional imagery.
 
 #### 4. PDP issues visible on mobile
@@ -264,7 +264,7 @@
 
 2. **The "Ad-ready product page..." benefit text is visible and embarrassing.** It appears under every product title in the commerce grid. On mobile it is fully visible because the 2-line clamp on the title leaves room for the description. This text is a development placeholder that made it to production.
 
-3. **Payment icons on PDP are overwhelming on mobile.** Amex, Apple Pay, Diners, Discover, G Pay, Klarna, Maestro, Mastercard, PayPal, Shop Pay, UnionPay, Visa — 12 tiny icons in a wrapping row. On a 393px screen this creates a crowded, anxious feeling right next to the "Add to cart" button.
+3. **Payment icons on PDP are overwhelming on mobile.** Amex, Apple Pay, Diners, Discover, G Pay, Klarna, Maestro, Mastercard, PayPal, Shop Pay, UnionPay, Visa - 12 tiny icons in a wrapping row. On a 393px screen this creates a crowded, anxious feeling right next to the "Add to cart" button.
 
 4. **The trust bar marquee is invisible on mobile.** The gradient fade edges cover a significant portion of the narrow viewport, and the cards are so narrow that the marquee effect is lost. It just looks like a row of small white pills.
 
@@ -275,7 +275,7 @@
 | Priority | Issue | Effort |
 |---|---|---|
 | **High** | Category showcase brown background clashes with palette | Low |
-| **High** | All cards look identical — no component differentiation | Medium |
+| **High** | All cards look identical - no component differentiation | Medium |
 | **High** | Hero is text-heavy, lacks emotional product imagery | Medium |
 | **High** | PDP buybox CTA needs visual prominence | Low |
 | **High** | Mobile commerce grid too narrow at 2 columns | Low |
@@ -293,7 +293,7 @@
 
 ## Overall Verdict
 
-The Active Paw theme is **technically solid and commercially functional** — it has all the right e-commerce patterns, responsive behavior, and accessibility basics. However, from an **aesthetic and emotional design** perspective, it currently reads as a well-built but generic Shopify theme. It lacks the warmth, playfulness, and visual distinctiveness that a pet-care brand needs to stand out. The biggest wins would come from:
+The Active Paw theme is **technically solid and commercially functional** - it has all the right e-commerce patterns, responsive behavior, and accessibility basics. However, from an **aesthetic and emotional design** perspective, it currently reads as a well-built but generic Shopify theme. It lacks the warmth, playfulness, and visual distinctiveness that a pet-care brand needs to stand out. The biggest wins would come from:
 
 1. **Softening the visual language** (more organic shapes, varied card treatments, a secondary typeface).
 2. **Fixing the color harmony** (remove the brown-gold category section, align dark sections with the warm palette).

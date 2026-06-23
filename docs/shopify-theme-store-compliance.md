@@ -1,4 +1,4 @@
-# Shopify Theme Store Compliance Checklist — Active Paw
+# Shopify Theme Store Compliance Checklist - Active Paw
 
 **Date:** 2026-06-08
 **Theme:** Active Paw v1.0.0
@@ -23,7 +23,7 @@ The theme in its current state is compliant with Shopify's theme development req
 | **No inline JavaScript in Liquid** | ✅ | All JS lives in `assets/theme.js`. No `onclick` handlers or `<script>` blocks in templates. |
 | **No inline CSS in Liquid** | ✅ | All styles live in `assets/theme.css`. The only inline style is `--hero-bg` (a CSS custom property referencing an asset URL, which is standard). |
 | **Standard section schema JSON** | ✅ | All `{% schema %}` blocks are valid JSON with proper types and IDs. |
-| **No deprecated Liquid filters/tags** | ✅ | Uses `image_url`, `money`, `image_tag`, `payment_type_svg_tag` — all current. |
+| **No deprecated Liquid filters/tags** | ✅ | Uses `image_url`, `money`, `image_tag`, `payment_type_svg_tag` - all current. |
 
 ---
 
@@ -47,7 +47,7 @@ The theme in its current state is compliant with Shopify's theme development req
 | Requirement | Status | Notes |
 |---|---|---|
 | **CSS loaded in `<head>`** | ✅ | `theme.css` is in `<head>` via `stylesheet_tag`. |
-| **JS loaded with `defer`** | ✅ | `theme.js` uses `defer` — non-blocking. |
+| **JS loaded with `defer`** | ✅ | `theme.js` uses `defer` - non-blocking. |
 | **Lazy loading on images** | ✅ | Product cards, thumbnails, and gallery images use `loading="lazy"`. |
 | **Eager loading on LCP image** | ✅ | PDP featured image uses `loading="eager"` and `fetchpriority="high"`. |
 | **Responsive images** | ✅ | `image_tag` with `widths` and `sizes` attributes throughout. |
@@ -113,7 +113,7 @@ The theme in its current state is compliant with Shopify's theme development req
 ### 🟡 Should Fix
 
 5. **Add `settings_schema.json` color descriptions**
-   - The color settings currently have labels "Ink", "Accent", "Surface" — consider adding `info` fields explaining where each color is used.
+   - The color settings currently have labels "Ink", "Accent", "Surface" - consider adding `info` fields explaining where each color is used.
 
 6. **Section `presets` for all sections**
    - Some sections like `main-product.liquid` have empty schemas with no presets. For theme store submission, all sections should have meaningful presets so merchants can add them via the theme editor.
@@ -122,7 +122,7 @@ The theme in its current state is compliant with Shopify's theme development req
    - `config/settings_schema.json` should include `theme_name`, `theme_version`, `theme_author`, `theme_documentation_url`, `theme_support_url` for the theme store listing.
 
 8. **Font licensing**
-   - Inter is an open-source font (OFL license) — safe to bundle. If a secondary font is added later, verify the license permits redistribution in a commercial theme.
+   - Inter is an open-source font (OFL license) - safe to bundle. If a secondary font is added later, verify the license permits redistribution in a commercial theme.
 
 ### 🟢 Nice to Have
 
@@ -134,7 +134,7 @@ The theme in its current state is compliant with Shopify's theme development req
 
 ---
 
-## 8. Proposed Changes from Design Review — Compliance Check
+## 8. Proposed Changes from Design Review - Compliance Check
 
 | Proposed Change | Compliant? | Notes |
 |---|---|---|

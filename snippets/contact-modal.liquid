@@ -1,5 +1,5 @@
 {%- comment -%}
-  Contact Us modal — wraps Shopify's native {% form 'contact' %} (emails the store's
+  Contact Us modal - wraps Shopify's native {% form 'contact' %} (emails the store's
   contact address; no app/backend needed). The form does a full-page POST and Shopify
   redirects back with form.posted_successfully? / form.errors set. We render that result
   inside [data-contact-result]; theme.js auto-opens the modal on load when it's present.
@@ -26,7 +26,7 @@
           <span class="contact-confirm__icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="34" height="34" focusable="false"><path d="M20 6 9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </span>
-          <h3>Message sent — thank you!</h3>
+          <h3>Message sent - thank you!</h3>
           <p>We usually reply within <strong>{{ settings.contact_reply_eta | default: '24 hours' }}</strong> (often sooner) to the email you gave us.</p>
           <p class="contact-confirm__spam">Can't find our reply? Please check your <strong>spam</strong> or <strong>junk</strong> folder, and add us to your contacts so future messages reach your inbox.</p>
           <button type="button" class="button button-primary full" data-contact-close>Close</button>

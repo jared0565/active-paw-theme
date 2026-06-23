@@ -1,6 +1,6 @@
 {% doc %}
 "More details" modal for the PDP. Content priority:
-  1. product.metafields.details.bullets (list of single line text) — merchant-curated
+  1. product.metafields.details.bullets (list of single line text) - merchant-curated
   2. Bullets parsed from product.description (CJ imports ship key facts as
      <br>/<li>/<p>-separated lines; embedded supplier <img> dumps are cut off)
   3. Plain-text description excerpt
@@ -75,7 +75,7 @@ Always ends with a specifications list built from real catalog data.
         <h3>About this item</h3>
         <p>{{ product.description | strip_html | truncatewords: 80 }}</p>
       {% else %}
-        <p>Full details for this product are being prepared. Everything shown on the product page — price, options, and availability — is up to date.</p>
+        <p>Full details for this product are being prepared. Everything shown on the product page - price, options, and availability - is up to date.</p>
       {% endif %}
 
       <h3>Specifications</h3>
