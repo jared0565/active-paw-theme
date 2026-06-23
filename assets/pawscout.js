@@ -181,7 +181,7 @@
       content.appendChild(list);
     }
     if (p.descriptionText) content.appendChild(el('p', 'pawscout-desc', p.descriptionText.slice(0, 400)));
-    content.appendChild(el('p', 'pawscout-ship', 'Ships from our supplier network · estimated 7–12 days to the UK.'));
+    content.appendChild(el('p', 'pawscout-ship', 'Ships from our supplier network · estimated 7-12 days to the UK.'));
 
     const action = el('div', 'pawscout-action');
     const btn = el('button', 'commerce-add-button pawscout-cta', 'Preparing product…');
