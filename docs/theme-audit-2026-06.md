@@ -104,7 +104,7 @@ LCP split, and a `prefers-reduced-motion` block.
 | HIGH | **Header search button shrinks to 36px** at ≤620px - under the 44px tap-target floor on exactly the phones where it matters. | `theme.css:2266-2271` |
 | HIGH | **Header search input set to 14px** at ≤620px → iOS Safari auto-zooms the viewport on focus (anything <16px). | `theme.css:2264` |
 | HIGH | **Most product images lack `srcset`/`sizes`** → phones download desktop-width assets (PDP hero `width:1400`, cards `width:720`). Only the logo and cart image do it right. | `main-collection.liquid:12`; `product-card-commerce.liquid:29`; `main-product.liquid:81,93` |
-| MEDIUM | **No tablet breakpoint** (only 900 / 620). 4-col grids stay 4-wide on ~1000px tablets; a **900–1090px dead zone** lets the 3-col PDP (`minmax` totals 1030px) and footer (1060px) overflow horizontally before the 900px query fires. | `theme.css:1464,2069,751,1948` |
+| MEDIUM | **No tablet breakpoint** (only 900 / 620). 4-col grids stay 4-wide on ~1000px tablets; a **900-1090px dead zone** lets the 3-col PDP (`minmax` totals 1030px) and footer (1060px) overflow horizontally before the 900px query fires. | `theme.css:1464,2069,751,1948` |
 | MEDIUM | **Sub-44px targets:** share 38px, qty steppers 42px, cart qty input 40px, "Remove" link (no min size), nav links ~33px at 620px. | `theme.css:1669,1827,1166,1174,2290` |
 | MEDIUM | Fixed-px grid columns that never reflow (`.review-bars` 64px/44px rails, `.pdp-confidence-list` 120px label). | `theme.css:2051,1749` |
 | LOW | 2419-line single `theme.css`, no section banners; per-component responsive rules scattered across 3 distant regions - the main maintainability liability (a deliberate "no build step" tradeoff). | whole file |

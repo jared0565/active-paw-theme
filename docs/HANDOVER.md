@@ -81,7 +81,7 @@ We are building a **signal-driven inventory populator** for a Shopify pet-care s
 - **Collections** (smart/rule-based): `pet-cleaning`, `pet-accessories`, `pet-health`, `pet-toys`, `more-to-love`. PDP related-products walks `product.collections` in that priority order.
 - **Theme settings**: `demo_brand_name` (default "Active Paw"), `brand_logo`, `favicon`, `color_ink/accent/surface` (`config/settings_schema.json`).
 - **Copy rule:** always say **"Collections"**, never "Categories."
-- Recent UX work is logged append-only in `docs/design-improvements.md` (Entries 1–14).
+- Recent UX work is logged append-only in `docs/design-improvements.md` (Entries 1-14).
 
 ---
 
@@ -141,7 +141,7 @@ Spec: `docs/superpowers/specs/2026-06-07-pawscout-search-trigger-design.md` (com
 - Cold-search **first product PDP-ready & buyable ≈ 4.15s**.
 - Subsequent products **≈ 1.4s apart** (no throttling at 8 back-to-back).
 - Publish → PDP live **P90 0.44s**. Image processing (~2.3s) is **off** the critical path - show CJ's own image URL meanwhile.
-- A full cold 16-tile grid ≈ **25–40s**; existing inventory renders instantly, pipeline tiles stream in. Per-term cache + permanent inventory mean only the *first* searcher of a term pays the cold cost.
+- A full cold 16-tile grid ≈ **25-40s**; existing inventory renders instantly, pipeline tiles stream in. Per-term cache + permanent inventory mean only the *first* searcher of a term pays the cold cost.
 
 The probe **confirmed the progressive-fill UX is viable** on these numbers. `listV2` carries enough (`nameEn`, `bigImage`, `sellPrice`, `id`, `listedNum`) for minimal-create + tile + gate + dedup, so the per-product CJ detail call moves to async enrichment off the hot path.
 
@@ -223,7 +223,7 @@ Whichever ran last owns the live rule - a coin-flip. **Resolution (design §11 o
 | `docs/shopify-supplier-metafields.md` | The metafield data contract. |
 | `docs/shopify-theme-dev-troubleshooting.md` | `theme dev` gotchas - read before debugging a wedged dev server. |
 | `docs/shopify-theme-store-compliance.md` | Theme Store compliance notes. |
-| `docs/design-improvements.md` | Append-only theme/tooling change log (Entries 1–14). |
+| `docs/design-improvements.md` | Append-only theme/tooling change log (Entries 1-14). |
 | `TASKS.md` | Original Supplier-Intelligence backlog (some items superseded by the PawScout reframe). |
 | `CLAUDE.md` (both repos' root) | Repo-specific operating instructions for AI assistants. |
 

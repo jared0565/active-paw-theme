@@ -53,6 +53,6 @@ when sections change).
 - [ ] **Merchant Center → Diagnostics** - product feed has no disapprovals.
 
 ## Maintenance note
-Because steps 1–2 are app-managed, ongoing upkeep is near-zero: the apps handle pixel/CAPI updates.
+Because steps 1-2 are app-managed, ongoing upkeep is near-zero: the apps handle pixel/CAPI updates.
 The only theme-side tracking surface is the JSON-LD in `snippets/meta-tags.liquid` - re-run
 `shopify theme check` and Google's Rich Results Test if you edit product data or that snippet.

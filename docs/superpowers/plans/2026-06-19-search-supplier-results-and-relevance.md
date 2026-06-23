@@ -57,7 +57,7 @@ Expected BEFORE fix: `Build a feeding…` present and **6× "Pairs well"** (the 
 
 - [ ] **Step 2: Replace the assign block + grid + offer section in `sections/main-search.liquid`**
 
-Replace lines 16–115 (from `{% liquid` through the `{% else %}…</div>` empty-state, i.e. everything between `{% paginate search.results by 24 %}` and the `{% if paginate.pages > 1 %}` block) with:
+Replace lines 16-115 (from `{% liquid` through the `{% else %}…</div>` empty-state, i.e. everything between `{% paginate search.results by 24 %}` and the `{% if paginate.pages > 1 %}` block) with:
 
 ```liquid
         {% liquid
@@ -266,7 +266,7 @@ git commit -m "fix(search): restrict native search to title/type/tag/variant-tit
 
 # STAGE 2 - Live supplier feed (ghost cards) in the grid (gated on App Proxy)
 
-> **PREREQUISITE - Task 3 below.** Stage 2 cannot be verified live until the `/apps/pawscout` App Proxy routes to the worker; today `https://activepaw.co.uk/apps/pawscout/proxy/search` returns **404**. Build Tasks 4–7, but their live verification waits on Task 3.
+> **PREREQUISITE - Task 3 below.** Stage 2 cannot be verified live until the `/apps/pawscout` App Proxy routes to the worker; today `https://activepaw.co.uk/apps/pawscout/proxy/search` returns **404**. Build Tasks 4-7, but their live verification waits on Task 3.
 >
 > **MUST-FIX BEFORE WIRING - Task 3b (worker pet-scoping).** The live feed as built is NOT pet-safe: `searchBackfill` calls `cj.search(keyword)` with the RAW keyword (no category filter), and the live gate `liveCjPasses` only checks popularity/price/species/title-token - it "trusts CJ's relevance". The pet guard `isLikelyPetProduct()` + LLM curation run ONLY on the import path (`jobs.ts:348`, `proxy/import.ts`), so a `shampoo` search would DISPLAY human/baby/car shampoo as ghost cards (rejected only on click → show-then-fail). Task 3b must land before any ghost card is shown.
 
@@ -279,7 +279,7 @@ git commit -m "fix(search): restrict native search to title/type/tag/variant-tit
 ```bash
 curl -s "https://activepaw.co.uk/apps/pawscout/proxy/search?q=dog%20toy&limit=3" | head -c 300
 ```
-Expected: JSON `{"ok":true,"products":[...]}` (Shopify adds the HMAC `signature`; the worker's `verifyAppProxy` passes). Today this returns `404 Not Found` → proxy not yet active. Do not proceed to live-verify Tasks 5–6 until this returns JSON.
+Expected: JSON `{"ok":true,"products":[...]}` (Shopify adds the HMAC `signature`; the worker's `verifyAppProxy` passes). Today this returns `404 Not Found` → proxy not yet active. Do not proceed to live-verify Tasks 5-6 until this returns JSON.
 
 ---
 
@@ -502,7 +502,7 @@ git commit -m "feat(search): ghost-card click triggers import, polls, redirects 
 
 ## Self-Review notes (author)
 
-- **Spec coverage:** relevance bug → Task 1 (offer query-filter) + Task 2 (native fields); merge into main listing → Task 1 (suggested cards in grid) + Tasks 4–6 (live supplier ghost cards in grid); above-the-fold/mobile → in-grid render replaces the below-fold `.search-offer` section; thin-only + cap 3 + labelled → Task 1 gate/cap/badge + Stage-2 reuse; dedup bug → Task 1 Step 2 (comma-wrapped membership).
+- **Spec coverage:** relevance bug → Task 1 (offer query-filter) + Task 2 (native fields); merge into main listing → Task 1 (suggested cards in grid) + Tasks 4-6 (live supplier ghost cards in grid); above-the-fold/mobile → in-grid render replaces the below-fold `.search-offer` section; thin-only + cap 3 + labelled → Task 1 gate/cap/badge + Stage-2 reuse; dedup bug → Task 1 Step 2 (comma-wrapped membership).
 - **Stage independence:** Stage 1 ships and fixes the live complaint with zero infra. Stage 2 is purely additive and gated on Task 3 (App Proxy), which is currently 404.
-- **Type consistency:** GhostCard fields (`pid,title,image,price,state,url`) used identically in Tasks 5–6; `#supplier-feed[data-q][data-have]` produced in Task 4, consumed in Task 5.
+- **Type consistency:** GhostCard fields (`pid,title,image,price,state,url`) used identically in Tasks 5-6; `#supplier-feed[data-q][data-have]` produced in Task 4, consumed in Task 5.
 - **Known approximations (acceptable for v1, documented not hidden):** Stage-1 relevance uses a 4-char-prefix title contains-match (no real stemming/synonyms - that's Stage 2's worker); `exclude` of shown CJ pids is omitted in v1 (worker dedups). Both err toward under-showing (relevant) rather than over-showing (irrelevant).

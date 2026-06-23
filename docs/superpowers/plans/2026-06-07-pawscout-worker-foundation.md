@@ -160,7 +160,7 @@ Generate the master key: `node -e "console.log(crypto.randomBytes(32).toString('
 
 - [ ] **Step 7: D1 database id - local placeholder (real create deferred to Task 13)**
 
-`wrangler d1 create` needs Cloudflare auth and is **not** required for Tasks 0–12: the vitest Workers pool and `wrangler dev --local` use a local in-memory D1 and ignore `database_id`. Leave the placeholder in `wrangler.toml` for now:
+`wrangler d1 create` needs Cloudflare auth and is **not** required for Tasks 0-12: the vitest Workers pool and `wrangler dev --local` use a local in-memory D1 and ignore `database_id`. Leave the placeholder in `wrangler.toml` for now:
 ```toml
 database_id = "local-dev-placeholder"
 ```
@@ -1025,7 +1025,7 @@ refresh();
   return new Response(html, { headers: { 'Content-Type': 'text/html' } });
 }
 ```
-*(App Bridge global/API names can shift between versions - confirm the exact `getToken`/`createApp` calls against the App Bridge version the CDN serves during the live test in Task 13; the server contract the page depends on is fully tested in Tasks 10–11.)*
+*(App Bridge global/API names can shift between versions - confirm the exact `getToken`/`createApp` calls against the App Bridge version the CDN serves during the live test in Task 13; the server contract the page depends on is fully tested in Tasks 10-11.)*
 
 **Subresource Integrity note:** the two CDN assets above are loaded **without** SRI deliberately. Shopify's `app-bridge.js` is **evergreen and must be loaded unpinned** - an `integrity` hash breaks it the moment Shopify ships an update (this is Shopify's own guidance), so do **not** add SRI to it. For the Polaris stylesheet, either (a) pin a **versioned** Polaris CSS URL and add `integrity="sha384-…" crossorigin="anonymous"`, or (b) **self-host** the CSS from the Worker's static assets (preferred - removes the third-party CDN dependency entirely). Apply SRI/self-hosting to any *pinnable* third-party asset; App Bridge is the one deliberate exception.
 

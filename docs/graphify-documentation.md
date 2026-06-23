@@ -73,7 +73,7 @@ By default graphify only records relationships it can see *structurally* (a head
 Design guarantees:
 - **Additive and opt-in.** Without the flag, output is unchanged. The overlay only *adds* `semantically_similar_to` edges; it never touches `contains`/`imports`/`calls`.
 - **Does not affect community detection.** Edges are injected *after* clustering, so the structural community map you rely on is never reshuffled by lexical noise. They render in `graph.html` (dashed amber) and are listed in `GRAPH_REPORT.md` under "Cross-cutting semantic links" (bucketed cross-area vs. same-area, with a per-file diversity cap so hub files don't flood the list).
-- **Sparse by construction.** `--semantic-top-n` caps links per file; `--semantic-threshold` filters weak matches. Defaults yield ≈2–3 edges/file.
+- **Sparse by construction.** `--semantic-top-n` caps links per file; `--semantic-threshold` filters weak matches. Defaults yield ≈2-3 edges/file.
 - **Refreshed only when requested.** A plain `build` leaves an existing overlay untouched; re-run with `--semantic` to recompute it.
 
 **Honest limitation - similarity is not reasoning.** This recovers that two files are *related* (e.g. a CJ-import script and the collection-mapping design doc both discuss `ensure_collections`/`ruleSet`/`cj-cat`). It will surface that link as an edge in `graph.json` (searchable in `graph.html`), but it **cannot rank it as the *important* one** - a genuinely critical cross-file conflict and an incidental vocabulary overlap can score the same. Reasoning-grade conflict detection still needs an LLM pass. Use this layer for *discovery hints*, not as a substitute for that judgment.
@@ -124,12 +124,12 @@ Every extractor returns a 3-tuple: `(nodes, edges, hyperedges)`.
 
 | File type | What it extracts | Relations created |
 |---|---|---|
-| **Markdown (`.md`)** | H1–H6 headings (as `rationale`/`concept` nodes), inline code file mentions (`sections/main-product.liquid`) | `contains`, `references`, `rationale_for`, `implements`, `conceptually_related_to`, plus hyperedge groups under H2s |
+| **Markdown (`.md`)** | H1-H6 headings (as `rationale`/`concept` nodes), inline code file mentions (`sections/main-product.liquid`) | `contains`, `references`, `rationale_for`, `implements`, `conceptually_related_to`, plus hyperedge groups under H2s |
 | **Python (`.py`)** | Functions, classes, methods; `import` / `from` dependencies; intra-file function calls | `contains`, `imports`, `calls` |
 | **CSS (`.css`)** | Selectors (as `concept` nodes), `@media` / `@keyframes` blocks, CSS custom properties (`--var`) | `contains`, `in_media`, `in_keyframes`, `custom_property` |
 | **Liquid/JSON (`.liquid`, `.json`)** | Block names, section settings, schema definitions, nested keys | `contains`, `configures` |
 
-All extraction is pure regex/AST. No LLM. A typical file (<10 KB) extracts in well under 1ms; the largest files in a repo (tens of KB) take ~10–15ms, dominated by Python's own `ast.parse`. There are no quadratic hot paths - Python call-graph extraction uses a single-pass child→parent map, so cost scales linearly with file size.
+All extraction is pure regex/AST. No LLM. A typical file (<10 KB) extracts in well under 1ms; the largest files in a repo (tens of KB) take ~10-15ms, dominated by Python's own `ast.parse`. There are no quadratic hot paths - Python call-graph extraction uses a single-pass child→parent map, so cost scales linearly with file size.
 
 #### Adding a new extractor
 

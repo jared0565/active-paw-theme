@@ -1,16 +1,20 @@
-"""Catalog em-dash scrub. DRY by default; pass --apply to write via Admin API.
-Replaces em-dash (U+2014) -> hyphen in product title, descriptionHtml, and SEO description."""
+"""Catalog dash scrub. DRY by default; pass --apply to write via Admin API.
+Replaces em-dash (U+2014), en-dash (U+2013), and horizontal bar (U+2015) -> hyphen
+in product title, descriptionHtml, and SEO description (matches the worker's
+sanitizeOutbound and the import strip_dashes; all read as an AI tell)."""
 import sys
 import shopify_admin as sa
 
-EM = chr(0x2014)
+DASHES = (0x2014, 0x2013, 0x2015)  # em, en, horizontal bar
 APPLY = "--apply" in sys.argv
 
 
 def fix(s):
     if not s:
         return s, False
-    n = s.replace(EM, "-")
+    n = s
+    for cp in DASHES:
+        n = n.replace(chr(cp), "-")
     return n, (n != s)
 
 
@@ -56,6 +60,6 @@ while True:
     cursor = p["pageInfo"]["endCursor"]
 
 print(f"total={total}  affected={len(affected)}  (title/desc/seo per row)")
-for a in affected[:10]:
-    print(f"  - title_emdash={a[2]} desc_emdash={a[3]} seo_emdash={a[4]} :: {a[1][:60]}")
+for a in affected[:80]:
+    print(f"  - title_dash={a[2]} desc_dash={a[3]} seo_dash={a[4]} :: {a[1][:60]}")
 print("APPLIED (catalog written)" if APPLY else "DRY RUN (no writes made)")

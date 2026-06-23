@@ -426,10 +426,10 @@
 ## Entry 10 - 2026-06-08: Remove Support Icon from Header
 
 ### What changed
-- `sections/site-header.liquid` - removed the `.header-action-support` anchor block (lines 83–92) containing the headset icon and "Support / Help centre" label.
+- `sections/site-header.liquid` - removed the `.header-action-support` anchor block (lines 83-92) containing the headset icon and "Support / Help centre" label.
 
 ### Why it changed
-- The Support icon duplicated functionality already available via the Contact button (`.header-contact-trigger`, lines 73–81) and the footer links.
+- The Support icon duplicated functionality already available via the Contact button (`.header-contact-trigger`, lines 73-81) and the footer links.
 - Removing it declutters the header action row, giving the Contact, Locale, and Cart actions more visual room.
 
 ### Files touched
@@ -452,7 +452,7 @@
 - `assets/theme.css` - `.category-showcase` top padding reduced from `var(--section-pad-small)` (`clamp(28px, 5vw, 58px)`) → `clamp(10px, 2vw, 18px)`.
 
 ### Why it changed
-- The scrolling trust bar (`.trust-bar`) and the first product category section (`.category-showcase`) felt visually disconnected due to excessive combined padding (~44–74px gap).
+- The scrolling trust bar (`.trust-bar`) and the first product category section (`.category-showcase`) felt visually disconnected due to excessive combined padding (~44-74px gap).
 - Tightening both brings the category cards closer to the trust signals above them, creating a more compact, scannable homepage flow.
 
 ### Files touched

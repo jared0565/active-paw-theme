@@ -4,7 +4,7 @@
 
 **Goal:** Build a self-contained measurement script that creates, publishes, and tears down real CJ→Shopify products against the live Active Paw store, and reports P50/P90 latency for every phase of the search-trigger pipeline - so the progressive-fill UX (poll interval, per-product cadence, spinner copy) is designed against real numbers instead of estimates.
 
-**Architecture:** A thin runnable entrypoint (`pawscout-timing-probe.py`) orchestrates four layers: (1) CJ candidate fetch via the existing `cj_client.py`; (2) a new `shopify_admin.py` that talks to the Shopify Admin GraphQL API over **direct HTTP** (token from `.env`) - this is the first real piece of PawScout's Admin layer, not a throwaway, because BYOC needs it anyway; (3) pure, unit-tested logic in `probe_lib.py` (percentiles, the poll-until-ready loop, minimal-product payload builders, metric derivation); (4) the live measurement of two distinct things - **single-product isolation latency** (one product start-to-buyable, drives the "first product ~3–5s" + spinner) and **sustained throughput** (back-to-back creation under Shopify's throttle, drives the "~2s apart" grid-fill cadence). Ground truth for "PDP-ready & buyable" is a real storefront `GET /products/{handle}` polled until HTTP 200 - not the Admin API's publication flags, which can lag. Every product the probe creates is tagged `pawscout-probe-temp` and deleted in a `finally` block, with a `--cleanup-only` safety net.
+**Architecture:** A thin runnable entrypoint (`pawscout-timing-probe.py`) orchestrates four layers: (1) CJ candidate fetch via the existing `cj_client.py`; (2) a new `shopify_admin.py` that talks to the Shopify Admin GraphQL API over **direct HTTP** (token from `.env`) - this is the first real piece of PawScout's Admin layer, not a throwaway, because BYOC needs it anyway; (3) pure, unit-tested logic in `probe_lib.py` (percentiles, the poll-until-ready loop, minimal-product payload builders, metric derivation); (4) the live measurement of two distinct things - **single-product isolation latency** (one product start-to-buyable, drives the "first product ~3-5s" + spinner) and **sustained throughput** (back-to-back creation under Shopify's throttle, drives the "~2s apart" grid-fill cadence). Ground truth for "PDP-ready & buyable" is a real storefront `GET /products/{handle}` polled until HTTP 200 - not the Admin API's publication flags, which can lag. Every product the probe creates is tagged `pawscout-probe-temp` and deleted in a `finally` block, with a `--cleanup-only` safety net.
 
 **Tech Stack:** Python 3 standard library only (`urllib`, `json`, `time`, `pathlib`, `re`, `argparse`) - matching the repo convention of zero third-party deps. Tests use the stdlib `unittest` module (the repo has no pytest). Shopify Admin GraphQL API version **2026-04**. Reuses existing `.graphql` query files unchanged.
 
@@ -41,7 +41,7 @@ This is **Plan 1 of the search-trigger path**, not the whole path. The design do
 
 | Phase key | What it times | Drives which design decision |
 |---|---|---|
-| `t_cj_query` | listV2 keyword search at CJ (once per search) | §3a "query CJ ~0.5–2s"; the per-search fixed cost |
+| `t_cj_query` | listV2 keyword search at CJ (once per search) | §3a "query CJ ~0.5-2s"; the per-search fixed cost |
 | `t_cj_detail` | `product/query` detail fetch (per product) | per-product CJ cost on the critical path |
 | `t_product_create` | `productCreate` mutation | minimal-first create cost |
 | `t_variant_update` | `productVariantsBulkUpdate` (price, untracked inventory) | makes the product buyable |
@@ -53,7 +53,7 @@ This is **Plan 1 of the search-trigger path**, not the whole path. The design do
 **Cold-search first-product latency** (the exact thing the user asked about - "how long until the first product is fully present") = `t_cj_query + product_critical_path(first sample)` where `product_critical_path = t_cj_detail + t_product_create + t_variant_update + t_publish + t_pdp_live`.
 
 **Measurement-fidelity rules** (from review):
-- The probe polls **tight (≈300 ms)**, NOT production's ≈1.5 s - otherwise you get ±1.5 s resolution on a 3–5 s budget.
+- The probe polls **tight (≈300 ms)**, NOT production's ≈1.5 s - otherwise you get ±1.5 s resolution on a 3-5 s budget.
 - Single-product runs are **spaced ≈3 s apart** to avoid self-throttling and get clean isolation numbers; the burst is deliberately back-to-back to *characterize* the throttle.
 - Caveat recorded in the report: local-PC→Shopify RTT ≠ Cloudflare-Worker→Shopify RTT. Shopify-side processing (create + publish + storefront propagation) dominates the multi-second budget, so it's a fair proxy, but the absolute floor will be a touch lower from a Worker.
 
@@ -1047,7 +1047,7 @@ Expected: `Found 0 leftover probe products.` (the `finally` block already delete
 
 Open `pawscout-probe-report.json` and verify the shape of the results:
 - `single_summary.t_pdp_live.p50` is present and non-null (the headline PDP-live number).
-- `cold_search_first_product_seconds` is the end-to-end "first product" number - compare to the design's ~3–5s estimate.
+- `cold_search_first_product_seconds` is the end-to-end "first product" number - compare to the design's ~3-5s estimate.
 - For each single, `t_image_ready` should be **larger** than `t_pdp_live` (confirms the image is safely off the critical path). If `t_image_ready` is frequently `null` (timed out at 30s), that's an even stronger confirmation - note it.
 - `burst.inter_arrival_p50` is the real "~2s apart" cadence - compare to the design's estimate.
 
@@ -1093,7 +1093,7 @@ In §11 ("Open decisions"), update items 2 and 3 with data:
 
 - [ ] **Step 3: Note any surprises as risks**
 
-If Task 8 surfaced anything off-estimate (slow propagation, early throttle, frequent image timeouts), add a short "Measured risks" subsection under §4 capturing it, so Plans 2–3 account for it.
+If Task 8 surfaced anything off-estimate (slow propagation, early throttle, frequent image timeouts), add a short "Measured risks" subsection under §4 capturing it, so Plans 2-3 account for it.
 
 - [ ] **Checkpoint:** the design doc now carries real numbers; the estimate-vs-measured loop is closed.
 
@@ -1103,9 +1103,9 @@ If Task 8 surfaced anything off-estimate (slow propagation, early throttle, freq
 
 The user asked to fold a fulfillment-latency hook into the probe. Split into a safe part (done) and a gated part (deferred).
 
-**Done - freight latency (read-only, zero side effects):** `--freight-only` mode added to `pawscout-timing-probe.py` (`cj_freight` + `measure_freight`, using `CJ_FREIGHT_URL = /logistic/freightCalculate`). Needs only the CJ key; places no orders. First live run (4 "dog brush" variants): **t_cj_freight P50 1.36s / P90 1.41s**, all `result=True`, 9–24 options each. Report: `pawscout-freight-report.json`. This proves CJ logistics connectivity for real variants and measures the synchronous pre-order step.
+**Done - freight latency (read-only, zero side effects):** `--freight-only` mode added to `pawscout-timing-probe.py` (`cj_freight` + `measure_freight`, using `CJ_FREIGHT_URL = /logistic/freightCalculate`). Needs only the CJ key; places no orders. First live run (4 "dog brush" variants): **t_cj_freight P50 1.36s / P90 1.41s**, all `result=True`, 9-24 options each. Report: `pawscout-freight-report.json`. This proves CJ logistics connectivity for real variants and measures the synchronous pre-order step.
 
-**Deferred - `createOrderV2` functional spike (pending user now-vs-defer decision):** The safe path is `payType=3` (create unpaid order, no wallet charge, no confirmation) → measure → `deleteOrder` cleanup. NOT yet written, by intent: (1) its latency is near-worthless as a metric (async, post-checkout, not customer-facing); (2) its real value is *functional proof* for the fulfillment module, which is 2–3 plans away; (3) it creates unpaid orders on the user's live CJ account and needs 1–3 live iterations to settle the exact payload (CJ v2 order docs are login-gated; the stale third-party client uses v1 `createOrders`). Per review: do this deliberately with consent, never as a delegated live-iteration loop. If the user defers, it lives in the future fulfillment plan, not here (YAGNI - don't leave unvalidated order-placing code in the repo).
+**Deferred - `createOrderV2` functional spike (pending user now-vs-defer decision):** The safe path is `payType=3` (create unpaid order, no wallet charge, no confirmation) → measure → `deleteOrder` cleanup. NOT yet written, by intent: (1) its latency is near-worthless as a metric (async, post-checkout, not customer-facing); (2) its real value is *functional proof* for the fulfillment module, which is 2-3 plans away; (3) it creates unpaid orders on the user's live CJ account and needs 1-3 live iterations to settle the exact payload (CJ v2 order docs are login-gated; the stale third-party client uses v1 `createOrders`). Per review: do this deliberately with consent, never as a delegated live-iteration loop. If the user defers, it lives in the future fulfillment plan, not here (YAGNI - don't leave unvalidated order-placing code in the repo).
 
 ## Self-Review (completed during planning)
 

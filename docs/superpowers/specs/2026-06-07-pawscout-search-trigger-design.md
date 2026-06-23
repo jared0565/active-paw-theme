@@ -32,7 +32,7 @@ Visitor searches "dog brush"
  1. main-search renders EXISTING store results immediately (say 3).
  2. theme.js: have=3 < target=16 → POST /apps/pawscout/search-signal {q, have, target}
  3. PawScout:
-      a. per-term CACHE hit? → reuse CJ candidate list. else query CJ (~0.5–2s).
+      a. per-term CACHE hit? → reuse CJ candidate list. else query CJ (~0.5-2s).
       b. QUALITY-GATE candidates (§5); DEDUP vs existing inventory (§7).
       c. for each passing candidate (eager, small concurrency, paced by CJ limits):
            create MINIMAL purchasable product → publish to Online Store
@@ -126,7 +126,7 @@ Before creating, skip any CJ product already in inventory - matched by the `supp
 | CJ down / rate-limited | Show existing results only; no pipeline tiles this search |
 | Clicked before ready | PDP "Locating your product" spinner + poll → reveal add-to-cart |
 | Visitor abandons mid-fill | Already-created products **stay** in inventory (the point) |
-| Zero existing results | Same flow; grid builds entirely from pipeline (first tile ~3–5s) |
+| Zero existing results | Same flow; grid builds entirely from pipeline (first tile ~3-5s) |
 | Shopify rate limit | Small create concurrency; the ~2s cadence keeps cost under the throttle |
 
 ---
@@ -134,6 +134,6 @@ Before creating, skip any CJ product already in inventory - matched by the `supp
 ## 11. Open decisions
 
 1. **Quality-gate thresholds** - popularity floor, price band, relevance strictness (merchant input). *Still open.*
-2. **Target / minimum** - *data:* a full 16-tile **cold** grid takes **~25–40s** (4.15s first + 15× cadence; cadence is ~1.4s with CJ-detail pipelining or ~2.5–3s serial - see §4). Existing inventory renders instantly; pipeline tiles stream in. **Recommendation:** don't block on 16 - render existing first, stream pipeline tiles as they land, settle at whatever passes gating. The per-term cache + permanent inventory (§8) mean only the *first* searcher of a term pays the cold cost; repeat searches hit warm stock with no spinner. Consider a lower "good-enough" threshold (8–12) if cold-grid wait proves long in UX testing.
+2. **Target / minimum** - *data:* a full 16-tile **cold** grid takes **~25-40s** (4.15s first + 15× cadence; cadence is ~1.4s with CJ-detail pipelining or ~2.5-3s serial - see §4). Existing inventory renders instantly; pipeline tiles stream in. **Recommendation:** don't block on 16 - render existing first, stream pipeline tiles as they land, settle at whatever passes gating. The per-term cache + permanent inventory (§8) mean only the *first* searcher of a term pays the cold cost; repeat searches hit warm stock with no spinner. Consider a lower "good-enough" threshold (8-12) if cold-grid wait proves long in UX testing.
 3. **Poll interval** - *resolved:* **~1.5s** confirmed (can tighten to ~1s). Measured publish→PDP-live P90 = 0.44s and burst cadence ~1.4s/product, so each new product is live well within one poll cycle; 1.5s surfaces it within ~one interval of going live.
 4. **Eager vs lazy create** - recommend **eager** (create all gating-passed up to target) since populating inventory *is* the goal; lazy-on-click would under-seed. *Probe confirms eager is cheap: ~1.4s/product, no throttling at 8 back-to-back.*
