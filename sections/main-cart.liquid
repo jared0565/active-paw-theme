@@ -18,52 +18,63 @@
         <div class="cart-items" aria-label="Cart items">
           {% for item in cart.items %}
             {% liquid
+              comment
+                Cart line availability note. Same display rule as the PDP banner: a
+                NUMBER appears only when the real synced quantity is 10 or fewer
+                (genuine scarcity); larger stock reads as a plain "In stock". The cap
+                priority (tracked -> supplier max order -> supplier qty -> 20) is
+                unchanged. Never expose internal sourcing (supplier names, system
+                terms) to the customer.
+              endcomment
               assign max_line_quantity = 20
-              assign inventory_note = 'Supplier-managed availability. Quantity is capped per order.'
+              assign inventory_note = 'In stock. Quantity is capped per order.'
               assign line_has_quantity_issue = false
-              assign supplier_name = item.variant.metafields.supplier.name.value | default: item.product.metafields.supplier.name.value
               assign supplier_status = item.variant.metafields.supplier.status.value | default: item.product.metafields.supplier.status.value
               assign supplier_available_qty = item.variant.metafields.supplier.available_qty.value
               assign supplier_max_order_qty = item.variant.metafields.supplier.max_order_qty.value
               assign supplier_last_checked_at = item.variant.metafields.supplier.last_checked_at.value | default: item.product.metafields.supplier.last_checked_at.value
               assign uses_tracked_inventory_limit = false
+              assign line_known_qty = 0
+              assign line_qty_known = false
 
               if item.variant.inventory_management != blank
                 if item.variant.inventory_policy == 'deny'
                   assign uses_tracked_inventory_limit = true
                   assign tracked_inventory = item.variant.inventory_quantity | default: 0
                   assign max_line_quantity = tracked_inventory
-                  if tracked_inventory == 1
-                    assign inventory_note = 'Only 1 available from tracked stock.'
-                  else
-                    assign inventory_note = tracked_inventory | append: ' available from tracked stock.'
-                  endif
+                  assign line_qty_known = true
+                  assign line_known_qty = tracked_inventory
                 else
-                  assign inventory_note = 'Backorder or supplier sourcing is enabled for this item. Quantity is capped per order.'
+                  assign inventory_note = 'Available to order. Quantity is capped per order.'
                 endif
               endif
 
               unless uses_tracked_inventory_limit
                 if supplier_max_order_qty != blank
                   assign max_line_quantity = supplier_max_order_qty
-                  assign supplier_status_label = supplier_status | default: 'supplier available' | replace: '_', ' '
-                  assign inventory_note = 'Supplier status: ' | append: supplier_status_label | append: '. Max ' | append: supplier_max_order_qty | append: ' per order.'
+                  assign inventory_note = 'In stock. Capped at ' | append: supplier_max_order_qty | append: ' per order.'
                 elsif supplier_available_qty != blank
                   assign max_line_quantity = supplier_available_qty
-                  assign inventory_note = supplier_available_qty | append: ' available from supplier data.'
+                  assign line_qty_known = true
+                  assign line_known_qty = supplier_available_qty
                 endif
               endunless
 
-              if supplier_last_checked_at != blank
-                assign supplier_checked_label = supplier_last_checked_at | date: "%d %b %Y, %H:%M"
+              if line_qty_known
+                if line_known_qty <= 0
+                  assign inventory_note = 'Currently unavailable.'
+                elsif line_known_qty <= 3
+                  assign inventory_note = 'Only ' | append: line_known_qty | append: ' left in stock - restock not guaranteed.'
+                elsif line_known_qty <= 10
+                  assign inventory_note = 'Only ' | append: line_known_qty | append: ' left in stock.'
+                else
+                  assign inventory_note = 'In stock.'
+                endif
               endif
 
-              if supplier_name != blank
-                assign inventory_note = inventory_note | append: ' Source: ' | append: supplier_name | append: '.'
-              endif
-
               if supplier_last_checked_at != blank
-                assign inventory_note = inventory_note | append: ' Checked ' | append: supplier_checked_label | append: '.'
+                assign supplier_checked_label = supplier_last_checked_at | date: "%d %b %Y"
+                assign inventory_note = inventory_note | append: ' Availability updated ' | append: supplier_checked_label | append: '.'
               endif
 
               if max_line_quantity < 1
