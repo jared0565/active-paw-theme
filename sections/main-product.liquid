@@ -14,29 +14,67 @@
   assign pdp_status_label = 'Ready to ship'
   assign pdp_status_detail = 'Free UK delivery over £50. Tracking details are sent after dispatch.'
   assign pdp_sold_out = false
+  assign pdp_urgency = ''
+  assign pdp_qty_known = false
+  assign pdp_known_qty = 0
 
+  comment
+    Purchase CAP priority is unchanged (tracked inventory -> supplier max order qty
+    -> supplier available qty -> conservative 20). The availability BANNER is computed
+    separately below: a number is shown ONLY when the real synced quantity is small
+    (10 or fewer). A large raw count ("466 available") reads like a data dump and
+    kills urgency, so bigger stock renders as a plain "In stock". Every number shown
+    is the real quantity that also governs the buy cap - never an invented one.
+  endcomment
   if selected_variant.inventory_management != blank and selected_variant.inventory_policy == 'deny'
     assign pdp_max_order_qty = selected_variant.inventory_quantity | default: 0
-    if pdp_max_order_qty <= 0
+    assign pdp_qty_known = true
+    assign pdp_known_qty = pdp_max_order_qty
+  elsif supplier_max_order_qty != blank
+    assign pdp_max_order_qty = supplier_max_order_qty
+    if supplier_available_qty != blank
+      assign pdp_qty_known = true
+      assign pdp_known_qty = supplier_available_qty
+    endif
+  elsif supplier_available_qty != blank
+    assign pdp_max_order_qty = supplier_available_qty
+    assign pdp_qty_known = true
+    assign pdp_known_qty = supplier_available_qty
+  endif
+
+  if pdp_qty_known
+    if pdp_known_qty <= 0
       assign pdp_sold_out = true
       assign pdp_status_label = 'Out of stock'
       assign pdp_status_detail = 'Currently unavailable - check back soon.'
-    elsif pdp_max_order_qty <= 3
+    elsif pdp_known_qty <= 3
+      assign pdp_status_label = 'Almost gone'
+      assign pdp_status_detail = 'Only ' | append: pdp_known_qty | append: ' left in stock - restock not guaranteed.'
+      assign pdp_urgency = 'high'
+    elsif pdp_known_qty <= 10
       assign pdp_status_label = 'Low stock'
-      assign pdp_status_detail = pdp_max_order_qty | append: ' available from tracked Shopify inventory.'
+      assign pdp_status_detail = 'Only ' | append: pdp_known_qty | append: ' left in stock.'
+      assign pdp_urgency = 'low'
     else
-      assign pdp_status_detail = pdp_max_order_qty | append: ' available from tracked Shopify inventory.'
+      assign pdp_status_label = 'In stock'
     endif
-  elsif supplier_max_order_qty != blank
-    assign pdp_max_order_qty = supplier_max_order_qty
-    assign pdp_status_label = supplier_status | default: 'Supplier available' | replace: '_', ' ' | capitalize
-    assign pdp_status_detail = 'Supplier-backed order limit: ' | append: supplier_max_order_qty | append: ' per order.'
-  elsif supplier_available_qty != blank
-    assign pdp_max_order_qty = supplier_available_qty
-    assign pdp_status_label = supplier_status | default: 'Supplier available' | replace: '_', ' ' | capitalize
-    assign pdp_status_detail = supplier_available_qty | append: ' available from supplier data.'
   elsif supplier_status != blank
-    assign pdp_status_label = supplier_status | replace: '_', ' ' | capitalize
+    case supplier_status
+      when 'in_stock'
+        assign pdp_status_label = 'In stock'
+      when 'low_stock'
+        assign pdp_status_label = 'Low stock'
+        assign pdp_urgency = 'low'
+      when 'supplier_available'
+        assign pdp_status_label = 'In stock'
+      when 'backorder_possible'
+        assign pdp_status_label = 'Available to order'
+        assign pdp_status_detail = 'May take a little longer to dispatch than usual.'
+      when 'unavailable'
+        assign pdp_status_label = 'Currently unavailable'
+      else
+        assign pdp_status_label = 'Ready to order'
+    endcase
   endif
   unless selected_variant.available
     assign pdp_sold_out = true
@@ -196,11 +234,11 @@
         <p class="price">From {{ product.price_min | money }}</p>
       {% endif %}
     </div>
-    <div class="pdp-delivery-banner">
+    <div class="pdp-delivery-banner{% if pdp_urgency != '' %} pdp-delivery-banner--{{ pdp_urgency }}{% endif %}">
       <strong>{{ pdp_status_label }}</strong>
       <span>{{ pdp_status_detail }}</span>
       {% if supplier_last_checked_at != blank %}
-        <small>Supplier checked {{ supplier_last_checked_at | date: "%d %b %Y, %H:%M" }}.</small>
+        <small>Availability updated {{ supplier_last_checked_at | date: "%d %b %Y" }}.</small>
       {% endif %}
     </div>
     <p class="pdp-lede">
@@ -211,11 +249,17 @@
     <div class="pdp-confidence-list" aria-label="Purchase confidence">
       <div><strong>14-day returns</strong><span>Fair, contact-first returns - <a href="/policies/refund-policy">see our policy</a></span></div>
       <div><strong>Secure checkout</strong><span>Payment options are controlled by the store checkout settings</span></div>
+      {%- comment -%}
+        Never surface internal sourcing (supplier name, warehouse code, confidence
+        grades) to customers - it is system data, not merchandising. The tracked-
+        delivery line is the customer-meaningful equivalent and is true for every
+        order (tracking emails are sent on dispatch).
+      {%- endcomment -%}
       <div>
-        <strong>{% if supplier_name != blank %}Supplier{% else %}Care add-ons{% endif %}</strong>
+        <strong>{% if supplier_name != blank %}Tracked delivery{% else %}Care add-ons{% endif %}</strong>
         <span>
           {% if supplier_name != blank %}
-            {{ supplier_name }}{% if supplier_warehouse != blank %} · {{ supplier_warehouse }}{% endif %}{% if supplier_fulfillment_confidence != blank %} · {{ supplier_fulfillment_confidence }} confidence{% endif %}
+            A tracking link is emailed as soon as your order is dispatched
           {% else %}
             Pair with matching grooming and cleaning essentials
           {% endif %}

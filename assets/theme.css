@@ -1837,6 +1837,22 @@ summary { cursor: pointer; font-weight: 800; }
   font-size: 12px;
   font-weight: 850;
 }
+/* Real-scarcity tiers: amber at 10 or fewer left, red at 3 or fewer. The banner
+   only ever shows genuinely small synced quantities, so the colour is truthful. */
+.pdp-delivery-banner--low {
+  border-color: rgba(176,124,16,0.35);
+  background: #fdf6e7;
+}
+.pdp-delivery-banner--low strong {
+  color: #8a5b00;
+}
+.pdp-delivery-banner--high {
+  border-color: rgba(174,52,52,0.35);
+  background: #fdefec;
+}
+.pdp-delivery-banner--high strong {
+  color: #a12c2c;
+}
 .product-buybox select, .newsletter input {
   width: 100%;
   min-height: 42px;
