@@ -27,6 +27,15 @@
         "max_products": 16
       },
       "blocks": {
+        "cool": {
+          "type": "category",
+          "settings": {
+            "title": "Keep Them Cool",
+            "body": "Cooling beds and mats, flowing water fountains, and shade for sunny walks.",
+            "badge": "Summer",
+            "collection": "keep-them-cool"
+          }
+        },
         "cleaning": {
           "type": "category",
           "settings": {
@@ -73,7 +82,7 @@
           }
         }
       },
-      "block_order": ["cleaning", "accessories", "health", "toys", "more"]
+      "block_order": ["cool", "cleaning", "accessories", "health", "toys", "more"]
     },
     "roi": { "type": "conversion-stack", "settings": {} },
     "landing": { "type": "product-landing", "settings": {} },
