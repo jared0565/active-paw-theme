@@ -234,8 +234,14 @@
         <p class="price">From {{ product.price_min | money }}</p>
       {% endif %}
     </div>
+    {%- comment -%}
+      "Selling fast" is a REAL demand flag: the worker sets supplier.demand to
+      'selling_fast' only when the product has enough genuine orders in the last
+      days, and clears it to 'none' when demand fades. Never rendered otherwise.
+    {%- endcomment -%}
+    {%- assign supplier_demand = product.metafields.supplier.demand.value -%}
     <div class="pdp-delivery-banner{% if pdp_urgency != '' %} pdp-delivery-banner--{{ pdp_urgency }}{% endif %}">
-      <strong>{{ pdp_status_label }}</strong>
+      <strong>{{ pdp_status_label }}{% if supplier_demand == 'selling_fast' and pdp_sold_out == false %} <span class="pdp-demand-badge">Selling fast</span>{% endif %}</strong>
       <span>{{ pdp_status_detail }}</span>
       {% if supplier_last_checked_at != blank %}
         <small>Availability updated {{ supplier_last_checked_at | date: "%d %b %Y" }}.</small>
