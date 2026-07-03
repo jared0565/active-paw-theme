@@ -394,6 +394,72 @@ img { max-width: 100%; display: block; }
   z-index: 2;
   min-height: clamp(460px, 52vw, 660px);
 }
+/* Hero event badge: toggleable seal-style sticker (Commerce hero settings).
+   Frost palette over a sun cue reads "cool relief" at a glance; the text stays
+   editable so the same slot serves future event announcements. */
+.hero-event-badge {
+  position: absolute;
+  z-index: 3;
+  top: clamp(24px, 4vw, 52px);
+  right: clamp(18px, 4vw, 60px);
+  width: clamp(148px, 13vw, 184px);
+  aspect-ratio: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 18px;
+  text-align: center;
+  text-decoration: none;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 24%, #f4fdff 0%, #c4ecfb 46%, #7ad0f2 100%);
+  color: #0b4a66;
+  box-shadow: 0 12px 28px rgba(11, 74, 102, 0.32);
+  transform: rotate(8deg);
+  transition: transform 0.25s ease;
+  animation: hero-badge-pop 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s backwards;
+}
+.hero-event-badge::after {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border: 2px dashed rgba(11, 74, 102, 0.5);
+  border-radius: 50%;
+}
+.hero-event-badge:hover { transform: rotate(3deg) scale(1.06); }
+.hero-event-badge-emoji { font-size: 32px; line-height: 1; }
+.hero-event-badge-title {
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.05;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.hero-event-badge-sub {
+  max-width: 122px;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+@keyframes hero-badge-pop {
+  from { transform: rotate(20deg) scale(0.45); opacity: 0; }
+  to { transform: rotate(8deg) scale(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-event-badge { animation: none; transition: none; }
+}
+@media (max-width: 900px) {
+  /* Single-column hero: sit the seal on the photo area just below the CTA row
+     so a standard phone shows the whole seal on first paint; smaller phones get
+     a strong top-arc peek at the fold. */
+  .hero-event-badge {
+    top: auto;
+    bottom: 165px;
+    right: 20px;
+    width: 148px;
+  }
+}
 .hero h1 {
   max-width: 820px;
   margin: 0;

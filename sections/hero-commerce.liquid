@@ -8,6 +8,17 @@
       <a class="button button-secondary" href="{{ routes.collections_url }}/more-to-love">{{ section.settings.secondary_label }}</a>
     </div>
   </div>
+  {% if section.settings.badge_enabled %}
+    <a
+      class="hero-event-badge"
+      href="{{ section.settings.badge_link | default: '/collections/keep-them-cool' }}"
+      aria-label="{{ section.settings.badge_line1 | strip_html }} {{ section.settings.badge_line2 | strip_html }}"
+    >
+      <span class="hero-event-badge-emoji" aria-hidden="true">{{ section.settings.badge_emoji }}</span>
+      <span class="hero-event-badge-title">{{ section.settings.badge_line1 }}</span>
+      <span class="hero-event-badge-sub">{{ section.settings.badge_line2 }}</span>
+    </a>
+  {% endif %}
   <div class="hero-background-spacer" aria-hidden="true"></div>
 </section>
 
@@ -19,7 +30,13 @@
     { "type": "text", "id": "heading", "label": "Heading", "default": "Smart Pet Finds for Grooming, Play & Walks" },
     { "type": "textarea", "id": "body", "label": "Body", "default": "Shop brushes, toys, paw care, leashes, walking gear, and everyday essentials for cleaner, happier dogs and cats." },
     { "type": "text", "id": "primary_label", "label": "Primary button", "default": "Shop pet finds" },
-    { "type": "text", "id": "secondary_label", "label": "Secondary button", "default": "Explore best sellers" }
+    { "type": "text", "id": "secondary_label", "label": "Secondary button", "default": "Explore best sellers" },
+    { "type": "header", "content": "Event badge (seal sticker)" },
+    { "type": "checkbox", "id": "badge_enabled", "label": "Show event badge", "default": true },
+    { "type": "text", "id": "badge_emoji", "label": "Badge emoji", "default": "☀️🧊" },
+    { "type": "text", "id": "badge_line1", "label": "Badge headline", "default": "Stay cool!" },
+    { "type": "text", "id": "badge_line2", "label": "Badge subline", "default": "Shop the summer range" },
+    { "type": "text", "id": "badge_link", "label": "Badge link URL", "default": "/collections/keep-them-cool" }
   ],
   "presets": [{ "name": "Commerce hero" }]
 }
