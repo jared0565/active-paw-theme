@@ -1617,7 +1617,10 @@ summary { cursor: pointer; font-weight: 800; }
   display: grid;
   grid-template-columns: 1fr;
   gap: 8px;
-  max-height: calc(100vh - var(--sticky-header-offset) - 40px);
+  /* Cap the rail at the image-window height (same clamp as .product-media.large):
+     extra thumbs scroll INSIDE the rail. A viewport-based cap let the rail outgrow
+     the image and push the More-details button far below it. */
+  max-height: clamp(460px, 58vh, 650px);
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 2px 4px 2px 2px;
