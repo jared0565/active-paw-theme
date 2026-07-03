@@ -77,17 +77,15 @@
       <span>Subtotal</span>
       <strong>{{ cart.total_price | money }}</strong>
     </div>
-    {%- comment -%} W-ADDON: free-delivery nudge. Server-rendered remaining amount
-        (re-renders with every cart change via the Section Rendering API);
-        pawscout.js fills [data-addon-cards] with hidden filler products. {%- endcomment -%}
-    {%- assign free_ship_threshold = 5000 -%}
-    {%- if cart.total_price < free_ship_threshold -%}
-      <div class="cart-addons" data-pawscout-cart-addons>
-        <p class="cart-addons__msg">You're <strong>{{ free_ship_threshold | minus: cart.total_price | money }}</strong> away from FREE UK delivery</p>
-        <div class="cart-addons__cards" data-addon-cards></div>
-      </div>
-    {%- endif -%}
-    <p class="cart-drawer__tax">Shipping &amp; taxes calculated at checkout.</p>
+    {%- comment -%} W-ADDON: add-on nudge. UK delivery is free on EVERY order
+        (2026-07-03 cutover), so the old spend-more-for-free-delivery prompt is
+        gone; the slot now cross-sells the hidden filler products on every cart
+        render. pawscout.js fills [data-addon-cards]. {%- endcomment -%}
+    <div class="cart-addons" data-pawscout-cart-addons>
+      <p class="cart-addons__msg">UK delivery is <strong>FREE</strong> - complete the kit:</p>
+      <div class="cart-addons__cards" data-addon-cards></div>
+    </div>
+    <p class="cart-drawer__tax">Free UK delivery &middot; taxes calculated at checkout.</p>
     {%- if cart_has_quantity_issue -%}
       <div class="cart-drawer__alert" role="alert">One or more quantities exceed current limits. Update in your cart before checkout.</div>
     {%- endif -%}

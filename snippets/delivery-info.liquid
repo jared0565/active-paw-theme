@@ -1,34 +1,30 @@
 {% doc %}
-  PDP delivery information block (strategy decision 2026-06-12):
-  honest sticker price + transparent delivery BEFORE checkout. Shows the
-  UK rates, the delivery estimate, and the returns promise.
+  PDP delivery information block (free-UK-delivery cutover, 2026-07-03):
+  honest sticker price + transparent delivery BEFORE checkout. UK delivery is
+  free on EVERY order - checkout charges GBP 0 for the UK on all shipping
+  profiles (the item's freight is baked into the sticker by PawScout's pricing
+  rule), so there is no threshold and no standard rate to disclose.
 
   Delivery estimate: PawScout writes a per-product order->door range (calendar
   days, e.g. "6-21") into supplier.delivery_days from the synced CJ logistics
   matrix. When present it's shown verbatim; when blank (stale / not yet synced)
   a conservative static window is shown. Rule: only surface what is real and
   defensible - the synced figure when we have it, a conservative window otherwise.
-
-  NB: rates below mirror Shopify Settings → Shipping. If the rates change
-  there, update these assigns (single source kept deliberately simple -
-  Liquid cannot read shipping settings).
   @param {product} product - Product being viewed
 {% enddoc %}
 
 {%- liquid
-  assign free_threshold = 5000
-  assign standard_rate = '£4.99'
   assign delivery_days = product.metafields.supplier.delivery_days.value
 -%}
 
 <div class="delivery-info" aria-label="Delivery information">
   <ul class="di-rows">
     <li>
-      <strong>FREE UK delivery</strong> on orders over {{ free_threshold | money }}
+      <strong>FREE UK delivery</strong> on every order
     </li>
     <li>
-      Standard delivery {{ standard_rate }} &middot; estimated
-      {%- if delivery_days != blank %} {{ delivery_days }} days{%- else %} 8-21 days{%- endif %}
+      Estimated
+      {%- if delivery_days != blank %} {{ delivery_days }} days{%- else %} 8-21 days{%- endif %} to your door
     </li>
     <li>
       14-day returns &middot; <a href="/policies/refund-policy">see our returns policy</a>
