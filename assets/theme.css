@@ -1853,6 +1853,23 @@ summary { cursor: pointer; font-weight: 800; }
 .pdp-delivery-banner--high strong {
   color: #a12c2c;
 }
+/* Real-demand chip: rendered only when supplier.demand == 'selling_fast'
+   (worker-set from genuine recent orders; clears automatically). The compound
+   selector out-specifies the banner's generic `.pdp-delivery-banner span` rule
+   (block + muted colour), which would otherwise swallow the chip styling. */
+.pdp-delivery-banner .pdp-demand-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #8a5b00;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  vertical-align: 2px;
+}
 .product-buybox select, .newsletter input {
   width: 100%;
   min-height: 42px;
