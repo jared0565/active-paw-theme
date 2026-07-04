@@ -2971,3 +2971,28 @@ body.contact-modal-open { overflow: hidden; }
 .pawscout-action { margin-top: 8px; }
 .pawscout-cta { width: 100%; }
 body.pawscout-lock { overflow: hidden; }
+
+/* ---------------- Welcome offer modal (event slot) ---------------- */
+/* Reuses the .contact-modal skeleton (overlay, dialog transitions, scroll
+   lock); these rules restyle the dialog as a centred offer card. */
+.welcome-modal .contact-modal__dialog { width: min(460px, calc(100% - 28px)); text-align: center; padding-top: 30px; }
+.welcome-modal__close { position: absolute; top: 10px; right: 10px; }
+.welcome-modal__eyebrow { margin: 0 0 6px; color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+.welcome-modal__dialog h2 { margin: 0 0 6px; font-size: clamp(26px, 6vw, 32px); font-weight: 900; line-height: 1.1; }
+.welcome-modal__sub { margin: 0 0 14px; color: var(--muted); font-size: 15px; }
+.welcome-modal__code { display: flex; flex-direction: column; gap: 2px; margin: 0 0 16px; padding: 10px 14px; background: var(--surface); border: 1px dashed var(--line); border-radius: 12px; font-size: 14px; }
+.welcome-modal__code strong { font-size: 20px; letter-spacing: 0.08em; color: var(--ink); }
+.welcome-modal__code span { color: var(--muted); font-size: 12px; }
+.welcome-modal__search { display: flex; gap: 8px; margin: 0 0 10px; }
+.welcome-modal__search input { flex: 1 1 auto; min-width: 0; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 999px; font-size: 15px; background: var(--panel); color: var(--ink); }
+.welcome-modal__search input:focus { outline: none; border-color: var(--accent); }
+.welcome-modal__search button { flex: 0 0 auto; padding: 12px 20px; border: 0; border-radius: 999px; background: var(--accent); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
+.welcome-modal__search button:hover { background: var(--accent-dark); }
+.welcome-modal__chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 0 0 16px; }
+.welcome-modal__chips button { padding: 7px 14px; border: 1.5px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--ink); font-size: 13px; font-weight: 600; cursor: pointer; }
+.welcome-modal__chips button:hover { border-color: var(--accent); color: var(--accent); }
+.welcome-modal__browse { display: block; padding: 13px 18px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 15px; font-weight: 700; text-decoration: none; }
+.welcome-modal__browse:hover { background: var(--accent-dark); }
+.welcome-modal__ends { margin: 12px 0 0; color: var(--muted); font-size: 13px; font-weight: 600; }
+.welcome-modal__later { display: inline-block; margin-top: 10px; padding: 4px 8px; border: 0; background: transparent; color: var(--muted); font-size: 13px; text-decoration: underline; cursor: pointer; }
+.welcome-modal__later:hover { color: var(--ink); }

@@ -1,0 +1,54 @@
+{%- comment -%}
+  Welcome offer modal - the reusable event slot for first-order promotions,
+  settings-driven like the hero event badge (Theme settings > Welcome offer).
+  Renders only while the offer is enabled; theme.js decides when to show it
+  (once per browser, after 3 seconds or the first scroll, never instantly)
+  and routes every CTA through /discount/<code> so the offer is already
+  applied when the visitor reaches checkout.
+  Honesty rules: the only urgency line is the event's REAL end date typed by
+  the merchant - no counters, no invented scarcity. Skipped entirely for
+  logged-in customers who have ordered before, because the discount is for
+  first orders and they would be shown an offer they cannot use.
+{%- endcomment -%}
+{%- if settings.welcome_enabled -%}
+  {%- unless customer and customer.orders_count > 0 -%}
+<div class="contact-modal welcome-modal" data-welcome-modal aria-hidden="true"
+     data-welcome-code="{{ settings.welcome_code | default: 'WELCOME10' | escape }}"
+     data-welcome-redirect="{{ settings.welcome_redirect | default: '/collections/all' | escape }}">
+  <div class="contact-modal__overlay" data-welcome-close></div>
+  <div class="contact-modal__dialog welcome-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="WelcomeModalTitle" tabindex="-1">
+    <button type="button" class="contact-modal__close welcome-modal__close" data-welcome-close aria-label="Close welcome offer">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+        <path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <p class="welcome-modal__eyebrow">Welcome to {{ settings.demo_brand_name | default: 'Active Paw' }}</p>
+    <h2 id="WelcomeModalTitle">{{ settings.welcome_headline | default: '10% off your first order' }}</h2>
+    <p class="welcome-modal__sub">{{ settings.welcome_subline | default: 'On top of free UK delivery on every order.' }}</p>
+    <p class="welcome-modal__code">Your code: <strong>{{ settings.welcome_code | default: 'WELCOME10' }}</strong> <span>applied automatically when you shop from here</span></p>
+    <form class="welcome-modal__search" data-welcome-search>
+      <label class="visually-hidden" for="WelcomeSearchInput">Search products</label>
+      <input id="WelcomeSearchInput" data-welcome-input type="search" placeholder="What does your pet need?" autocomplete="off">
+      <button type="submit">Search</button>
+    </form>
+    {%- assign welcome_chip_list = settings.welcome_chips | default: 'Cat trees, Cooling mats, Litter boxes, Dog beds' | split: ',' -%}
+    <div class="welcome-modal__chips">
+      {%- for chip in welcome_chip_list -%}
+        {%- assign chip_clean = chip | strip -%}
+        {%- if chip_clean != blank -%}
+        <button type="button" data-welcome-chip="{{ chip_clean | escape }}">{{ chip_clean }}</button>
+        {%- endif -%}
+      {%- endfor -%}
+    </div>
+    <a class="welcome-modal__browse" data-welcome-browse
+       href="/discount/{{ settings.welcome_code | default: 'WELCOME10' | url_encode }}?redirect={{ settings.welcome_redirect | default: '/collections/all' | url_encode }}">
+      {{ settings.welcome_cta | default: 'Start shopping with the offer applied' }}
+    </a>
+    {%- if settings.welcome_ends != blank -%}
+    <p class="welcome-modal__ends">{{ settings.welcome_ends }}</p>
+    {%- endif -%}
+    <button type="button" class="welcome-modal__later" data-welcome-close>Maybe later</button>
+  </div>
+</div>
+  {%- endunless -%}
+{%- endif -%}
