@@ -46,5 +46,60 @@
         "default": "24 hours"
       }
     ]
+  },
+  {
+    "name": "Welcome offer",
+    "settings": [
+      {
+        "type": "checkbox",
+        "id": "welcome_enabled",
+        "label": "Show the welcome offer modal",
+        "info": "Shows once per visitor (after 3 seconds or their first scroll). Create the discount code under Discounts in Shopify admin BEFORE enabling this.",
+        "default": false
+      },
+      {
+        "type": "text",
+        "id": "welcome_headline",
+        "label": "Headline",
+        "default": "10% off your first order"
+      },
+      {
+        "type": "text",
+        "id": "welcome_subline",
+        "label": "Supporting line",
+        "default": "On top of free UK delivery on every order."
+      },
+      {
+        "type": "text",
+        "id": "welcome_code",
+        "label": "Discount code",
+        "info": "Must match the code created in Shopify admin. Every button in the modal applies it automatically via the discount link.",
+        "default": "WELCOME10"
+      },
+      {
+        "type": "text",
+        "id": "welcome_ends",
+        "label": "End date line",
+        "info": "Shown as typed, e.g. \"Ends 20 July\". Leave empty to hide. State the event's real end date only - no invented urgency."
+      },
+      {
+        "type": "text",
+        "id": "welcome_chips",
+        "label": "Search shortcuts (comma-separated)",
+        "default": "Cat trees, Cooling mats, Litter boxes, Dog beds"
+      },
+      {
+        "type": "text",
+        "id": "welcome_cta",
+        "label": "Browse button text",
+        "default": "Start shopping with the offer applied"
+      },
+      {
+        "type": "text",
+        "id": "welcome_redirect",
+        "label": "Browse destination path",
+        "default": "/collections/all"
+      }
+    ]
   }
 ]

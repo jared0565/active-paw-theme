@@ -671,15 +671,115 @@ document.addEventListener('click', (event) => {
   }
 });
 
+/* ---------------- Welcome offer modal (event slot) ---------------- */
+// Shows once per browser: after 3 seconds or the visitor's first scroll,
+// whichever comes first - never instantly on load (mobile interstitial
+// etiquette, and Google penalises intrusive entry interstitials). Rendered
+// only while the Theme-settings toggle is on, and skipped server-side for
+// logged-in customers with orders. Every CTA routes through /discount/<code>
+// so the offer is already applied at checkout. The only urgency shown is the
+// event's real end date from settings.
+const getWelcomeModal = () => document.querySelector('[data-welcome-modal]');
+const WELCOME_SEEN_KEY = 'ap_welcome_dismissed';
+
+// Private-mode localStorage throws: treat as "seen" so those visitors are
+// never pestered on every page view.
+const welcomeSeen = () => {
+  try { return Boolean(localStorage.getItem(WELCOME_SEEN_KEY)); } catch (error) { return true; }
+};
+const markWelcomeSeen = () => {
+  try { localStorage.setItem(WELCOME_SEEN_KEY, String(Date.now())); } catch (error) { /* nothing to persist */ }
+};
+
+let welcomeReturnFocus = null;
+
+const openWelcomeModal = () => {
+  const modal = getWelcomeModal();
+  if (!modal || modal.classList.contains('is-open')) return;
+  welcomeReturnFocus = document.activeElement;
+  modal.classList.add('is-open');
+  modal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('contact-modal-open'); // shared scroll lock
+  const input = modal.querySelector('[data-welcome-input]');
+  if (input) window.requestAnimationFrame(() => input.focus());
+};
+
+const closeWelcomeModal = () => {
+  const modal = getWelcomeModal();
+  if (!modal || !modal.classList.contains('is-open')) return;
+  modal.classList.remove('is-open');
+  modal.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('contact-modal-open');
+  markWelcomeSeen();
+  if (welcomeReturnFocus && typeof welcomeReturnFocus.focus === 'function') welcomeReturnFocus.focus();
+  welcomeReturnFocus = null;
+};
+
+// Shopify's /discount/<code> route applies the code to the checkout session
+// via Set-Cookie - nobody fails to redeem because they forgot to type it.
+// Its ?redirect= only accepts a bare path (query strings are stripped), so
+// for search targets we apply the code with a background fetch of the route
+// and then navigate ourselves, keeping ?q= intact. Capped at 1.5s so a slow
+// network can never strand the click.
+const applyWelcomeCodeThenGo = (targetPath) => {
+  const modal = getWelcomeModal();
+  const code = modal ? modal.getAttribute('data-welcome-code') || '' : '';
+  const applied = fetch(`/discount/${encodeURIComponent(code)}`, { credentials: 'same-origin' }).catch(() => {});
+  Promise.race([applied, new Promise((resolve) => setTimeout(resolve, 1500))]).then(() => {
+    window.location.href = targetPath;
+  });
+};
+
+(() => {
+  const modal = getWelcomeModal();
+  if (!modal || welcomeSeen()) return;
+
+  const timer = setTimeout(openWelcomeModal, 3000);
+  window.addEventListener('scroll', () => {
+    clearTimeout(timer);
+    openWelcomeModal();
+  }, { once: true, passive: true });
+
+  modal.addEventListener('click', (event) => {
+    if (event.target.closest('[data-welcome-close]')) {
+      event.preventDefault();
+      closeWelcomeModal();
+      return;
+    }
+    const chip = event.target.closest('[data-welcome-chip]');
+    if (chip) {
+      markWelcomeSeen();
+      applyWelcomeCodeThenGo(`/search?q=${encodeURIComponent(chip.getAttribute('data-welcome-chip'))}`);
+      return;
+    }
+    // The browse link navigates via its href; just stop it re-appearing.
+    if (event.target.closest('[data-welcome-browse]')) markWelcomeSeen();
+  });
+
+  const form = modal.querySelector('[data-welcome-search]');
+  if (form) {
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const input = modal.querySelector('[data-welcome-input]');
+      const query = input && input.value ? input.value.trim() : '';
+      markWelcomeSeen();
+      applyWelcomeCodeThenGo(query
+        ? `/search?q=${encodeURIComponent(query)}`
+        : modal.getAttribute('data-welcome-redirect') || '/collections/all');
+    });
+  }
+})();
+
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     closeCollectionsMenu();
     closeShareMenu();
     closeContactModal();
     closeDetailsModal();
+    closeWelcomeModal();
   }
   if (event.key !== 'Tab') return;
-  const modal = [getContactModal(), getDetailsModal()].find((m) => m && m.classList.contains('is-open'));
+  const modal = [getContactModal(), getDetailsModal(), getWelcomeModal()].find((m) => m && m.classList.contains('is-open'));
   if (!modal) return;
   const dialog = modal.querySelector('.contact-modal__dialog');
   if (!dialog) return;
