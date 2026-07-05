@@ -96,9 +96,12 @@
     const terms = host.getAttribute('data-terms') || '';
     const have = parseInt(host.getAttribute('data-have') || '0', 10) || 0;
     const exclude = host.getAttribute('data-shown-pids') || ''; // pids already on the page - never duplicate
+    // Buyer's storefront country: suggestions are local-warehouse-only, so the
+    // worker needs to know WHOSE local (GB buyer -> GB stock, US -> US, ...).
+    const country = host.getAttribute('data-country') || '';
     if (!terms || have >= SUPPLIER_THIN_MAX) return;
 
-    proxyGet('/search', { q: terms, have: String(have), limit: String(SUPPLIER_LIMIT), exclude: exclude })
+    proxyGet('/search', { q: terms, have: String(have), limit: String(SUPPLIER_LIMIT), exclude: exclude, country: country })
       .then((r) => {
         if (!r || !r.ok || !r.products || !r.products.length) return;
         const grid = host.querySelector('[data-pawscout-grid]');
