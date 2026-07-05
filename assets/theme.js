@@ -724,6 +724,11 @@ let welcomeReturnFocus = null;
 const openWelcomeModal = () => {
   const modal = getWelcomeModal();
   if (!modal || modal.classList.contains('is-open')) return;
+  // A dismissed offer stays dismissed. The first-scroll trigger stays armed
+  // after the 3s timer has already opened the modal, so without this check a
+  // close-then-scroll reopened it (the "shows twice" bug). Every trigger path
+  // funnels through here, so re-check dismissal at the door.
+  if (welcomeSeen()) return;
   welcomeReturnFocus = document.activeElement;
   modal.classList.add('is-open');
   modal.setAttribute('aria-hidden', 'false');
