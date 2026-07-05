@@ -63,6 +63,18 @@
           <label for="ContactBody">Message <span aria-hidden="true">*</span></label>
           <textarea id="ContactBody" name="contact[body]" rows="5" required>{{ form.body | escape }}</textarea>
         </div>
+        {%- comment -%}
+          Marketing opt-in (PECR/GDPR: unticked by default, its own positive act).
+          The custom contact[] field records the answer inside the message we
+          receive; theme.js additionally submits Shopify's own newsletter signup
+          when ticked, which is what actually grants marketing consent.
+        {%- endcomment -%}
+        <div class="contact-form__field contact-form__consent">
+          <label for="ContactMarketing">
+            <input type="checkbox" id="ContactMarketing" name="contact[Marketing opt-in]" value="Yes" data-contact-marketing>
+            <span>Also email me Active Paw news and offers. Unsubscribe any time with one click.</span>
+          </label>
+        </div>
         <button type="submit" class="button button-primary full">Send message</button>
       {%- endif -%}
     {%- endform -%}

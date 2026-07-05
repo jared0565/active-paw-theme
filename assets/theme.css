@@ -2862,6 +2862,8 @@ body.cart-drawer-open { overflow: hidden; }
   font-size: 16px;
 }
 .contact-form textarea { min-height: auto; resize: vertical; }
+.contact-form__consent label { display: flex; align-items: flex-start; gap: 10px; font-weight: 600; font-size: 13.5px; color: var(--muted); cursor: pointer; }
+.contact-form__consent input[type="checkbox"] { width: 18px; min-width: 18px; height: 18px; min-height: 18px; padding: 0; margin: 2px 0 0; flex: 0 0 auto; accent-color: var(--accent-dark); cursor: pointer; }
 .contact-form input:focus,
 .contact-form select:focus,
 .contact-form textarea:focus { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(240, 90, 40, 0.14); }

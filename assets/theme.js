@@ -634,6 +634,34 @@ document.addEventListener('click', (event) => {
   }
 });
 
+/* Marketing opt-in on the contact form: the contact form itself never
+   subscribes anyone. When the visitor ticks the opt-in box we ALSO submit
+   Shopify's own newsletter signup (form_type=customer) in the background,
+   which records proper marketing consent on the customer record - the same
+   field the checkout opt-in writes. keepalive lets the request finish while
+   the contact form's own full-page POST navigates away. Never blocks sending. */
+document.addEventListener('submit', (event) => {
+  const form = event.target.closest('#ContactForm');
+  if (!form) return;
+  const optIn = form.querySelector('[data-contact-marketing]');
+  const email = form.querySelector('#ContactEmail');
+  if (!optIn || !optIn.checked || !email || !email.value) return;
+  const body = new URLSearchParams({
+    form_type: 'customer',
+    utf8: '✓',
+    'contact[email]': email.value.trim(),
+    'contact[tags]': 'newsletter,contact-form'
+  });
+  try {
+    fetch('/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
+      keepalive: true
+    });
+  } catch (e) { /* the ticked box still rides inside the message itself */ }
+});
+
 /* ---------------- Product details modal (PDP "More details") ---------------- */
 const getDetailsModal = () => document.querySelector('[data-details-modal]');
 let detailsReturnFocus = null;
