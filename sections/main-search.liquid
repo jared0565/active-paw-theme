@@ -66,6 +66,7 @@
           <div data-pawscout-search
                data-terms="{{ search.terms | escape }}"
                data-have="{{ product_count }}"
+               data-country="{{ localization.country.iso_code }}"
                data-shown-pids="">
           <div class="commerce-grid search-results-grid" data-pawscout-grid>
             {% for item in search.results %}
