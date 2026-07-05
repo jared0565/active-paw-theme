@@ -61,6 +61,19 @@
 
   <div class="footer-bottom">
     <span>&copy; {{ 'now' | date: '%Y' }} {{ brand_name }}</span>
+    {%- comment -%}
+      Legal pages, rendered straight from the store's policies rather than a
+      menu: menu items that point at policies silently disappear when policies
+      are regenerated in admin, so a menu can never be trusted to keep these
+      visible. shop.policies only contains policies that exist.
+    {%- endcomment -%}
+    {%- if shop.policies.size > 0 -%}
+      <nav class="footer-legal" aria-label="Legal pages">
+        {%- for policy in shop.policies -%}
+          <a href="{{ policy.url }}">{{ policy.title | escape }}</a>
+        {%- endfor -%}
+      </nav>
+    {%- endif -%}
     <span>Prices, stock, and shipping are confirmed at checkout.</span>
   </div>
 </footer>

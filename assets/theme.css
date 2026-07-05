@@ -2290,6 +2290,8 @@ summary { cursor: pointer; font-weight: 800; }
   font-size: 12px;
   font-weight: 750;
 }
+.footer-legal { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.footer-legal a { color: rgba(255,255,255,0.78); font-size: 12px; font-weight: 750; }
 
 @media (max-width: 900px) {
   :root { --sticky-header-offset: 222px; }
