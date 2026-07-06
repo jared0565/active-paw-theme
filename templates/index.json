@@ -71,18 +71,9 @@
             "badge": "Play",
             "collection": "pet-toys"
           }
-        },
-        "more": {
-          "type": "category",
-          "settings": {
-            "title": "More To Love",
-            "body": "A broader mix of customer favourites worth discovering.",
-            "badge": "Trending",
-            "collection": "more-to-love"
-          }
         }
       },
-      "block_order": ["cool", "cleaning", "accessories", "health", "toys", "more"]
+      "block_order": ["cool", "cleaning", "accessories", "health", "toys"]
     },
     "roi": { "type": "conversion-stack", "settings": {} },
     "landing": { "type": "product-landing", "settings": {} },

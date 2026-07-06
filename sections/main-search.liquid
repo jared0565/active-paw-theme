@@ -26,7 +26,7 @@
           endfor
 
           assign normalized_terms = search.terms | downcase
-          assign offer_collection_handle = 'more-to-love'
+          assign offer_collection_handle = ''
           if normalized_terms contains 'food' or normalized_terms contains 'feed' or normalized_terms contains 'bowl' or normalized_terms contains 'water'
             assign offer_collection_handle = 'pet-accessories'
           elsif normalized_terms contains 'toy' or normalized_terms contains 'play' or normalized_terms contains 'scratch'

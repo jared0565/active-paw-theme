@@ -17,9 +17,6 @@
         elsif anchor == 'pet-toys'
           assign anchor = 'toys'
           assign collection_handle = collection_handle | default: 'pet-toys'
-        elsif anchor == 'more-to-love'
-          assign anchor = 'more'
-          assign collection_handle = collection_handle | default: 'more-to-love'
         endif
         assign collection = collections[collection_handle]
         assign visible_limit = section.settings.visible_limit
@@ -86,8 +83,7 @@
         { "type": "category" },
         { "type": "category", "settings": { "title": "Pet Accessories", "badge": "Daily use" } },
         { "type": "category", "settings": { "title": "Pet Health", "badge": "Care routine" } },
-        { "type": "category", "settings": { "title": "Pet Toys", "badge": "Play pick" } },
-        { "type": "category", "settings": { "title": "More To Love", "badge": "Trending" } }
+        { "type": "category", "settings": { "title": "Pet Toys", "badge": "Play pick" } }
       ]
     }
   ]

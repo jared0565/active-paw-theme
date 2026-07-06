@@ -22,7 +22,7 @@
             <a href="{{ link.url }}">{{ link.title | escape }}</a>
           {%- endfor -%}
         {%- else -%}
-          {%- assign category_handles = 'pet-cleaning,pet-accessories,pet-health,pet-toys,more-to-love' | split: ',' -%}
+          {%- assign category_handles = 'pet-cleaning,pet-accessories,pet-health,pet-toys' | split: ',' -%}
           {%- for handle in category_handles -%}
             {%- if collections[handle].products_count > 0 -%}
               <a href="{{ collections[handle].url }}">{{ collections[handle].title | escape }}</a>
