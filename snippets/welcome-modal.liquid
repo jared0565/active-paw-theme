@@ -9,22 +9,18 @@
   counters, no invented scarcity. Skipped entirely for logged-in customers
   who have ordered before, because the discount is for first orders and they
   would be shown an offer they cannot use.
-  SELF-TEARING (2026-07-06): the modal removes itself when the event is over,
-  in three layers. (1) Server-side: when the "Offer end date" theme setting is
-  a past day, nothing renders at all. (2) The "Ends" line derives from that
-  same date, so the label and the gate can never disagree. (3) Client-side:
-  theme.js asks PawScout (/public/event) which storewide event is REALLY
-  running - the Shopify discount is the source of truth - and suppresses the
-  modal when there is none, or re-points code and end date when a new event
-  replaced this one. A network failure leaves layers 1-2 in charge.
+  SELF-TEARING + EVENT SLOT (2026-07-06): the shell ALWAYS renders while the
+  master toggle is on (an Events-view activation must be able to wake it long
+  after the fallback offer expired), but it only OPENS when an event is live:
+  (1) the end date rendered below gates the fallback content client-side, and
+  (2) theme.js asks PawScout (/public/event) which storewide event is REALLY
+  running - the Shopify discount is the source of truth - then repaints the
+  headline, wording, chips, code and end date from that event, or keeps the
+  modal closed when there is none. A network failure leaves the date-gated
+  fallback in charge. Dismissals are remembered PER CODE, so closing one
+  event's offer never hides the next event.
 {%- endcomment -%}
-{%- assign wm_show = true -%}
-{%- if settings.welcome_ends_date != blank -%}
-  {%- assign wm_end_s = settings.welcome_ends_date | date: '%s' | plus: 86399 -%}
-  {%- assign wm_now_s = 'now' | date: '%s' | plus: 0 -%}
-  {%- if wm_now_s > wm_end_s -%}{%- assign wm_show = false -%}{%- endif -%}
-{%- endif -%}
-{%- if settings.welcome_enabled and wm_show -%}
+{%- if settings.welcome_enabled -%}
   {%- unless customer and customer.orders_count > 0 -%}
 <div class="contact-modal welcome-modal" data-welcome-modal aria-hidden="true"
      data-welcome-code="{{ settings.welcome_code | default: 'WELCOME10' | escape }}"

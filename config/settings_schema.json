@@ -53,8 +53,8 @@
       {
         "type": "checkbox",
         "id": "welcome_enabled",
-        "label": "Show the welcome offer modal",
-        "info": "Shows once per visitor (after 3 seconds or their first scroll). Create the discount code under Discounts in Shopify admin BEFORE enabling this.",
+        "label": "Offer pop-up slot",
+        "info": "Master switch for the event pop-up. Shows once per visitor per event (after 3 seconds or their first scroll). PawScout events wake this slot automatically with their own wording, so leave it on unless you never want any offer pop-up; the fields below are only the fallback shown if PawScout is unreachable.",
         "default": false
       },
       {
