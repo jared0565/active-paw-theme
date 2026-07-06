@@ -194,12 +194,17 @@
         <span>/</span>
         <a href="{{ routes.all_products_collection_url }}">Products</a>
       </nav>
+      {%- comment -%}
+        Share payload is title + URL ONLY. A text line here turns the share
+        into a plain text message in some targets (Facebook chat skips the
+        link preview entirely when text rides along) - receivers build the
+        card from the page's Open Graph tags instead.
+      {%- endcomment -%}
       <button
         class="share-button pdp-share-button"
         type="button"
-        data-share-url="{{ product.url | escape }}"
+        data-share-url="{{ request.origin | append: product.url | escape }}"
         data-share-title="{{ product_title | escape }}"
-        data-share-text="Found this pet-care pick on {{ brand_name | escape }}."
         aria-label="Share {{ product_title | escape }}"
       >
         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">

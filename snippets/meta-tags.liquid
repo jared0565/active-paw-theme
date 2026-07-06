@@ -4,8 +4,12 @@
   Shopify auto-injects og:image (+ secure_url/width/height) via content_for_header
   for every page type, using the admin "social sharing image" preference. It does NOT
   inject og:title/type/url/description, og:site_name/locale, or any twitter:* tags, nor
-  any JSON-LD. This snippet supplies exactly those gaps - and deliberately omits og:image
-  so the page never carries a duplicate.
+  any JSON-LD. This snippet supplies those gaps, plus platform-optimised share
+  images for products and collections: scrapers prefer the FIRST suitable
+  og:image and this snippet renders before content_for_header, so the 1200x630
+  crop (Facebook/LinkedIn/X card shape) wins, the 1200x1200 square (WhatsApp/
+  Telegram thumbnails) is the alternate, and Shopify's auto image remains a
+  final fallback. Pages without their own image keep only Shopify's.
 
   Rendered once from layout/theme.liquid <head>.
 {%- endcomment -%}
@@ -33,10 +37,37 @@
 {%- endif %}
 <meta property="og:locale" content="{{ request.locale.iso_code }}">
 
+{%- comment -%} Platform-optimised share images (products/collections). {%- endcomment -%}
+{%- assign share_image = blank -%}
+{%- if request.page_type == 'product' and product.featured_media -%}
+  {%- assign share_image = product.featured_media -%}
+{%- elsif request.page_type == 'collection' and collection.image -%}
+  {%- assign share_image = collection.image -%}
+{%- endif -%}
+{%- if share_image != blank -%}
+  {%- assign share_img_wide = share_image | image_url: width: 1200, height: 630, crop: 'center' | prepend: 'https:' -%}
+  {%- assign share_img_square = share_image | image_url: width: 1200, height: 1200, crop: 'center' | prepend: 'https:' -%}
+  {%- assign share_img_alt = share_image.alt | default: meta_title -%}
+<meta property="og:image" content="{{ share_img_wide }}">
+<meta property="og:image:secure_url" content="{{ share_img_wide }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{{ share_img_alt | escape }}">
+<meta property="og:image" content="{{ share_img_square }}">
+<meta property="og:image:secure_url" content="{{ share_img_square }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="1200">
+<meta property="og:image:alt" content="{{ share_img_alt | escape }}">
+{%- endif %}
+
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{{ meta_title | escape }}">
 {%- if meta_description != blank %}
 <meta name="twitter:description" content="{{ meta_description | escape }}">
+{%- endif %}
+{%- if share_image != blank %}
+<meta name="twitter:image" content="{{ share_img_wide }}">
+<meta name="twitter:image:alt" content="{{ share_img_alt | escape }}">
 {%- endif %}
 
 {%- comment -%} ---- Organization + WebSite (every page) ---- {%- endcomment -%}

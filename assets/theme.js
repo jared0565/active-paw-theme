@@ -121,11 +121,14 @@ const setShareFeedback = (button, labelText) => {
 const shareStoreLink = (button) => {
   const rawShareUrl = button.dataset.shareUrl || window.location.href;
   const shareUrl = new URL(rawShareUrl, window.location.origin).href;
+  // Title + URL only unless a button explicitly opts into extra text: when a
+  // text line rides along, some targets (Facebook chat among them) post it as
+  // a plain text message and never render the link preview card.
   const shareData = {
     title: button.dataset.shareTitle || document.title,
-    text: button.dataset.shareText || '',
     url: shareUrl
   };
+  if (button.dataset.shareText) shareData.text = button.dataset.shareText;
 
   button.disabled = true;
 
