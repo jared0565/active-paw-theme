@@ -3184,3 +3184,32 @@ body {
 }
 .di-line a { text-decoration: underline; }
 .di-line .di-sep { color: var(--muted); }
+
+/* ---- Phone gutters: give content the width ----
+   Section shells share a clamp(18px, 5vw, 72px) side gutter that still eats
+   about 20px per side on a phone, and inner panels add their own. Below
+   640px the horizontal padding drops to a slim 10px (12px for inner panels
+   and heroes) so cards and copy get the screen width. Only left/right is
+   touched: vertical rhythm keeps the wider-breakpoint values. */
+@media (max-width: 640px) {
+  .section,
+  .conversion,
+  .landing,
+  .review-panel,
+  .site-footer,
+  .category-showcase,
+  .search-page,
+  .cart-page,
+  .ad-pdp,
+  .product-detail,
+  .pdp-detail-stack {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .hero,
+  .hero-marketplace {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .category-block { padding-left: 12px; padding-right: 12px; }
+}
