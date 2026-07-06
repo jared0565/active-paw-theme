@@ -21,7 +21,7 @@
       <link rel="icon" href="{{ settings.favicon | image_url: width: 64, height: 64 }}" type="image/png">
       <link rel="apple-touch-icon" href="{{ settings.favicon | image_url: width: 180, height: 180 }}">
     {% else %}
-      <link rel="icon" href="{{ 'active-paw-logo.svg' | asset_url }}" type="image/svg+xml">
+      <link rel="icon" href="{{ 'active-paw-favicon.svg' | asset_url }}" type="image/svg+xml">
       <link rel="apple-touch-icon" href="{{ 'active-paw-app-icon-180.png' | asset_url }}">
     {% endif %}
     <title>{{ page_title | replace: 'Pawmerce', brand_name }}{% if current_tags %} - {{ current_tags | join: ', ' }}{% endif %}{% if current_page != 1 %} - Page {{ current_page }}{% endif %}{% unless page_title contains brand_name %} - {{ brand_name }}{% endunless %}</title>

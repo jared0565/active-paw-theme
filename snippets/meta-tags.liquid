@@ -43,7 +43,8 @@
 {%- if settings.brand_logo != blank -%}
   {%- assign org_logo = settings.brand_logo | image_url: width: 400 | prepend: 'https:' -%}
 {%- else -%}
-  {%- assign org_logo = 'active-paw-logo.svg' | asset_url -%}
+  {%- comment -%} Raster beats SVG here: Google's Organization logo parser wants a PNG/JPG at 112px+. {%- endcomment -%}
+  {%- assign org_logo = 'active-paw-app-icon-512.png' | asset_url -%}
   {%- assign org_logo = org_logo | prepend: 'https:' -%}
 {%- endif -%}
 <script type="application/ld+json">
