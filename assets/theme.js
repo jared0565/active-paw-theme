@@ -836,3 +836,136 @@ document.addEventListener('keydown', (event) => {
 if (getContactModal() && getContactModal().querySelector('[data-contact-result]')) {
   openContactModal();
 }
+
+/* ---------------- Add to Home Screen (install pill) ---------------- */
+// The store ships a web app manifest + icons, so Chrome/Edge offer real
+// installation and iOS adds a full-screen shortcut from the share menu. The
+// pill appears only when installing is genuinely possible on this browser,
+// only on small screens (the footer button covers desktop), never in the
+// same page view as the welcome offer modal (one overlay per visit), and a
+// dismissal sleeps it for 30 days. The footer button is always available
+// once installability is confirmed - visitor-initiated, so no cool-off.
+const INSTALL_DISMISS_KEY = 'ap_install_dismissed';
+const INSTALL_DISMISS_MS = 30 * 24 * 60 * 60 * 1000;
+
+const installDismissed = () => {
+  try {
+    const at = Number(localStorage.getItem(INSTALL_DISMISS_KEY) || 0);
+    return at > 0 && Date.now() - at < INSTALL_DISMISS_MS;
+  } catch (error) { return true; }
+};
+const markInstallDismissed = () => {
+  try { localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now())); } catch (error) { /* nothing to persist */ }
+};
+
+// Already running from the home screen: never advertise installing again.
+const isStandaloneDisplay = () =>
+  (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+  window.navigator.standalone === true;
+
+// Every iOS browser is WebKit and shares the share-menu Add to Home Screen
+// path. iPadOS 13+ reports a Mac user agent, hence the touch-points check.
+const isIosDevice = () =>
+  /iPhone|iPad|iPod/.test(window.navigator.userAgent) ||
+  (/Macintosh/.test(window.navigator.userAgent) && window.navigator.maxTouchPoints > 1);
+
+(() => {
+  const pill = document.querySelector('[data-install-pill]');
+  const steps = document.querySelector('[data-install-steps]');
+  const footerTrigger = document.querySelector('[data-install-trigger]');
+  if (!pill || !steps || isStandaloneDisplay()) return;
+
+  let deferredInstallPrompt = null;
+  const smallScreen = () => window.matchMedia('(max-width: 900px)').matches;
+
+  const hidePill = () => {
+    pill.classList.remove('is-visible');
+    pill.hidden = true;
+  };
+  const hideSteps = () => {
+    steps.classList.remove('is-visible');
+    steps.hidden = true;
+  };
+  const showSteps = () => {
+    hidePill();
+    steps.hidden = false;
+    window.requestAnimationFrame(() => steps.classList.add('is-visible'));
+  };
+
+  const promptInstall = () => {
+    if (deferredInstallPrompt) {
+      const prompting = deferredInstallPrompt;
+      deferredInstallPrompt = null;
+      hidePill();
+      prompting.prompt();
+      prompting.userChoice.then((choice) => {
+        if (choice && choice.outcome !== 'accepted') markInstallDismissed();
+      }).catch(() => {});
+      return;
+    }
+    showSteps();
+  };
+
+  // Auto-reveal etiquette mirrors the welcome modal: small screens only,
+  // a beat after load, and skipped entirely on the page view where the
+  // welcome offer shows so two overlays never stack.
+  const scheduleReveal = () => {
+    if (!smallScreen() || installDismissed() || !welcomeSeen()) return;
+    setTimeout(() => {
+      if (pill.hidden === false || steps.hidden === false || installDismissed()) return;
+      pill.hidden = false;
+      window.requestAnimationFrame(() => pill.classList.add('is-visible'));
+    }, 4500);
+  };
+
+  window.addEventListener('beforeinstallprompt', (event) => {
+    // Suppress Chrome's own mini-infobar; the pill and footer button run the
+    // same native prompt on our terms.
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    if (footerTrigger) footerTrigger.hidden = false;
+    scheduleReveal();
+  });
+
+  if (isIosDevice()) {
+    if (footerTrigger) footerTrigger.hidden = false;
+    scheduleReveal();
+  }
+
+  window.addEventListener('appinstalled', () => {
+    hidePill();
+    hideSteps();
+    if (footerTrigger) footerTrigger.hidden = true;
+    markInstallDismissed();
+  });
+
+  pill.addEventListener('click', (event) => {
+    if (event.target.closest('[data-install-accept]')) {
+      promptInstall();
+      return;
+    }
+    if (event.target.closest('[data-install-dismiss]')) {
+      hidePill();
+      markInstallDismissed();
+    }
+  });
+
+  steps.addEventListener('click', (event) => {
+    if (event.target.closest('[data-install-steps-close]')) {
+      hideSteps();
+      // Closing the instructions counts as "not now": without this the pill
+      // would re-offer on every page view to iOS visitors who read the steps
+      // and chose not to follow through.
+      markInstallDismissed();
+    }
+  });
+
+  if (footerTrigger) {
+    footerTrigger.addEventListener('click', () => {
+      promptInstall();
+      if (!deferredInstallPrompt && steps.hidden === false) {
+        steps.scrollIntoView({ block: 'end', behavior: 'smooth' });
+      }
+    });
+  }
+})();
