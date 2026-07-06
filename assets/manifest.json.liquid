@@ -1,0 +1,50 @@
+{%- comment -%}
+  Web app manifest: makes the store installable (Android/Chrome/Edge show a
+  real install prompt; iOS uses it alongside the apple-* meta tags) and opens
+  it full screen with no browser chrome. Served through the shop domain's
+  /cdn/ path, so it is same-origin and the relative start_url/scope resolve
+  to the store root on whichever domain the visitor is on.
+{%- endcomment -%}
+{
+  "name": {{ settings.demo_brand_name | default: 'Active Paw' | json }},
+  "short_name": {{ settings.demo_brand_name | default: 'Active Paw' | json }},
+  "description": "Pet care made simple. Dental, grooming, toys, litter and travel gear for dogs and cats.",
+  "id": "/",
+  "start_url": "/?utm_source=home_screen",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": {{ settings.color_surface | default: '#f7f4ef' | json }},
+  "theme_color": {{ settings.color_ink | default: '#101820' | json }},
+  "lang": "en",
+  "categories": ["shopping", "pets"],
+  "icons": [
+    {
+      "src": {{ 'active-paw-app-icon-192.png' | asset_url | json }},
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": {{ 'active-paw-app-icon-512.png' | asset_url | json }},
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": {{ 'active-paw-app-icon-512.png' | asset_url | json }},
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Search products",
+      "url": "/search"
+    },
+    {
+      "name": "Your basket",
+      "url": "/cart"
+    }
+  ]
+}

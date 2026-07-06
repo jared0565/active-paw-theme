@@ -74,6 +74,11 @@
         {%- endfor -%}
       </nav>
     {%- endif -%}
+    {%- comment -%}
+      Hidden until theme.js confirms this browser can actually install or add
+      a home-screen shortcut; a dead button would be worse than none.
+    {%- endcomment -%}
+    <button type="button" class="footer-install" data-install-trigger hidden>Add {{ brand_name }} to your Home Screen</button>
     <span>Prices, stock, and shipping are confirmed at checkout.</span>
   </div>
 </footer>

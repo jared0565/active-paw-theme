@@ -3000,3 +3000,121 @@ body.pawscout-lock { overflow: hidden; }
 .welcome-modal__ends { margin: 12px 0 0; color: var(--muted); font-size: 13px; font-weight: 600; }
 .welcome-modal__later { display: inline-block; margin-top: 10px; padding: 4px 8px; border: 0; background: transparent; color: var(--muted); font-size: 13px; text-decoration: underline; cursor: pointer; }
 .welcome-modal__later:hover { color: var(--ink); }
+
+/* ---- Edge-to-edge on notched devices (viewport-fit=cover) ----
+   env() insets are 0 wherever the browser chrome already covers them, so
+   every rule below is a no-op in ordinary portrait browsing and only bites
+   in landscape (sensor housing) and installed/standalone display. The ink
+   html background also colours the overscroll rubber-band at both ends. */
+html { background: var(--ink); -webkit-text-size-adjust: 100%; }
+body {
+  -webkit-tap-highlight-color: transparent;
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+.announcement { padding-top: env(safe-area-inset-top, 0px); }
+.site-footer { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.cart-drawer__panel {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.contact-modal__dialog {
+  max-height: calc(100vh - 48px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+}
+@media (display-mode: standalone) {
+  /* Installed app: content extends under the transparent status bar, so a
+     fixed ink strip keeps its clock/battery icons legible over any page,
+     and the sticky header parks just below it. */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: env(safe-area-inset-top, 0px);
+    background: var(--ink);
+    z-index: 90;
+  }
+  .sticky-header-stack { top: env(safe-area-inset-top, 0px); }
+}
+
+/* ---- Footer tap targets: room to tap without redesigning the footer ---- */
+.footer-nav a { display: inline-block; padding: 5px 0; }
+.footer-legal a,
+.footer-bottom a { display: inline-block; padding: 6px 0; }
+.footer-install {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 7px 16px;
+  border: 1px solid rgba(255,255,255,0.28);
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255,255,255,0.85);
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.footer-install:hover,
+.footer-install:focus-visible { border-color: white; color: white; outline: 0; }
+
+/* ---- Add-to-Home-Screen pill ---- */
+.install-pill {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 55; /* under the cart drawer (60) and modals (70) */
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 12px 14px;
+  background: var(--ink);
+  color: white;
+  border-radius: 16px;
+  box-shadow: 0 18px 44px rgba(16, 24, 32, 0.35);
+  transform: translateY(calc(100% + 24px));
+  opacity: 0;
+  transition: transform 0.35s ease, opacity 0.35s ease;
+}
+.install-pill.is-visible { transform: none; opacity: 1; }
+.install-pill[hidden] { display: none; }
+.install-pill__icon { width: 44px; height: 44px; border-radius: 11px; flex: 0 0 auto; }
+.install-pill__copy { display: grid; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.install-pill__copy strong { font-size: 14px; font-weight: 850; line-height: 1.25; }
+.install-pill__copy span { font-size: 12.5px; color: rgba(255,255,255,0.75); }
+.install-pill__cta {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: white;
+  font-size: 14px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.install-pill__cta:hover { background: var(--accent-dark); }
+.install-pill__dismiss {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+}
+.install-pill__dismiss:hover { color: white; background: rgba(255,255,255,0.12); }
+.install-pill--steps { flex-direction: column; align-items: stretch; gap: 10px; }
+.install-pill__steps-head { display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 850; }
+.install-pill__steps { margin: 0; padding: 0 0 0 20px; display: grid; gap: 8px; font-size: 13.5px; color: rgba(255,255,255,0.85); }
+.install-pill__share-glyph { vertical-align: -3px; margin: 0 2px; }
+.install-pill__cta--wide { width: 100%; }
