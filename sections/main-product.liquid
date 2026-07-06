@@ -102,7 +102,7 @@
   endif
 
   assign related_collection = blank
-  assign category_handles = 'pet-cleaning,pet-accessories,pet-health,pet-toys,more-to-love' | split: ','
+  assign category_handles = 'pet-cleaning,pet-accessories,pet-health,pet-toys' | split: ','
   for category_handle in category_handles
     for candidate_collection in product.collections
       if candidate_collection.handle == category_handle and candidate_collection.products_count > 1
@@ -120,9 +120,6 @@
       break
     endif
   endfor
-  if related_collection == blank
-    assign related_collection = collections['more-to-love']
-  endif
 %}
 
 {% comment %}
