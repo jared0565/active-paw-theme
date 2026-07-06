@@ -721,6 +721,12 @@ const markWelcomeSeen = () => {
 
 let welcomeReturnFocus = null;
 
+// Self-tearing gate: set when the event is over (client clock past the
+// rendered end date, or PawScout reports no running storewide event). Checked
+// at the door like welcomeSeen(), so an async verdict landing after the 3s
+// timer armed still wins.
+let welcomeEventOver = false;
+
 const openWelcomeModal = () => {
   const modal = getWelcomeModal();
   if (!modal || modal.classList.contains('is-open')) return;
@@ -728,7 +734,7 @@ const openWelcomeModal = () => {
   // after the 3s timer has already opened the modal, so without this check a
   // close-then-scroll reopened it (the "shows twice" bug). Every trigger path
   // funnels through here, so re-check dismissal at the door.
-  if (welcomeSeen()) return;
+  if (welcomeSeen() || welcomeEventOver) return;
   welcomeReturnFocus = document.activeElement;
   modal.classList.add('is-open');
   modal.setAttribute('aria-hidden', 'false');
@@ -766,6 +772,45 @@ const applyWelcomeCodeThenGo = (targetPath) => {
 (() => {
   const modal = getWelcomeModal();
   if (!modal || welcomeSeen()) return;
+
+  // Layer 1 (client clock): the end date rendered into the modal. The event
+  // runs through the whole of its final day.
+  const until = modal.getAttribute('data-welcome-until');
+  if (until) {
+    const end = new Date(`${until}T23:59:59`);
+    if (!Number.isNaN(end.getTime()) && Date.now() > end.getTime()) welcomeEventOver = true;
+  }
+
+  // Layer 2 (authoritative): ask PawScout which storewide event is actually
+  // running - the Shopify discount is the single source of truth. No running
+  // code event closes the gate; a different running code re-points the modal
+  // (code, discount link, end line) so a new event never needs a theme edit.
+  // Only the fetch SUCCEEDING can change anything: a network failure leaves
+  // the server-rendered state in charge.
+  const eventSrc = modal.getAttribute('data-welcome-event-src');
+  if (eventSrc && window.fetch) {
+    const controller = ('AbortController' in window) ? new AbortController() : null;
+    const abortTimer = controller ? setTimeout(() => controller.abort(), 3000) : null;
+    fetch(eventSrc, controller ? { signal: controller.signal } : {})
+      .then((response) => (response.ok ? response.json() : null))
+      .then((event) => {
+        if (abortTimer) clearTimeout(abortTimer);
+        if (!event) return; // 5xx or bad payload: keep the rendered state
+        if (event.active !== true || !event.code) { welcomeEventOver = true; return; }
+        welcomeEventOver = false; // live event confirmed (overrides layer 1)
+        modal.setAttribute('data-welcome-code', event.code);
+        const codeEl = modal.querySelector('.welcome-modal__code strong');
+        if (codeEl) codeEl.textContent = event.code;
+        const browse = modal.querySelector('[data-welcome-browse]');
+        if (browse) {
+          const redirect = modal.getAttribute('data-welcome-redirect') || '/collections/all';
+          browse.setAttribute('href', `/discount/${encodeURIComponent(event.code)}?redirect=${encodeURIComponent(redirect)}`);
+        }
+        const ends = modal.querySelector('.welcome-modal__ends');
+        if (ends && event.endsLabel) ends.textContent = `Ends ${event.endsLabel}`;
+      })
+      .catch(() => { if (abortTimer) clearTimeout(abortTimer); });
+  }
 
   const timer = setTimeout(openWelcomeModal, 3000);
   window.addEventListener('scroll', () => {

@@ -11,6 +11,7 @@
   "current": {
     "welcome_enabled": true,
     "welcome_ends": "Ends 19 July",
+    "welcome_ends_date": "2026-07-19",
     "sections": {
       "announcement-bar": {
         "type": "announcement-bar",

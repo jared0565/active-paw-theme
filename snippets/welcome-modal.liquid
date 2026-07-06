@@ -5,15 +5,31 @@
   (once per browser, after 3 seconds or the first scroll, never instantly)
   and routes every CTA through /discount/<code> so the offer is already
   applied when the visitor reaches checkout.
-  Honesty rules: the only urgency line is the event's REAL end date typed by
-  the merchant - no counters, no invented scarcity. Skipped entirely for
-  logged-in customers who have ordered before, because the discount is for
-  first orders and they would be shown an offer they cannot use.
+  Honesty rules: the only urgency line is the event's REAL end date - no
+  counters, no invented scarcity. Skipped entirely for logged-in customers
+  who have ordered before, because the discount is for first orders and they
+  would be shown an offer they cannot use.
+  SELF-TEARING (2026-07-06): the modal removes itself when the event is over,
+  in three layers. (1) Server-side: when the "Offer end date" theme setting is
+  a past day, nothing renders at all. (2) The "Ends" line derives from that
+  same date, so the label and the gate can never disagree. (3) Client-side:
+  theme.js asks PawScout (/public/event) which storewide event is REALLY
+  running - the Shopify discount is the source of truth - and suppresses the
+  modal when there is none, or re-points code and end date when a new event
+  replaced this one. A network failure leaves layers 1-2 in charge.
 {%- endcomment -%}
-{%- if settings.welcome_enabled -%}
+{%- assign wm_show = true -%}
+{%- if settings.welcome_ends_date != blank -%}
+  {%- assign wm_end_s = settings.welcome_ends_date | date: '%s' | plus: 86399 -%}
+  {%- assign wm_now_s = 'now' | date: '%s' | plus: 0 -%}
+  {%- if wm_now_s > wm_end_s -%}{%- assign wm_show = false -%}{%- endif -%}
+{%- endif -%}
+{%- if settings.welcome_enabled and wm_show -%}
   {%- unless customer and customer.orders_count > 0 -%}
 <div class="contact-modal welcome-modal" data-welcome-modal aria-hidden="true"
      data-welcome-code="{{ settings.welcome_code | default: 'WELCOME10' | escape }}"
+     data-welcome-until="{{ settings.welcome_ends_date | escape }}"
+     data-welcome-event-src="https://pawscout.activepaw.co.uk/public/event"
      data-welcome-redirect="{{ settings.welcome_redirect | default: '/collections/all' | escape }}">
   <div class="contact-modal__overlay" data-welcome-close></div>
   <div class="contact-modal__dialog welcome-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="WelcomeModalTitle" tabindex="-1">
@@ -44,8 +60,12 @@
        href="/discount/{{ settings.welcome_code | default: 'WELCOME10' | url_encode }}?redirect={{ settings.welcome_redirect | default: '/collections/all' | url_encode }}">
       {{ settings.welcome_cta | default: 'Start shopping with the offer applied' }}
     </a>
-    {%- if settings.welcome_ends != blank -%}
-    <p class="welcome-modal__ends">{{ settings.welcome_ends }}</p>
+    {%- assign wm_ends_label = settings.welcome_ends -%}
+    {%- if settings.welcome_ends_date != blank -%}
+      {%- assign wm_ends_label = settings.welcome_ends_date | date: 'Ends %-d %B' -%}
+    {%- endif -%}
+    {%- if wm_ends_label != blank -%}
+    <p class="welcome-modal__ends">{{ wm_ends_label }}</p>
     {%- endif -%}
     <button type="button" class="welcome-modal__later" data-welcome-close>Maybe later</button>
   </div>

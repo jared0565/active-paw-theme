@@ -84,6 +84,12 @@
       },
       {
         "type": "text",
+        "id": "welcome_ends_date",
+        "label": "Offer end date (YYYY-MM-DD)",
+        "info": "The modal hides itself after this day and derives its \"Ends\" line from it, overriding the free-text line above. The live storewide event from PawScout takes precedence over both when reachable."
+      },
+      {
+        "type": "text",
         "id": "welcome_chips",
         "label": "Search shortcuts (comma-separated)",
         "default": "Cat trees, Cooling mats, Litter boxes, Dog beds"
