@@ -17,17 +17,16 @@
   assign delivery_days = product.metafields.supplier.delivery_days.value
 -%}
 
+{%- comment -%} Single compact line (owner request 2026-07-06): the three
+    facts separated by middots instead of a three-bullet block. The day range
+    is still the synced order-to-door window; the returns link rides on the
+    returns fact itself. {%- endcomment -%}
 <div class="delivery-info" aria-label="Delivery information">
-  <ul class="di-rows">
-    <li>
-      <strong>FREE UK delivery</strong> on every order
-    </li>
-    <li>
-      Estimated
-      {%- if delivery_days != blank %} {{ delivery_days }} days{%- else %} 8-21 days{%- endif %} to your door
-    </li>
-    <li>
-      14-day returns &middot; <a href="/policies/refund-policy">see our returns policy</a>
-    </li>
-  </ul>
+  <p class="di-line">
+    <strong>FREE UK delivery</strong>
+    <span class="di-sep" aria-hidden="true">&middot;</span>
+    <span>{% if delivery_days != blank %}{{ delivery_days }}{% else %}8-21{% endif %} days</span>
+    <span class="di-sep" aria-hidden="true">&middot;</span>
+    <a href="/policies/refund-policy">14-day returns</a>
+  </p>
 </div>
