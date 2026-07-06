@@ -3118,3 +3118,69 @@ body {
 .install-pill__steps { margin: 0; padding: 0 0 0 20px; display: grid; gap: 8px; font-size: 13.5px; color: rgba(255,255,255,0.85); }
 .install-pill__share-glyph { vertical-align: -3px; margin: 0 2px; }
 .install-pill__cta--wide { width: 100%; }
+
+/* ---- Add-on cross-sell cards (PDP "Complete the kit" + cart drawer) ----
+   One compact row per suggestion: thumbnail | title + price | + Add on the
+   right. Previously unstyled, so each card stacked block-by-block and the
+   drawer footer swallowed the item list on phones. */
+.pdp-addons { margin-top: 18px; }
+.pdp-addons h3 { margin: 0 0 10px; font-size: 15px; font-weight: 850; }
+.cart-addons { margin: 12px 0 0; }
+.cart-addons__msg { margin: 0 0 8px; font-size: 13px; }
+.cart-addons__cards { display: grid; gap: 8px; }
+.addon-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.addon-card img {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex: 0 0 auto;
+}
+.addon-card__info { flex: 1 1 auto; min-width: 0; display: grid; gap: 2px; }
+.addon-card__info a {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.addon-card__info span { font-size: 12.5px; color: var(--muted); font-weight: 700; }
+.addon-card__add {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1.5px solid var(--accent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent-dark);
+  font-size: 13px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.addon-card__add:hover:not(:disabled) { background: var(--accent); color: #fff; }
+.addon-card__add:disabled { opacity: 0.6; }
+
+/* ---- Delivery facts: one line, middot-separated, never wraps ---- */
+.delivery-info { margin-top: 14px; }
+.di-line {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  white-space: nowrap;
+  font-size: clamp(10.5px, 3vw, 13px);
+  font-weight: 600;
+  color: var(--ink);
+}
+.di-line a { text-decoration: underline; }
+.di-line .di-sep { color: var(--muted); }
