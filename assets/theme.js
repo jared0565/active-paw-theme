@@ -710,13 +710,25 @@ document.addEventListener('click', (event) => {
 const getWelcomeModal = () => document.querySelector('[data-welcome-modal]');
 const WELCOME_SEEN_KEY = 'ap_welcome_dismissed';
 
+// Dismissals are remembered PER EVENT CODE: closing the welcome offer in June
+// must not hide the Summer sale in August. The legacy un-suffixed key counts
+// as a dismissal of WELCOME10 only (it was the only event when it was written).
+const welcomeCurrentCode = () => {
+  const modal = getWelcomeModal();
+  return modal ? (modal.getAttribute('data-welcome-code') || '') : '';
+};
+
 // Private-mode localStorage throws: treat as "seen" so those visitors are
 // never pestered on every page view.
 const welcomeSeen = () => {
-  try { return Boolean(localStorage.getItem(WELCOME_SEEN_KEY)); } catch (error) { return true; }
+  const code = welcomeCurrentCode();
+  try {
+    if (localStorage.getItem(`${WELCOME_SEEN_KEY}:${code}`)) return true;
+    return code === 'WELCOME10' && Boolean(localStorage.getItem(WELCOME_SEEN_KEY));
+  } catch (error) { return true; }
 };
 const markWelcomeSeen = () => {
-  try { localStorage.setItem(WELCOME_SEEN_KEY, String(Date.now())); } catch (error) { /* nothing to persist */ }
+  try { localStorage.setItem(`${WELCOME_SEEN_KEY}:${welcomeCurrentCode()}`, String(Date.now())); } catch (error) { /* nothing to persist */ }
 };
 
 let welcomeReturnFocus = null;
@@ -771,10 +783,13 @@ const applyWelcomeCodeThenGo = (targetPath) => {
 
 (() => {
   const modal = getWelcomeModal();
-  if (!modal || welcomeSeen()) return;
+  if (!modal) return;
+  // NOTE: no early return on welcomeSeen() here - dismissal is per event code,
+  // and the feed below may repaint the modal to a DIFFERENT event this visitor
+  // has not dismissed. openWelcomeModal re-checks at the door.
 
-  // Layer 1 (client clock): the end date rendered into the modal. The event
-  // runs through the whole of its final day.
+  // Layer 1 (client clock): the end date rendered into the fallback content.
+  // The event runs through the whole of its final day.
   const until = modal.getAttribute('data-welcome-until');
   if (until) {
     const end = new Date(`${until}T23:59:59`);
@@ -783,10 +798,10 @@ const applyWelcomeCodeThenGo = (targetPath) => {
 
   // Layer 2 (authoritative): ask PawScout which storewide event is actually
   // running - the Shopify discount is the single source of truth. No running
-  // code event closes the gate; a different running code re-points the modal
-  // (code, discount link, end line) so a new event never needs a theme edit.
-  // Only the fetch SUCCEEDING can change anything: a network failure leaves
-  // the server-rendered state in charge.
+  // code event keeps the modal closed; a running catalogue event repaints the
+  // whole modal (headline, wording, chips, code, link, end line) so a new
+  // event never needs a theme edit. Only the fetch SUCCEEDING can change
+  // anything: a network failure leaves the server-rendered state in charge.
   const eventSrc = modal.getAttribute('data-welcome-event-src');
   if (eventSrc && window.fetch) {
     const controller = ('AbortController' in window) ? new AbortController() : null;
@@ -806,8 +821,37 @@ const applyWelcomeCodeThenGo = (targetPath) => {
           const redirect = modal.getAttribute('data-welcome-redirect') || '/collections/all';
           browse.setAttribute('href', `/discount/${encodeURIComponent(event.code)}?redirect=${encodeURIComponent(redirect)}`);
         }
-        const ends = modal.querySelector('.welcome-modal__ends');
-        if (ends && event.endsLabel) ends.textContent = `Ends ${event.endsLabel}`;
+        if (event.headline) {
+          const h = modal.querySelector('#WelcomeModalTitle');
+          if (h) h.textContent = event.headline;
+        }
+        if (event.subline) {
+          const s = modal.querySelector('.welcome-modal__sub');
+          if (s) s.textContent = event.subline;
+        }
+        if (event.chips && event.chips.length) {
+          const wrap = modal.querySelector('.welcome-modal__chips');
+          if (wrap) {
+            wrap.textContent = '';
+            event.chips.forEach((chip) => {
+              const b = document.createElement('button');
+              b.type = 'button';
+              b.setAttribute('data-welcome-chip', chip);
+              b.textContent = chip;
+              wrap.appendChild(b);
+            });
+          }
+        }
+        if (event.endsLabel) {
+          let ends = modal.querySelector('.welcome-modal__ends');
+          if (!ends) {
+            ends = document.createElement('p');
+            ends.className = 'welcome-modal__ends';
+            const later = modal.querySelector('.welcome-modal__later');
+            if (later && later.parentNode) later.parentNode.insertBefore(ends, later);
+          }
+          ends.textContent = `Ends ${event.endsLabel}`;
+        }
       })
       .catch(() => { if (abortTimer) clearTimeout(abortTimer); });
   }
