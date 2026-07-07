@@ -1,0 +1,85 @@
+{%- comment -%}
+  Single article. Related-products block resolves the article's tags against
+  collection handles (editorial rule: each post is tagged with its collection
+  handle, e.g. pet-cleaning), so a guide always funnels into real stock. The
+  share button reuses the PDP pattern EXACTLY: title + URL only, no data-share-text
+  (a text payload breaks the Facebook link card). OG image + Article JSON-LD are
+  emitted by snippets/meta-tags.liquid.
+{%- endcomment -%}
+<section class="section article-page">
+  <article class="article-shell">
+    <div class="article-head">
+      <nav class="breadcrumb-mini" aria-label="Breadcrumb">
+        <a href="{{ routes.root_url }}">Home</a>
+        <span>/</span>
+        <a href="{{ blog.url }}">{{ blog.title }}</a>
+      </nav>
+      {% if article.tags.size > 0 %}
+        <p class="eyebrow">{{ article.tags.first }}</p>
+      {% endif %}
+      <h1>{{ article.title }}</h1>
+      <div class="article-meta">
+        <time datetime="{{ article.published_at | date: '%Y-%m-%d' }}">{{ article.published_at | date: '%-d %B %Y' }}</time>
+        {% if article.author != blank %}<span class="article-byline">by {{ article.author }}</span>{% endif %}
+        <button
+          class="share-button article-share-button"
+          type="button"
+          data-share-url="{{ request.origin | append: article.url | escape }}"
+          data-share-title="{{ article.title | escape }}"
+          aria-label="Share {{ article.title | escape }}"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M18 8a3 3 0 1 0-2.82-4H15a3 3 0 0 0 1.08 2.3l-7.1 3.55a3 3 0 1 0 0 4.3l7.1 3.55A3 3 0 1 0 17 16.1l-7.1-3.55a3.2 3.2 0 0 0 0-1.1l7.1-3.55c.28.08.6.1 1 .1Z"/>
+          </svg>
+          <span data-share-label>Share</span>
+        </button>
+      </div>
+    </div>
+
+    {% if article.image %}
+      <div class="article-hero">
+        {{ article.image | image_url: width: 1400 | image_tag: widths: '640, 900, 1200, 1400', sizes: '(max-width: 980px) 100vw, 820px', alt: article.image.alt | default: article.title }}
+      </div>
+    {% endif %}
+
+    <div class="article-body rte">
+      {{ article.content }}
+    </div>
+  </article>
+
+  {%- comment -%} Related products: first tag that maps to a non-empty collection. {%- endcomment -%}
+  {%- liquid
+    assign related_collection = blank
+    for tag in article.tags
+      assign candidate = collections[tag]
+      if candidate.products_count > 0
+        assign related_collection = candidate
+        break
+      endif
+    endfor
+  -%}
+  {% if related_collection != blank %}
+    <aside class="article-related">
+      <div class="section-heading">
+        <p class="eyebrow">From the shop</p>
+        <h2>Shop {{ related_collection.title }}</h2>
+      </div>
+      <div class="commerce-grid">
+        {% for product in related_collection.products limit: 4 %}
+          {% render 'product-card-commerce', product: product, badge: related_collection.title %}
+        {% endfor %}
+      </div>
+      <div class="article-related-cta">
+        <a class="button button-primary" href="{{ related_collection.url }}">Shop all {{ related_collection.title }}</a>
+      </div>
+    </aside>
+  {% endif %}
+
+  <div class="article-foot">
+    <a class="article-back" href="{{ blog.url }}">Back to {{ blog.title }}</a>
+  </div>
+</section>
+
+{% schema %}
+{ "name": "Main article", "settings": [] }
+{% endschema %}

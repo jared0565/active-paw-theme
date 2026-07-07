@@ -1,0 +1,66 @@
+<section class="section blog-listing">
+  <div class="section-heading">
+    <p class="eyebrow">{{ section.settings.eyebrow | default: 'Guides' }}</p>
+    <h1>{{ blog.title | default: 'Pet Care Guides' }}</h1>
+    <p>{{ section.settings.intro | default: 'Practical, honest guides to help you care for your dog or cat, written by the Active Paw team.' }}</p>
+  </div>
+
+  {% paginate blog.articles by 12 %}
+    {% if blog.articles_count > 0 %}
+      <div class="blog-grid">
+        {% for article in blog.articles %}
+          <article class="blog-card">
+            <a class="blog-card-media-link" href="{{ article.url }}" aria-label="Read {{ article.title | escape }}">
+              <div class="blog-card-media">
+                {% if article.image %}
+                  {{ article.image | image_url: width: 800 | image_tag: widths: '360, 540, 720, 800', sizes: '(max-width: 620px) 100vw, (max-width: 980px) 50vw, 33vw', loading: 'lazy', alt: article.image.alt | default: article.title }}
+                {% else %}
+                  <div class="blog-card-media-placeholder" aria-hidden="true">{{ blog.title | default: 'Active Paw' }}</div>
+                {% endif %}
+              </div>
+            </a>
+            <div class="blog-card-body">
+              {% if article.tags.size > 0 %}
+                <span class="blog-card-tag">{{ article.tags.first }}</span>
+              {% endif %}
+              <h2><a href="{{ article.url }}">{{ article.title }}</a></h2>
+              <p>{{ article.excerpt_or_content | strip_html | strip | truncate: 150 }}</p>
+              <div class="blog-card-meta">
+                <time datetime="{{ article.published_at | date: '%Y-%m-%d' }}">{{ article.published_at | date: '%-d %B %Y' }}</time>
+                <span class="blog-card-more">Read guide</span>
+              </div>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+
+      {% if paginate.pages > 1 %}
+        <nav class="pagination" role="navigation" aria-label="Guides pagination">
+          {% if paginate.previous %}
+            <a href="{{ paginate.previous.url }}">Previous</a>
+          {% endif %}
+          <span>Page {{ paginate.current_page }} of {{ paginate.pages }}</span>
+          {% if paginate.next %}
+            <a href="{{ paginate.next.url }}">Next</a>
+          {% endif %}
+        </nav>
+      {% endif %}
+    {% else %}
+      <div class="empty-category">
+        <strong>No guides yet</strong>
+        <span>We are writing our first pet-care guides. Check back soon, or browse the shop in the meantime.</span>
+        <a class="button button-primary" href="{{ routes.all_products_collection_url }}">Browse all products</a>
+      </div>
+    {% endif %}
+  {% endpaginate %}
+</section>
+
+{% schema %}
+{
+  "name": "Main blog",
+  "settings": [
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "Guides" },
+    { "type": "textarea", "id": "intro", "label": "Intro text", "default": "Practical, honest guides to help you care for your dog or cat, written by the Active Paw team." }
+  ]
+}
+{% endschema %}
