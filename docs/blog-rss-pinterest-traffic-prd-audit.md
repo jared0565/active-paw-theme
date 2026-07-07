@@ -135,10 +135,29 @@ campaign Send now.
 So the handoff is: **content agent → draft → human publish → syndicator.** Not
 content agent → syndicator. The human sits in the middle by construction.
 
-### Q3 - Does "automated" include auto-PUBLISHING? (the biggest decision)
+### Q3 - Does "automated" include auto-PUBLISHING? (SETTLED by the owner, 2026-07-07)
 
-**Recommendation: NO. Auto-draft, human-publish, auto-syndicate.** This is a
-deliberate, argued position, not a default:
+**DECISION: Default is auto-draft + human-publish + auto-syndicate. Build a
+"fully automated" toggle that ships OFF by default; the owner flips it on later
+if and when the output proves trustworthy.** This is the recommended path below
+*plus* the explicit, reversible escape hatch - the ideal outcome.
+
+Coder specifics for the toggle - **mirror the inbox `autosend` pattern exactly**
+(`cfg.inbox.autosend`: a stored per-surface config flag, OFF by default,
+surfaced in the console): add a `blog.autoPublish` (or similarly named) config
+flag, default `false`. Two hard rules for when it is ON:
+- **ON does not mean "skip the gate."** Even in full-auto mode, a post that
+  trips a fabrication category-flag (health/safety/dosage/breed/guarantee -
+  see Q4) or falls below the quality/confidence bar must still HOLD for human
+  review, never auto-publish. This is exactly how inbox `autosend` still holds
+  on money-mentions and low confidence even when switched on. Full-auto is
+  "publish the clean ones without waiting for a click," not "publish
+  everything."
+- The default (toggle OFF) is the launch behaviour and stays the behaviour
+  until the owner consciously changes it.
+
+The rationale below is why this is the right default, retained so the decision
+is not silently re-litigated:
 
 - **Every AI-generated customer-facing artifact in this project is
   human-gated before it goes public.** Inbox drafts sit `pending` until Approve;
@@ -362,16 +381,15 @@ Rather than rewrite it, add an "Automation (Phase 2+)" section and:
 
 ---
 
-## One disagreement stated plainly
+## The publish-gate decision (resolved)
 
-The owner framed this as "two agents, automated." I am recommending something
-one notch less automated than a literal reading of that - a human publish click
-stays in the loop. I am flagging that explicitly rather than quietly building
-the safer thing: **if the owner's intent is genuinely unattended
-publish-and-pin with no human in the loop, that is a specific, reversible
-decision they should make with the fabrication risk in front of them - not a
-default a coder infers from the word "automated."** My strong recommendation is
-the human-gated version, for the reasons in Q3; but the call is the owner's, and
-it should be made consciously. The architecture above supports either - the only
-difference is whether the publish step is a console click or an automatic
-transition - so nothing here is wasted if the owner chooses differently.
+This was the one fork only the owner could set, and it is now set (2026-07-07):
+**human-gated publish is the default; a "fully automated" toggle ships OFF by
+default so the owner can go unattended later once the output earns trust.** See
+Q3 for the build spec. The architecture above already supports both modes - the
+only difference is whether the publish step is a console click or an automatic
+transition for posts that pass the gate cleanly - so the toggle is a small,
+well-contained addition, not a re-architecture. The measurement gate (per-post
+attribution) is what should inform *when* the owner flips that toggle on:
+don't go full-auto until the reviewed posts demonstrably earn traffic without
+dragging site quality.
