@@ -260,17 +260,28 @@ Flag these as **blockers to surface to the owner**, not assumptions:
 2. **Pinterest Business account + domain claim + Rich Pins.** Owner must create
    the Business account, verify `activepaw.co.uk`, and enable Article Rich Pins.
    Prerequisite for *any* syndication path. Owner-owned task.
-3. **Admin API content-write scope (CONFIRMED blocker for worker-authored
-   drafts).** Checked against the live tenant record 2026-07-07: the worker's 10
-   granted Shopify scopes are `read_customers, write_draft_orders,
-   write_inventory, read_locations, write_markets,
-   write_merchant_managed_fulfillment_orders, read_orders, write_products,
-   write_publications, write_shipping` - **none of which is a content-write
-   scope.** Creating draft Articles via the Admin API needs one (a
-   `write_content`-class scope; confirm the exact current name at build time
-   against the target API version). This is an app-permission change + merchant
-   re-auth, exactly like the `read/write_legal_policies` grant on 2026-07-05.
-   Plan for it as a certainty, not a maybe.
+3. **Admin API content-write scope = `write_content` (needed; likely already
+   granted; the `tenants.scopes` record is NOT a reliable check).** Creating and
+   publishing blog Articles via the Admin API requires the `write_content` scope
+   (Shopify's "Store content" permission - articles, blogs, pages, comments,
+   redirects; verified against Shopify docs 2026-07). **Verification caveat
+   discovered 2026-07-07 - important for the coder:** the worker's `tenants.scopes`
+   D1 record is a STALE snapshot (last written 2026-07-03) and does not reflect
+   scopes granted since. Proof: `write_discounts` is functionally live (affiliate
+   discount codes are being created through it) yet is absent from that record,
+   as is `read/write_legal_policies` (granted 2026-07-05). This app grants scopes
+   server-side on a Dev Dashboard release without the worker re-recording them.
+   So `tenants.scopes` showing no content scope is a **false negative**, not proof
+   of absence. The owner declared `write_content` in the Dev Dashboard and
+   released a version on 2026-07-07, so the real offline token most likely
+   already carries it. **Consequences:** (a) do NOT gate blog writes on
+   `hasScope(tenant.scopes, 'write_content')` - that record lies; attempt the
+   `articleCreate` call and handle the error, or refresh the scope record first;
+   (b) to remove all doubt deterministically, add `write_content` to the worker's
+   `SHOPIFY_SCOPES` in `wrangler.toml` to match the dashboard, deploy, re-auth,
+   then exercise a real `articleCreate` - which is only possible once blog code
+   exists. Until then: treat `write_content` as "probably granted, confirm by
+   exercising," not as an open blocker.
 4. **Credential storage.** Any Zapier webhook secret or Pinterest OAuth
    token/refresh-token goes through the existing sealed `supplier_credentials`
    vault pattern (`Vault.fromMasterKey(env.PAWSCOUT_MASTER_KEY)`), never logged,
