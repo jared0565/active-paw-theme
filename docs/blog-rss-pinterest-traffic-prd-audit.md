@@ -347,6 +347,106 @@ Flag these as **blockers to surface to the owner**, not assumptions:
 
 ---
 
+### Refinement: three isolated blog agents in a dedicated module (owner decision, 2026-07-07)
+
+The owner refined the two-agent framing into **three exclusive agents** -
+research (find the best current angle for a pet topic), draft (write the post),
+syndicate (push to Pinterest/whatever) - with an explicit isolation goal: **do
+not touch the inbox pipeline that is already live and tested.** This is correct,
+and it is worth being precise about *why* and *where the boundary falls*, because
+"reuse the inbox pattern" (as this audit originally phrased it) and "build
+exclusive agents" are reconcilable - one is about copying a proven *shape*, the
+other about not sharing tuned *code*.
+
+**Why isolation is technically right, not just tidy.** The inbox drafter and its
+quality gate are tuned to a job the blog does not share:
+- The inbox gate (`src/inbox/draft-quality.ts`) *penalises* length over ~110
+  words; a blog article *needs* 600+. Its `affirmsDelivery` / `asksDoYouDeliver`
+  / money-hold logic is meaningless for an article. Its fabrication gate is a
+  regex blocklist of narrow known-bad shapes that does not port (established in
+  Q4).
+- `refineUntilClean` looks generic but is **hard-wired to the inbox gate**: it
+  calls `findDraftIssues` directly. "Reusing" it for the blog would mean either
+  importing the inbox gate (coupling the blog to inbox internals) or refactoring
+  a live, tested function to inject the issue-finder (touching the thing we are
+  trying not to touch). The blog's own ~15-line refine loop with its own
+  issue-finder is cheaper and fully isolated. This one concrete example is the
+  whole argument in miniature.
+- The inbox `CategoryAgent` registry (`src/inbox/agents/`) dispatches
+  customer-service replies by email category. A blog pipeline has no categories,
+  no reply, no thread - the abstraction does not fit.
+
+So: forcing reuse of the inbox *business logic* would mean either forking tested
+code with blog conditionals or a risky generalising refactor - **exactly the
+regression risk the owner wants to avoid.** The blog gets its own logic.
+
+**The boundary (the actionable part).** A new `src/blog/` module owns ALL
+blog-specific logic. It SHARES only the stable, generic infrastructure, where
+duplicating would be worse than sharing:
+
+| Blog OWNS (new, isolated in `src/blog/`) | Blog SHARES (generic infra, read-only) | Blog does NOT touch (tested paths) |
+|---|---|---|
+| `research.ts`, `draft.ts`, `quality.ts`, `syndicate.ts` | `LlmClient` + `resolveChain` + `jsonChain` (LLM transport) | anything in `src/inbox/` |
+| its own prompts, its own fact-pack grounding | `makeAdminGraphql` / `adminForShop` (Shopify transport) | `draft-quality.ts`, `refineUntilClean` |
+| its own refine loop + issue-finder | `Vault` + `supplier_credentials` (sealed creds) | the `CategoryAgent` registry |
+| `blog_topics` / `blog_post_drafts` tables + migration | `sanitizeOutbound` (em-dash policy primitive) | inbox tests stay green (its code unchanged) |
+| a new console "Content" view | the `DailyStage` harness, the console framework | |
+
+**The only edits to shared files are ADDITIVE**: append one (or two) stage(s) to
+`DAILY_SHOP_STAGES`, add routes to `index.ts`, add `TenantStore` methods, add a
+migration. No existing stage, route, or inbox module is modified. That is the
+strongest possible version of "not touching what works," and it is achievable.
+Bonus: the blog gets its own `tests/blog-*.test.ts` suite, independent of the
+inbox's large suite (which also helps the known local vitest-wedge problem -
+smaller isolated batches).
+
+**The three agents, specified.** Two are real LLM agents; the third is mostly a
+mechanical executor (do not let "agent" lead the coder to over-build it):
+
+1. **Research / angle agent** (real LLM agent; *divergent*). Input: internal
+   signal (the seasonal calendar incl. the enabled recurring-events, which
+   collections need traffic, what is in stock to push) + evergreen pet-care
+   topic knowledge. Output: a ranked **topic brief** (angle, target keyword,
+   target collection, why-now rationale, key points to cover) - a *plan*, not
+   customer-facing prose. Human checkpoint here is cheap and valuable: approve/
+   reject an angle *before* spending a drafting call, which is also topic-quality
+   control. NOTE the signal-source decision below.
+2. **Draft agent** (real LLM agent; *convergent, hermetic*). Input: an approved
+   brief + a grounded fact pack (real products/prices/stock/delivery bands via
+   the Admin API - the blog's `ground` step). Output: a Shopify **draft** Article
+   + a `blog_post_drafts` staging row, after its own quality + fabrication-flag
+   gate. Grounded on internal facts ONLY, so uncertainty never enters the prose.
+   Human publish gate applies (Q3).
+3. **Syndication executor** (NOT a reasoning agent; a job). Trigger: article
+   *published* (RSS/published-state, structurally gated on human publish).
+   Behaviour: deterministic push (title + OG image + URL) to a pluggable
+   `SyndicationTarget` (Zapier/Make first, per Q5/Q6). The ONLY optional LLM
+   touch is generating platform-native pin copy - otherwise it is a `fetch`
+   call. Scope it as plumbing, not an agent.
+
+**Two human checkpoints, and how the toggle collapses them.** The pipeline is
+research → **[approve brief]** → draft → **[review + publish]** → syndicate
+(auto). The off-by-default "fully automated" toggle (owner decision, Q3) is what
+lets clean items auto-advance through both checkpoints - while still holding
+anything that trips a fabrication flag or the confidence bar. So the three-agent
+decomposition and the toggle compose cleanly: the toggle is just "auto-advance
+the gates that would otherwise wait for a click."
+
+**Signal-source decision for the research agent (the one new open question).**
+"Best *current* angle" implies knowing what is timely. Two sources:
+- *Internal + seasonal (recommended for v1):* the calendar, the enabled
+  recurring-events, collection-traffic gaps, stock. Hermetic, no external API,
+  no cost, and its output is a human-approved plan anyway so imperfect "trend"
+  sensing is low-stakes. Strong on relevance-to-us, weaker on live search demand.
+- *External trend/keyword signal (later):* web search / keyword-demand / SERP
+  data. Stronger on "what is actually searched now," but adds an external
+  dependency, cost, and uncertainty. Add it once v1 proves out; keep the drafter
+  hermetic regardless (external signal informs the *brief*, never the *facts*
+  the drafter writes from).
+
+Recommendation: start internal+seasonal; the human approves the angle, so the
+bar for the research agent's autonomy is low and safe.
+
 ### Measurement is a gate, not a Phase-4 nice-to-have
 
 This matters *more* because the content is auto-generated. Google's Helpful
