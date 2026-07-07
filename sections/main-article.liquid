@@ -47,7 +47,13 @@
     </div>
   </article>
 
-  {%- comment -%} Related products: first tag that maps to a non-empty collection. {%- endcomment -%}
+  {%- comment -%}
+    Shop this guide. Primary source: the blog.related_products metafield (a list of
+    product handles the worker's blog agent curated - the products the post actually
+    links, topped up from its funnel collection). Falls back to the funnel collection's
+    first 4 when the metafield is absent (manual posts, or older articles), so the
+    block never disappears. The CTA still points at the funnel collection.
+  {%- endcomment -%}
   {%- liquid
     assign related_collection = blank
     for tag in article.tags
@@ -57,8 +63,30 @@
         break
       endif
     endfor
+    assign shop_handles = article.metafields.blog.related_products.value
+    assign shop_count = shop_handles.size | default: 0
   -%}
-  {% if related_collection != blank %}
+  {% if shop_count > 0 %}
+    <aside class="article-related">
+      <div class="section-heading">
+        <p class="eyebrow">From the shop</p>
+        <h2>Shop this guide</h2>
+      </div>
+      <div class="commerce-grid">
+        {% for handle in shop_handles limit: 4 %}
+          {%- assign shop_product = all_products[handle] -%}
+          {%- unless shop_product == empty -%}
+            {% render 'product-card-commerce', product: shop_product, badge: related_collection.title %}
+          {%- endunless -%}
+        {% endfor %}
+      </div>
+      {% if related_collection != blank %}
+        <div class="article-related-cta">
+          <a class="button button-primary" href="{{ related_collection.url }}">Shop all {{ related_collection.title }}</a>
+        </div>
+      {% endif %}
+    </aside>
+  {% elsif related_collection != blank %}
     <aside class="article-related">
       <div class="section-heading">
         <p class="eyebrow">From the shop</p>
