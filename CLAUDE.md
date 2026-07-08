@@ -2,6 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Shared Graphite Instructions
+
+Follow `GRAPHITE.md` before making non-trivial code changes. Use the existing `graph-out/graph.json` as the shared project graph, and do not edit `graph-out/` manually.
 ## What this repo is
 
 **Active Paw** - a Shopify theme (custom Liquid) paired with a set of Python Admin API scripts. The theme powers a pet-care demo store hosted at `4qkudm-ez.myshopify.com`. The Python scripts handle one-off data operations (product import, inventory, collection setup) against the Shopify Admin API and the CJDropshipping API.
@@ -60,6 +63,8 @@ Both `sections/main-product.liquid` (PDP) and `sections/main-cart.liquid` follow
 
 ## Python scripts
 
+> **Operational policy (2026-07-07, owner rule):** these scripts and `shopify_admin.py` are a dev-era one-off tool. **Do NOT use them for operational or feature Shopify work** - the `pawscout-worker` is the production Shopify integration and the sole operational Admin API actor. Never propose adding scopes to the scripts app or call its Admin API for a feature; build the capability into the worker instead. See `pawscout-worker/CLAUDE.md` ("The worker is the system").
+
 All scripts use only the Python standard library (`urllib`, `json`, `pathlib`, `subprocess`, `time`). Run any of them directly with `python <script>.py`.
 
 Key scripts:
@@ -97,9 +102,9 @@ These require the Shopify CLI authenticated against the store. The store handle 
 ## Collections used in the theme
 
 The home page and PDP related-products logic resolve against these collection handles:
-`pet-cleaning`, `pet-accessories`, `pet-health`, `pet-toys`, `more-to-love`
+`pet-cleaning`, `pet-accessories`, `pet-health`, `pet-toys`
 
-The PDP walks `product.collections` in that priority order to find a related collection with more than one product.
+The PDP walks `product.collections` in that priority order to find a related collection with more than one product. (The old `more-to-love` fallback collection was retired 2026-07-06: its members were all archived, and all theme references were removed.)
 
 ## Theme settings
 

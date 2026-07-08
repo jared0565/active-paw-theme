@@ -1,7 +1,7 @@
 # Default-deny allowlist - GitHub publishes "theme + docs only".
 # The Python admin scripts (shopify_admin.py, cj_client.py, etc.) hardcode LIVE
 # Shopify/CJ credentials and must NEVER be pushed. node_modules/, output/, .env,
-# graphify tooling, and local .claude/ config are also excluded. Anything not
+# graphite tooling, and local .claude/ config are also excluded. Anything not
 # explicitly allowed below is ignored - the safe failure mode.
 /*
 
@@ -18,4 +18,10 @@
 # Documentation + project guide (verified: only format placeholders / test fixtures)
 !/docs/
 !/CLAUDE.md
+!/AGENTS.md
+!/GRAPHITE.md
 !/.gitignore
+
+graph-out/
+.cache/graphite/
+.graphite-daemon/
