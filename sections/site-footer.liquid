@@ -32,6 +32,10 @@
       </div>
       <div>
         <h3>Help</h3>
+        {%- assign guides_blog = blogs['guides'] -%}
+        {%- if guides_blog.url != blank -%}
+          <a href="{{ guides_blog.url }}">Pet care guides</a>
+        {%- endif -%}
         <a href="{{ routes.root_url }}#support">Shipping & returns</a>
         <a href="mailto:contact@activepaw.co.uk">Contact support</a>
         <a href="{{ routes.root_url }}#support">FAQs</a>
