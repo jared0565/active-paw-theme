@@ -67,6 +67,12 @@
           {%- else -%}
             <span class="header-collections-empty">No collections yet</span>
           {%- endfor -%}
+          {%- assign guides_blog = blogs['guides'] -%}
+          {%- if guides_blog.url != blank -%}
+            <a class="header-collections-link header-collections-link--guides" role="menuitem" href="{{ guides_blog.url }}">
+              <span>Pet Care Guides</span>
+            </a>
+          {%- endif -%}
         </div>
       </div>
 
