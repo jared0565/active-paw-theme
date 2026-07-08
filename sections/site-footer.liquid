@@ -16,19 +16,18 @@
     <nav class="footer-nav" aria-label="Footer navigation">
       <div>
         <h3>Shop</h3>
-        {%- assign footer_menu = linklists[section.settings.footer_menu] -%}
-        {%- if footer_menu.links.size > 0 -%}
-          {%- for link in footer_menu.links -%}
-            <a href="{{ link.url }}">{{ link.title | escape }}</a>
-          {%- endfor -%}
-        {%- else -%}
-          {%- assign category_handles = 'pet-cleaning,pet-accessories,pet-health,pet-toys' | split: ',' -%}
-          {%- for handle in category_handles -%}
-            {%- if collections[handle].products_count > 0 -%}
-              <a href="{{ collections[handle].url }}">{{ collections[handle].title | escape }}</a>
-            {%- endif -%}
-          {%- endfor -%}
-        {%- endif -%}
+        {%- comment -%}
+          List the store's real category collections, mirroring the header
+          Collections dropdown (every non-empty collection except frontpage).
+          Self-maintaining: reflects collections as they are added or retired,
+          and stays in sync with the header. Replaced an admin link_list that
+          defaulted to Shopify's stock "footer" menu (a lone Search link).
+        {%- endcomment -%}
+        {%- for collection in collections -%}
+          {%- unless collection.handle == 'frontpage' or collection.products_count == 0 -%}
+            <a href="{{ collection.url }}">{{ collection.title | escape }}</a>
+          {%- endunless -%}
+        {%- endfor -%}
       </div>
       <div>
         <h3>Help</h3>
@@ -90,14 +89,6 @@
 {% schema %}
 {
   "name": "Site footer",
-  "settings": [
-    {
-      "type": "link_list",
-      "id": "footer_menu",
-      "label": "Footer shop menu",
-      "default": "footer",
-      "info": "Links shown under the Shop column. Falls back to the pet category collections until a menu is selected."
-    }
-  ]
+  "settings": []
 }
 {% endschema %}
