@@ -162,6 +162,68 @@ A margin-trimmed price, minus a 20% launch code, minus ad cost, goes negative fa
 
 ---
 
+## 6. The cheap-item tier: why "shipping" keeps surfacing, and how to make it pay
+
+The cheapest items are where the shipping problem kept resurfacing. The cause is now verified at source, and it is not a flaw in the local-warehouse-to-local-buyer model. It is a sourcing gap.
+
+### 6.1 The cheap items are China-sourced, and GB has no cheap stock
+
+The live catalogue splits by warehouse: 79 products ship from a GB warehouse (avg cost $26, freight ~$0, no shipping problem), and 87 ship from China (avg cost $3.27, avg freight $6.01). Every one of the ~80 sub-$5 impulse items is China-sourced; none is GB.
+
+Probing CJ's GB warehouse directly (countryCode=GB across eight cheap-item categories) returns nothing under ~$5.59, while China returns 100+ of each. Our own import history confirms it: the pipeline that searches GB has never surfaced a cheap local item. CJ's GB warehouse holds higher-value goods (cat trees, litter boxes); the ultra-cheap impulse items exist only in China.
+
+So the local-to-local principle is correct and already works for everything GB stocks. The cheap tier is simply the one part of the catalogue that physically cannot be local on this supplier. That is the real, recurring "shipping" issue: a supply constraint, not a model flaw.
+
+### 6.2 The fix: decouple shipping (cheap sticker, charged shipping)
+
+Baking full freight into a free-delivery sticker forces a $1.44 China item to either lose money at £6.99 or price uncompetitively at £19.99. Charging shipping separately fixes it. Worked example (CJ cost $1.44, freight $3.42), priced at £1.99 product + £4.99 shipping (£6.98 total):
+
+| Line | Amount |
+|---|---|
+| Customer pays | £6.98 |
+| Ex-VAT revenue | £5.82 |
+| VAT | -£1.16 |
+| Product cost | -£1.12 |
+| Freight | -£2.67 |
+| Overhead (~9%) | -£0.55 |
+| **Net / unit** | **~£1.48 (~25%)** |
+
+It works because the £4.99 shipping charge covers the £2.67 freight and adds margin, instead of hiding an uncompetitive number in the sticker. Keep the product sticker impulse-cheap; charge the freight honestly. The catch is sellability: £4.99 shipping on a £1.99 item, and £6.98 delivered against Amazon at £3 to £5 with Prime, is a hard standalone sell. It works as a multipack, a niche item Amazon does not carry, or a threshold add-on.
+
+### 6.3 The multipack, stress-tested against events and affiliate
+
+A 3-pack (£5.97 product + £4.99 shipping) modelled with a 20% event discount and affiliate commission (8% + 2% platform fee) stacked. The result hinges entirely on whether the pack ships as one combined parcel or as N per-unit parcels:
+
+| If the pack's freight is... | Base | -20% event | + Affiliate | -20% AND affiliate |
+|---|---|---|---|---|
+| £2.67 (1 combined parcel) | +£2.23 (24%) | +£1.33 (16%) | +£1.28 (14%) | +£0.48 (6%) |
+| £4.27 (1.6x) | +£0.63 (7%) | -£0.27 | -£0.32 | -£1.12 |
+| £8.00 (3x per-unit) | -£3.11 | -£4.01 | -£4.06 | -£4.85 |
+
+If the pack ships combined at ~single-unit freight it survives the full stack at +£0.48. If freight scales to 1.6x, any single stressor tips it negative. Break-even freight under the full stack is £3.15: the 3-unit parcel can cost at most ~18% more than one unit's £2.67.
+
+Counterintuitively, the single unit is the safer bet: £1.99 + £4.99 nets +£1.47 (25%) at base and +£0.60 (11%) even under -20% + affiliate, because its £4.99 shipping over-covers one unit's freight. Multipacks help conversion (better value perception) but only hold margin if freight genuinely amortises.
+
+### 6.4 The threshold math resolves by warehouse
+
+Free shipping on a China item is always a loss (the 3-pack loses £1.53 at base, £2.85 stacked, eating freight with no shipping revenue). So the free-shipping threshold must be warehouse-aware:
+- GB items: free shipping over £X costs almost nothing (local freight ~ £0).
+- China items: always charge shipping, never free, never qualify for the threshold.
+
+This is the local-to-local principle expressed as a shipping rule.
+
+### 6.5 Guardrails
+
+1. Never free-ship a China item. The threshold is GB-only.
+2. Exclude cheap items from affiliate discount codes. They cannot clear the system's £6 affiliate floor (a 3-pack's surviving contribution is ~£4.81), and an 8% + 2% commission on top of a 20% event is what pushes the pack negative.
+3. Stack event discounts on cheap items with care: singles absorb -20%, the 3-pack only does if freight is truly combined.
+
+### 6.6 Open item
+
+The multipack decision hinges on one number the CJ API would not return for the sample SKU (CJDT296306301AZ): the actual combined-shipping freight for N units in one parcel. Confirm it on CJ directly (add N units to the cart, read the shipping cost). If a 3-pack ships for £3 or less, multipacks are the sweet spot. If freight scales with weight, sell singles, and treat the China-commodity tier as structurally awkward, leaning on the GB/local and niche ranges for durable margin.
+
+---
+
 ## Appendix: method, sources, caveats
 
 **Method.** Pricing engine read from `pawscout-worker/src/pricing.ts` and live `tenant_config.pricing`. Margins computed by joining live storefront prices (activepaw.co.uk products.json) to CJ supplier costs and per-item freight in the worker's D1 (`warehouse_products`, `product_links`), for 163 of 172 live products. Net margin = (ex-VAT revenue minus product cost minus freight) as a percentage of ex-VAT revenue, less a ~9% overhead stack (payments, FX, refunds, fixed), with zero ad spend. Freight impact is a conservative upper bound where freight is baked into the sticker.
