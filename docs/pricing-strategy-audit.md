@@ -1,0 +1,154 @@
+# Active Paw Pricing Strategy Audit
+
+**Date:** 2026-07-08
+**Context:** The store has had zero sales to date. The owner has compared prices against other sellers in the niche and believes Active Paw is too expensive. This audit tests that belief against (a) how our prices are actually built, (b) real margins on the live catalogue, (c) current UK competitor prices, and (d) the published evidence on pricing strategy for small dropship stores.
+
+**One-line answer:** The premise is half right. On the commodity items a shopper can price-check, we do sit at or above the marketplace floor, so those look expensive. But our margins are mostly healthy to generous, not thin, so a blanket price cut is the wrong fix. It would give away good margin and still lose to Amazon. The real levers are: reprice the third of the catalogue that is frozen above our own current rule, stop leading with commodities we cannot win on, fix a freight rule that craters our cheapest items, trim an "ads tax" baked into prices for ads we are not running, and above all fix traffic and trust, which is the actual reason for zero sales.
+
+---
+
+## 1. How our prices are actually built
+
+All retail prices are set by one function in the worker (`pawscout-worker/src/pricing.ts`, `retailPriceGbp`). The live parameters (from `tenant_config.pricing`) are:
+
+| Parameter | Value | Meaning |
+|---|---|---|
+| `multiplier` | **2.2x** | retail = landed cost x 2.2 |
+| `floor` | 2.2x | hard minimum multiplier (equal to multiplier, so always 2.2x) |
+| `minMarginGbp` | **£6** | absolute minimum markup per unit |
+| `maxMarginGbp` | **£30** | absolute maximum markup per unit |
+| `fxUsdToGbp` | 0.78 | USD to GBP conversion |
+| `fxBufferPct` | 2% | safety padding added on top of FX |
+
+The formula, in plain terms:
+
+```
+cost(GBP)   = supplier_cost(USD) x 0.78 x 1.02      (FX + 2% buffer)
+retail(GBP) = cost x 2.2 + freight, then:
+              - never less than cost + freight + £6   (min margin)
+              - never more than cost + freight + £30  (max margin cap)
+              - rounded UP to the nearest .99
+freight is BAKED INTO the sticker (pass-through) so UK delivery can be free.
+```
+
+Two design decisions matter for this audit:
+
+1. **The 2.2x multiplier is an "ads-funded" number.** The code comment states the multiplier is sized so that, after ads at ~33% of revenue (target ROAS 3), payment fees ~2.5%, FX ~1.5%, refunds ~3% and fixed ~2%, a thin net margin survives. In other words, **a third of every price exists to pay for advertising.**
+
+2. **Freight is baked into every sticker** (owner decision 2026-07-03) so that UK delivery can be free storewide. The freight is passed through, not multiplied. This is a trust and positioning choice, and it is a good one in principle, but it has a sharp edge on cheap items (Section 2).
+
+---
+
+## 2. What the numbers actually say (real margins, live catalogue)
+
+The live catalogue is **163 products** (median price £17.99, mean £34.12, range £6.99 to £137.99). Behind them: 172 products imported, 41 archived, and **110 import attempts that failed** (more than a third of all attempts, usually cost-gate rejections, which is itself a signal that CJ commodity costs frequently do not clear our own margin gates).
+
+Real net margins, computed from **actual live price minus actual supplier cost minus actual freight** (freight read per item from the CJ detail record), expressed as net percentage of ex-VAT revenue after a ~9% overhead stack and with **zero ad spend** (which matches reality, see Section 4):
+
+| Price band | Products | Avg price | Avg cost | Avg freight | **Avg net margin** | Worst |
+|---|---|---|---|---|---|---|
+| Cheap (under £10) | 23 | £8.90 | £1.01 | **£3.64** | **25.4%** | **-130.7%** |
+| Middle (£10 to £35) | 92 | £17.72 | £5.36 | £2.51 | **37.6%** | 9.0% |
+| Big-ticket (£35+) | 48 | £77.66 | £27.98 | £1.84 | **43.6%** | 2.5% |
+
+(Net margin base: net profit as a percentage of ex-VAT revenue. The cheap-band worst case of -130% is an indicative outlier, not a headline: it rests on per-item freight read from the CJ record, and whether that exact freight was baked into that one sticker is uncertain. Treat the band averages as robust; the single worst case is directional.)
+
+Four findings, all different from the "everything is too expensive" story:
+
+**Finding A. The margin is mostly healthy, even generous.** The middle band (the bulk of the catalogue) nets ~37.6% and the big-ticket band ~43.6%, both above the owner's stated 20 to 30% target, and both computed with zero ad spend. That headroom is the "ads tax": we are pricing as if a third of revenue goes to ads that are not running. Example: a £137.99 stainless-steel litter box costs £48.17 and nets ~49%. These are not thin margins.
+
+**Finding B. The cheap end is the real wound, and freight is the cause.** Items under £10 carry an average £3.64 of freight on an average £1.01 of product. Free-shipping-baked-in means the sticker has to absorb that freight, but on a sub-£10 item there is almost nothing left, and some items are sold at a loss (worst case -130% net). Example: the £6.99 cleaning-gloves item has £0.78 of product cost and £4.38 of freight, netting ~2.5%. These items are the worst of both worlds: fragile or negative margin **and** visibly dearer than Amazon on near-identical goods.
+
+**Finding C. The big-ticket items are our best economics, not our worst.** An earlier hypothesis was that the £30 margin cap made expensive items loss-making. The real data refutes it: big-ticket items net ~43.6%, and their live prices actually sit **above** what the formula alone would set. The stainless-steel litter boxes and cat trees are differentiated, hard to price-check, and highly profitable. They are the closest thing the store has to a moat.
+
+**Finding D. A third of the shelf is not even on our own current pricing rule.** Of 163 live products, 103 (63%) are priced exactly as the current 2.2x engine dictates, but **60 (37%) are frozen off it**, and 45 of those are priced **higher** than the current rule would set, by an average of about £16. The nightly reprice job (`pawscout-worker/src/jobs.ts`) only rewrites a variant when its SKU matches a live CJ cost; these 60 have SKU or cost mismatches, so they were priced once at import (under older parameters, e.g. the old 2.5x default, or manually) and never updated since. This is probably a large part of the "too expensive" impression: the visibly dear items are disproportionately the frozen ones, sitting well above even our own already-reduced rule. It is also the single most mechanical thing to fix on this list (see the quick win in Section 5), because it lowers those prices with no strategic decision required.
+
+---
+
+## 3. How we compare to the UK market (competitor benchmark, July 2026)
+
+Prices below were read off live retailer pages. The UK price floor is set by the marketplaces and their private-label lines.
+
+| Category | UK market range (budget / mid / premium) | Where Active Paw sits |
+|---|---|---|
+| Dog & cat beds | £12-18 / £18-50 / £55-85 | Mid-range, broadly in band |
+| Harnesses & leads | £9-13 / £16-30 / £30-43 | In band |
+| Litter trays / boxes | £3.50 / £13-27 / £43-50 | Our **stainless steel** boxes £114-138 sit **above** the mainstream premium (a different, premium product, but a wide gap) |
+| Cat trees / scratchers | £2.59-14 / £22-40 / £70-120 | Our £115 tower is at the top of the market |
+| Grooming tools | £2-10 / £11-22 / £23-28 | £6.99 items are in the budget band but competing with branded equivalents |
+| Stain / odour removers | £3.99-8 / £9-17 / £19-28 | £6.99 items in band |
+| Toys (chew / interactive) | £0.89-3 / £8-15 / £19-26 | Our £7.99 toys sit **above** budget toys (Zooplus £0.89-1.59) |
+
+Key structural facts from the benchmark:
+
+- **The floor is private-label, not dropship.** Pets at Home (Wainwright's, AVA, Pets Essentials), Zooplus (TIAKI, Cosy Kingdom) and Jollyes (Rufus & Rosie) hit the lowest prices with their own brands, bought at true wholesale. A Pets at Home open litter tray is £3.50, a budget toy is under £3. **We cannot beat that on an identical commodity, because our CJ cost is often at or above their shelf price.**
+- **Even branded goods are not undercut by the marketplace.** A FURminator deshedding tool is ~£23 at both Amazon and Pets at Home. There is no room to "win on price" there either.
+- **The market free-shipping threshold is ~£35 to £40** (Zooplus £39, Pets at Home £40, Amazon £35 non-Prime, Jollyes £40). We currently offer free UK delivery with no threshold, which is a stronger trust signal but is exactly what craters our cheap items (Finding B).
+- **Independents win from above, not below.** The successful UK Shopify pet brands (Lords & Labradors, Charley Chau) sit **above** the marketplaces on design, materials and brand, with free-shipping thresholds of £75 to £150. That is the lane a small store realistically occupies, differentiation and premium, not price leadership.
+
+---
+
+## 4. The real diagnosis: why zero sales
+
+This is the part that matters most, and the published evidence is blunt about it.
+
+**At zero sales, "our prices are too high" cannot actually be diagnosed.** Price sensitivity is read from a funnel: visitors arrive, some add to cart, some buy, and you watch how those rates move when price moves. With no traffic there is no funnel and no signal. "Too expensive" is a guess, not a measurement.
+
+**The owner has confirmed the store has barely any traffic.** That single fact reframes everything. UK pet-care e-commerce converts at roughly 4.4% (Dynamic Yield benchmarks), which means about **1 in 23 qualified visitors buys**. With almost no visitors, zero sales is arithmetic, not a pricing failure. No price change creates sales on a shop nobody sees. (Recommendation: confirm real session numbers in Shopify Analytics, which this audit cannot see directly.)
+
+**Where price genuinely does bite (the honest exception):** when the catalogue leads with commodity SKUs a shopper can paste into Amazon and find cheaper, even a well-targeted, trusting visitor bounces after a ten-second price check. That is real, and it applies to our cheap and some mid commodity lines. But the fix is **not** to cut price to marketplace parity (our cost often exceeds their retail, so we would sell at a loss and still look slower and less trusted). The fix is to change **what** we lead with and **how** we sell it.
+
+**Supporting evidence (see Appendix for sources):**
+- "Traffic without sales is almost always a conversion problem (clarity, trust, friction), not a price problem." Cart abandonment routinely exceeds 70%, driven by trust and friction, not price. Adding trust badges alone lifted conversion ~8.7% in one case.
+- Pet-retail margins run 30 to 50% gross, 5 to 20% net. Toys, accessories and grooming are the 40 to 60% gross profit categories. Our margins are consistent with a healthy pet retailer, not an over-priced one.
+- Dropshipping commodity goods is a race to the bottom precisely because everyone has the same supplier cost. The escape is differentiation, niche, bundles, brand and service.
+
+---
+
+## 5. Recommendations
+
+Ordered by leverage. Each notes the expected effect and how to do it.
+
+### Quick win (mechanical, do this week): reprice the frozen catalogue
+Independent of any strategy decision, about 37% of live products are frozen above our own current pricing rule (Finding D), 45 of them by an average of ~£16. Bringing the whole catalogue onto the current parameters immediately lowers the items that most look "too expensive", with no strategic assumption changed. This means either fixing the nightly reprice coverage (the job skips variants whose SKU does not match a live CJ cost) or running a one-off backfill that reprices from the product-level cost. First step: confirm how many of the 60 frozen products are SKU-mismatched (should be repriced) versus deliberate manual overrides (should be left). This is the fastest, lowest-risk answer to the owner's complaint.
+
+### Priority 1: Fix traffic and trust first (this is the zero-sales cause)
+Nothing below matters until qualified people see the store.
+- Execute the already-scoped blog / RSS / Pinterest organic plan (`docs/blog-rss-pinterest-traffic-prd.md`) to build free, buyer-intent traffic. Target long-tail terms ("stainless steel cat litter box", "orthopedic bed senior labrador"), not broad ones.
+- Add trust: visible reviews (seed them with the launch offer below), a clear returns/refund policy, real UK contact details, honest per-product delivery windows, payment and security badges.
+- Install and read analytics. If add-to-cart is under 4%, the problem is the offer or clarity; if cart-to-checkout is under 45%, it is friction or trust. Neither is fixed by lowering price.
+
+### Priority 2: Stop leading with commodities; lead with the niche winners
+- **Hero the big-ticket, differentiated products** (stainless-steel litter boxes, cat trees, grooming tables). They net 43%+, they are hard to price-check, and they are the store's moat. Put them on the home page and in content.
+- **Prune or bundle the freight-cratered cheap items** (Finding B). Any item sold at a loss under free shipping should be dropped or folded into a kit. Build 2 to 3 use-case bundles ("new puppy starter kit", "cat litter care set", "grooming kit"). Bundles defeat the Amazon price-check and lift average order value ~20 to 30% (published range). This directly answers the "too expensive" complaint without cutting margin: a £15 kit has no one-click comparison.
+
+### Priority 3: Trim the "ads tax" on the sellable middle
+- The 2.2x multiplier funds ads at 33% of revenue that are not being spent. On the middle band that leaves ~37.6% net, well above the 20 to 30% target. **Lowering the multiplier from 2.2x toward ~1.9x cuts middle-band prices ~13% while still netting ~30%.** That is a one-line config change (`tenant_config.pricing.multiplier`). The nightly job then re-prices every variant it can match to a live CJ cost, which today is only ~63% of the catalogue; the frozen 37% (Finding D and the quick win above) will not move until their reprice coverage is fixed, so do the quick win first or the multiplier change reaches only two-thirds of the shelf.
+- Model this per item rather than blanket, and **restore the buffer if and when paid ads actually start.** The multiplier should track real ad spend, not a permanent assumption.
+- Note which lever hits which band: the multiplier trim helps the **middle** band only. Cheap items are governed by the £6 minimum-margin rule (fix via Priority 2), and big-ticket prices sit above formula (Priority 4).
+
+### Priority 4: Reconsider the two extremes of the price ladder
+- **Big-ticket has deep headroom.** A £138 litter box at 49% net could come down to ~£99 and still net ~30%. If the goal is competitiveness on a considered purchase, this is the safest place to cut, because the margin absorbs it. Verify the specific stainless-steel-box market price before setting the new level (I can research this on request).
+- **Cheap-item shipping.** Keep free UK delivery as a trust asset for a new store (82% of shoppers are more likely to buy with free shipping), but do not let it sell any single item at a loss. Either bundle those items (preferred) or, if cash flow needs it, introduce a market-standard free-shipping threshold (~£40) with a modest flat rate below it, which also lifts average order value.
+
+### Priority 5: Use structural pricing tactics, not discounts, to lift conversion
+- **Charm-price value lines** (.99 endings, which the round-up rule already produces) and keep **clean round prices on premium hero items**.
+- **Good-better-best tiers** on the best products (standard / premium / bundle) to anchor and steer to the middle tier, lifting order value without discounting.
+- **Anchor with a genuine "compare at" price** where a real reference exists (must be defensible under UK CMA/ASA rules, so only where a true RRP applies).
+- **Subscribe-and-save** on any consumables (treats, dental, supplements) for repeat revenue, the most durable moat a small pet store has.
+
+### The guardrail: do not stack the levers into a loss
+A margin-trimmed price, minus a 20% launch code, minus ad cost, goes negative fast. **Sequence, do not stack:**
+1. First fix traffic and trust (Priority 1) and lead with winners (Priority 2), at roughly current prices.
+2. Run a time-boxed launch offer (WELCOME10, or ~20% with a hard end date) whose real job is to harvest the first orders, reviews and funnel data. Its cost is affordable only while ad spend is near zero.
+3. Once there is funnel data, trim the middle-band multiplier (Priority 3) based on what the data shows, and only then consider paid ads, resizing the multiplier to the real ROAS.
+
+---
+
+## Appendix: method, sources, caveats
+
+**Method.** Pricing engine read from `pawscout-worker/src/pricing.ts` and live `tenant_config.pricing`. Margins computed by joining live storefront prices (activepaw.co.uk products.json) to CJ supplier costs and per-item freight in the worker's D1 (`warehouse_products`, `product_links`), for 163 of 172 live products. Net margin = (ex-VAT revenue minus product cost minus freight) as a percentage of ex-VAT revenue, less a ~9% overhead stack (payments, FX, refunds, fixed), with zero ad spend. Freight impact is a conservative upper bound where freight is baked into the sticker.
+
+**Caveats.** Real traffic and conversion cannot be read from the worker; "barely any traffic" is the owner's self-report and should be confirmed in Shopify Analytics. Competitor prices are a July 2026 snapshot; Argos and B&M pages could not be machine-read and are not quoted. Some published percentage figures (bundle uplift, charm-pricing lift) come from vendor sources and are directional, not settled; the established anchors are named in the sources below.
+
+**Established / primary sources:** Anderson & Simester 2003 (charm pricing); Ariely (decoy pricing); Gourville 1998 (per-day framing); Smart Insights, IRP Commerce, Dynamic Yield (conversion benchmarks, pet ~4.4%); ConvertCart (traffic-without-sales is a conversion problem); Capital One Shopping (free-shipping behaviour); Shopify (bundling); etailpet (pet-retail margins 30-50% gross, 5-20% net); Peel Insights (first-purchase-discount LTV caveat). Competitor prices read from Pets at Home, Zooplus UK, Jollyes, Amazon UK live pages; free-shipping thresholds verified at each retailer's delivery page.
