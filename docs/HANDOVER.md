@@ -11,7 +11,7 @@
 We are building a **signal-driven inventory populator** for a Shopify pet-care store. A visitor searches the store; if the results grid is thin, a backend service (PawScout) sources matching products from a dropshipping supplier (CJDropshipping), creates them as **real, published** Shopify products, and streams them into the results grid in real time. Every created product lands in a collection.
 
 **Two codebases:**
-- **`f:\Projects\Shopify\demo-store2`** - the **Active Paw** Shopify theme (Liquid) + Python Admin-API scripts + the `graphify` internal tool. (This repo. *Not* a git repo.)
+- **`f:\Projects\Shopify\demo-store2`** - the **Active Paw** Shopify theme (Liquid) + Python Admin-API scripts + the `graphite` internal tool. (This repo. *Not* a git repo.)
 - **`f:\Projects\Shopify\pawscout-worker`** - the **PawScout** Cloudflare Worker (multi-tenant SaaS backend). (Its own git repo.)
 
 **Status at a glance:**
@@ -78,7 +78,7 @@ We are building a **signal-driven inventory populator** for a Shopify pet-care s
 - Single-file CSS (`assets/theme.css`) and JS (`assets/theme.js`), no framework/bundler. Sections in `sections/`, partials in `snippets/`, JSON templates in `templates/`.
 - **Supplier metafield contract (the core data boundary).** The theme reads supplier intelligence ONLY from Shopify metafields in the `supplier` namespace - never from live supplier calls. Variant-level keys drive availability + cart caps; product-level keys are fallbacks. Full spec: `docs/shopify-supplier-metafields.md`. Keys summarized in `CLAUDE.md`.
 - **Quantity-cap priority** (in `sections/main-product.liquid` and `sections/main-cart.liquid`): tracked Shopify inventory → `supplier.max_order_qty` → `supplier.available_qty` → hardcoded `20` fallback.
-- **Collections** (smart/rule-based): `pet-cleaning`, `pet-accessories`, `pet-health`, `pet-toys`, `more-to-love`. PDP related-products walks `product.collections` in that priority order.
+- **Collections** (smart/rule-based): `pet-cleaning`, `pet-accessories`, `pet-health`, `pet-toys`. PDP related-products walks `product.collections` in that priority order. (`more-to-love` retired 2026-07-06.)
 - **Theme settings**: `demo_brand_name` (default "Active Paw"), `brand_logo`, `favicon`, `color_ink/accent/surface` (`config/settings_schema.json`).
 - **Copy rule:** always say **"Collections"**, never "Categories."
 - Recent UX work is logged append-only in `docs/design-improvements.md` (Entries 1-14).
@@ -165,7 +165,7 @@ Two existing Python scripts fight over the same five collection handles:
 
 Whichever ran last owns the live rule - a coin-flip. **Resolution (design §11 of the collection-mapping spec):** PawScout becomes the single authority, **append-only**. `ensureCollectionRule` reads the current ruleSet and **appends** `TAG EQUALS <tag>` with `appliedDisjunctively: true` - never replaces. Active Paw **reuses the existing `cj-cat-*` tags** so already-imported products are retroactively collected with zero migration; new tenants use `pawscout-<handle>`. **Operational rule for Active Paw:** once the worker manages a collection, stop running `ensure_collections()` against it (or make it append-only too). Port `ensure_collections()` as the *reference* for `ensureCollectionRule`, with the one behavioural change (append not replace).
 
-*(This conflict was surfaced by the `graphify` tool - see §12.)*
+*(This conflict was surfaced by the `graphite` tool - see §12.)*
 
 ---
 
@@ -187,24 +187,24 @@ Whichever ran last owns the live rule - a coin-flip. **Resolution (design §11 o
 
 ---
 
-## 12. Internal tooling - `graphify` (zero-LLM knowledge graph)
+## 12. Internal tooling - `graphite` (zero-LLM knowledge graph)
 
-`graphify/` package (run `python -m graphify build .`). Deterministic, **0 LLM tokens**, ~0.4s incremental. Builds a navigable graph of the demo-store2 repo (`graphify-out/graph.html` + `GRAPH_REPORT.md`). Docs: `docs/graphify-documentation.md`. **Recently (2026-06-09):** fixed an O(n²) Python-extractor bug (~60× faster) and added an opt-in **`--semantic`** TF-IDF overlay that surfaces cross-file similarity links (0 tokens, additive, doesn't touch clustering).
+`graphite/` package (run `python -m graphite build .`). Deterministic, **0 LLM tokens**, ~0.4s incremental. Builds a navigable graph of the demo-store2 repo (`graph-out/graph.html` + `GRAPH_REPORT.md`). Docs: `docs/graphite-documentation.md`. **Recently (2026-06-09):** fixed an O(n²) Python-extractor bug (~60× faster) and added an opt-in **`--semantic`** TF-IDF overlay that surfaces cross-file similarity links (0 tokens, additive, doesn't touch clustering).
 
 ### Proper usage - three modes, used at the right time
 
 | Mode | Command | Tokens | Use it for |
 |---|---|---|---|
-| **Structural build** (default) | `python -m graphify build .` | **0** | Keep the navigable code map current. Run after landing **new modules/files**. |
-| **Similarity overlay** | `python -m graphify build . --semantic` | **0** | Cheap cross-file **discovery hints** - browse `GRAPH_REPORT.md` "Cross-cutting semantic links" or search `graph.html`. |
-| **Full LLM pass** | the `/graphify` skill | ~40k+ | **Reasoning-grade conflict detection** before a cross-system design decision. |
+| **Structural build** (default) | `python -m graphite build .` | **0** | Keep the navigable code map current. Run after landing **new modules/files**. |
+| **Similarity overlay** | `python -m graphite build . --semantic` | **0** | Cheap cross-file **discovery hints** - browse `GRAPH_REPORT.md` "Cross-cutting semantic links" or search `graph.html`. |
+| **Full LLM pass** | the `/graphite` skill | ~40k+ | **Reasoning-grade conflict detection** before a cross-system design decision. |
 
-**Automated (2026-06-09):** the **structural build runs automatically** via a Claude Code **`Stop` hook** (`.claude/settings.json` → `.claude/graphify-autobuild.py`). It fires once per turn, is 0 tokens, self-bounds via the SHA256 manifest (no-ops in ~0.1s when nothing changed), and never blocks a turn (always exits 0). So the structural graph stays current with no manual action. **The `--semantic` overlay and the LLM `/graphify` pass are deliberately NOT automated** - they stay manual (see discipline below). To disable the auto-build, remove the `hooks` block from `.claude/settings.json`.
+**Automated (2026-06-09):** the **structural build runs automatically** via a Claude Code **`Stop` hook** (`.claude/settings.json` → `.claude/graphite-autobuild.py`). It fires once per turn, is 0 tokens, self-bounds via the SHA256 manifest (no-ops in ~0.1s when nothing changed), and never blocks a turn (always exits 0). So the structural graph stays current with no manual action. **The `--semantic` overlay and the LLM `/graphite` pass are deliberately NOT automated** - they stay manual (see discipline below). To disable the auto-build, remove the `hooks` block from `.claude/settings.json`.
 
 **The discipline (this is the part that matters):**
 - The **zero-LLM structural build** is now automatic (above) - you rarely run it by hand. It only does work when structure actually changes; prose-only doc edits produce a near-zero delta.
-- **Reserve the LLM `/graphify` pass for design checkpoints** - most importantly **at the top of Plan 2b**. It is the *only* mode that reasons about relationships and can catch a conflict like §9 (`ensure_collections` ↔ `appliedDisjunctively`). The zero-LLM build and the `--semantic` overlay give *structural + similarity hints only* - they surface that two files are *related*, never that a relationship is *dangerous*. **The overlay does NOT make the LLM pass optional.**
-- **Never treat the graph as an input to code correctness.** It's a discovery/navigation aid; it does not change what code gets written. (See `docs/graphify-documentation.md` for the full rationale and the honest limitations.)
+- **Reserve the LLM `/graphite` pass for design checkpoints** - most importantly **at the top of Plan 2b**. It is the *only* mode that reasons about relationships and can catch a conflict like §9 (`ensure_collections` ↔ `appliedDisjunctively`). The zero-LLM build and the `--semantic` overlay give *structural + similarity hints only* - they surface that two files are *related*, never that a relationship is *dangerous*. **The overlay does NOT make the LLM pass optional.**
+- **Never treat the graph as an input to code correctness.** It's a discovery/navigation aid; it does not change what code gets written. (See `docs/graphite-documentation.md` for the full rationale and the honest limitations.)
 - **Token economics:** the hybrid (free build routinely + one ~40k LLM pass at each cross-file checkpoint) is ~80% cheaper than running the LLM pass on every change, while still protecting against the expensive failure mode - an undetected cross-file conflict that causes rework.
 
 ---
