@@ -45,6 +45,25 @@
     <div class="article-body rte">
       {{ article.content }}
     </div>
+
+    {%- comment -%}
+      Common questions. Rendered from the blog.faq_json metafield the worker's
+      blog agent writes ([{q,a}...]). The FAQPage JSON-LD in snippets/meta-tags.liquid
+      is built from this SAME metafield, so the schema can never drift from the
+      visible text. Absent metafield (older/manual posts) renders nothing.
+    {%- endcomment -%}
+    {%- assign article_faq = article.metafields.blog.faq_json.value -%}
+    {% if article_faq.size > 0 %}
+      <section class="article-faq" aria-label="Common questions">
+        <h2>Common questions</h2>
+        {% for item in article_faq %}
+          <details class="article-faq-item"{% if forloop.first %} open{% endif %}>
+            <summary>{{ item.q }}</summary>
+            <p>{{ item.a }}</p>
+          </details>
+        {% endfor %}
+      </section>
+    {% endif %}
   </article>
 
   {%- comment -%}
