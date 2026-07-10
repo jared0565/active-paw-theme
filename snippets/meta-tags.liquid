@@ -190,4 +190,21 @@
   ]
 }
 </script>
+  {%- comment -%} FAQPage: built from the SAME blog.faq_json metafield the visible
+      "Common questions" section renders (sections/main-article.liquid), so the
+      schema always matches on-page content. Absent metafield -> no block. {%- endcomment -%}
+  {%- assign article_faq = article.metafields.blog.faq_json.value -%}
+  {%- if article_faq.size > 0 -%}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {%- for item in article_faq -%}
+    { "@type": "Question", "name": {{ item.q | json }}, "acceptedAnswer": { "@type": "Answer", "text": {{ item.a | json }} } }{% unless forloop.last %},{% endunless %}
+    {%- endfor -%}
+  ]
+}
+</script>
+  {%- endif -%}
 {%- endif -%}
