@@ -37,6 +37,13 @@
         {%- endif -%}
         <a href="{{ routes.root_url }}#support">Shipping & returns</a>
         <a href="mailto:contact@activepaw.co.uk">Contact support</a>
+        {%- comment -%}
+          Affiliate self-serve funnel (pawscout-worker App Proxy page; renders
+          inside this theme via application/liquid). The page is live even
+          while applications are closed - it shows an "open soon" notice until
+          the worker's selfServe.enabled config is switched on.
+        {%- endcomment -%}
+        <a href="/apps/pawscout/affiliate/apply">Affiliates</a>
         <a href="{{ routes.root_url }}#support">FAQs</a>
         <a href="{{ routes.cart_url }}">Cart</a>
         <a href="{{ routes.search_url }}?type=product">Search products</a>
