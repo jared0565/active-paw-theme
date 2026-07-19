@@ -17,6 +17,7 @@
 
 # Documentation + project guide (verified: only format placeholders / test fixtures)
 !/docs/
+!/README.md
 !/CLAUDE.md
 !/AGENTS.md
 !/GRAPHITE.md
