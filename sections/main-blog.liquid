@@ -27,7 +27,7 @@
               <p>{{ article.excerpt_or_content | strip_html | strip | truncate: 150 }}</p>
               <div class="blog-card-meta">
                 <time datetime="{{ article.published_at | date: '%Y-%m-%d' }}">{{ article.published_at | date: '%-d %B %Y' }}</time>
-                <span class="blog-card-more">Read guide</span>
+                <a class="blog-card-more" href="{{ article.url }}" aria-label="Read {{ article.title | escape }}">Read guide</a>
               </div>
             </div>
           </article>
