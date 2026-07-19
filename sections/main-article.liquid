@@ -67,11 +67,13 @@
   </article>
 
   {%- comment -%}
-    Shop this guide. Primary source: the blog.related_products metafield (a list of
-    product handles the worker's blog agent curated - the products the post actually
-    links, topped up from its funnel collection). Falls back to the funnel collection's
-    first 4 when the metafield is absent (manual posts, or older articles), so the
-    block never disappears. The CTA still points at the funnel collection.
+    Shop this guide. Composed at RENDER time so the bundle is always full and
+    always buyable, even minutes after the profitability agent archives a pick:
+    curated handles from the blog.related_products metafield first (skipping
+    anything archived or unavailable), then top-up from the guide's funnel
+    collection (deduped, available only) until 4 cards show. The worker's
+    nightly article-health pass refreshes the curated list; this is the
+    render-time safety net that never shows a dead or thin bundle.
   {%- endcomment -%}
   {%- liquid
     assign related_collection = blank
@@ -83,42 +85,45 @@
       endif
     endfor
     assign shop_handles = article.metafields.blog.related_products.value
-    assign shop_count = shop_handles.size | default: 0
+    assign shown_handles = ','
+    assign shown_count = 0
   -%}
-  {% if shop_count > 0 %}
+  {%- capture bundle_cards -%}
+    {%- for handle in shop_handles -%}
+      {%- if shown_count >= 4 -%}{%- break -%}{%- endif -%}
+      {%- assign shop_product = all_products[handle] -%}
+      {%- if shop_product != empty and shop_product.available -%}
+        {% render 'product-card-commerce', product: shop_product, badge: related_collection.title %}
+        {%- assign shown_count = shown_count | plus: 1 -%}
+        {%- assign shown_handles = shown_handles | append: shop_product.handle | append: ',' -%}
+      {%- endif -%}
+    {%- endfor -%}
+    {%- if shown_count < 4 and related_collection != blank -%}
+      {%- for topup in related_collection.products -%}
+        {%- if shown_count >= 4 -%}{%- break -%}{%- endif -%}
+        {%- assign topup_key = topup.handle | prepend: ',' | append: ',' -%}
+        {%- if topup.available -%}
+          {%- unless shown_handles contains topup_key -%}
+            {% render 'product-card-commerce', product: topup, badge: related_collection.title %}
+            {%- assign shown_count = shown_count | plus: 1 -%}
+            {%- assign shown_handles = shown_handles | append: topup.handle | append: ',' -%}
+          {%- endunless -%}
+        {%- endif -%}
+      {%- endfor -%}
+    {%- endif -%}
+  {%- endcapture -%}
+  {% if shown_count > 0 %}
     <aside class="article-related">
       <div class="section-heading">
         <p class="eyebrow">From the shop</p>
         <h2>Shop this guide</h2>
       </div>
-      <div class="commerce-grid">
-        {% for handle in shop_handles limit: 4 %}
-          {%- assign shop_product = all_products[handle] -%}
-          {%- unless shop_product == empty -%}
-            {% render 'product-card-commerce', product: shop_product, badge: related_collection.title %}
-          {%- endunless -%}
-        {% endfor %}
-      </div>
+      <div class="commerce-grid">{{ bundle_cards }}</div>
       {% if related_collection != blank %}
         <div class="article-related-cta">
           <a class="button button-primary" href="{{ related_collection.url }}">Shop all {{ related_collection.title }}</a>
         </div>
       {% endif %}
-    </aside>
-  {% elsif related_collection != blank %}
-    <aside class="article-related">
-      <div class="section-heading">
-        <p class="eyebrow">From the shop</p>
-        <h2>Shop {{ related_collection.title }}</h2>
-      </div>
-      <div class="commerce-grid">
-        {% for product in related_collection.products limit: 4 %}
-          {% render 'product-card-commerce', product: product, badge: related_collection.title %}
-        {% endfor %}
-      </div>
-      <div class="article-related-cta">
-        <a class="button button-primary" href="{{ related_collection.url }}">Shop all {{ related_collection.title }}</a>
-      </div>
     </aside>
   {% endif %}
 
