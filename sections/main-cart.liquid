@@ -151,11 +151,31 @@
 
         <aside class="cart-summary" aria-label="Order summary">
           <div class="cart-summary-card">
+            {%- comment -%}
+              Subtotal must be the PRE-discount figure. This row used to print
+              cart.total_price (which is AFTER discounts) under the label
+              "Subtotal", so a cart holding a discount code showed a number
+              lower than the line items with nothing explaining the gap - a
+              58.99 item summarised as 53.10. In the shopper's favour, but an
+              unexplained number at the moment of purchase reads as a fault.
+            {%- endcomment -%}
             <div class="cart-summary-row">
               <span>Subtotal</span>
-              <strong>{{ cart.total_price | money }}</strong>
+              <strong>{{ cart.original_total_price | money }}</strong>
             </div>
-            <p>Shipping, discounts, and taxes are calculated at checkout.</p>
+            {%- for discount in cart.cart_level_discount_applications -%}
+              <div class="cart-summary-row cart-summary-discount">
+                <span>{{ discount.title }}</span>
+                <strong>-{{ discount.total_allocated_amount | money }}</strong>
+              </div>
+            {%- endfor -%}
+            {%- if cart.total_discount > 0 -%}
+              <div class="cart-summary-row cart-summary-total">
+                <span>Total</span>
+                <strong>{{ cart.total_price | money }}</strong>
+              </div>
+            {%- endif -%}
+            <p>Shipping and taxes are calculated at checkout.</p>
             {% if cart_has_quantity_issue %}
               <div class="cart-alert" role="alert">
                 One or more quantities exceed current order limits. Update the cart before checkout.

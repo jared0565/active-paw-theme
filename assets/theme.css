@@ -1311,6 +1311,18 @@ p { line-height: 1.6; }
   color: var(--accent-dark);
   font-size: 24px;
 }
+/* Discount and total rows (2026-07-31). The summary previously showed a single
+   "Subtotal" holding cart.total_price, which is AFTER discounts - so a cart
+   carrying a code displayed a figure lower than its line items with nothing
+   accounting for the difference. The discount is now itemised and the total
+   stated, so the arithmetic is visible. */
+.cart-summary-discount strong {
+  color: var(--accent-dark);
+  font-size: 16px;
+}
+.cart-summary-total strong {
+  font-size: 24px;
+}
 .cart-summary-actions {
   display: grid;
   gap: 10px;
@@ -1421,6 +1433,35 @@ p { line-height: 1.6; }
   color: rgba(255,255,255,0.64);
   font-size: 13px;
   font-weight: 800;
+}
+/* Replaced the fabricated testimonial cards on the home page (2026-07-31).
+   Same grid geometry as .testimonial-grid so the section keeps its layout,
+   but plain divs rather than figure/blockquote: nothing here is a quotation
+   from anyone, and marking it up as one is how the old fabricated version
+   read as real. */
+.service-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.service-card {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-height: 100%;
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 8px;
+  padding: 18px;
+  background: rgba(255,255,255,0.07);
+}
+.service-card strong {
+  color: #b8ff9f;
+  font-size: 15px;
+}
+.service-card p {
+  margin: 0;
+  color: rgba(255,255,255,0.9);
+  line-height: 1.55;
 }
 .landing {
   background: var(--surface);
