@@ -1,8 +1,23 @@
+{%- comment -%}
+  NO RATING CLAIM HERE. This card used to show a hardcoded five-star rating
+  with "Loved by pet parents / Review-led confidence for daily care
+  essentials", on every page the trust bar appears on - blog, collection,
+  home, product and search. There were no reviews behind it. Fabricated
+  ratings are a named root cause of the Google Merchant Center
+  Misrepresentation suspension. Replaced with a delivery fact the store can
+  actually stand behind. Do not reintroduce stars without a real review source.
+{%- endcomment -%}
 {% capture trust_items %}
   <div class="trust-card">
-    <span class="trust-icon trust-stars" aria-label="Five star rating">★★★★★</span>
-    <strong>Loved by pet parents</strong>
-    <span>Review-led confidence for daily care essentials</span>
+    <span class="trust-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" focusable="false">
+        <path d="M4 7.5h9.5v9H4z"/>
+        <path d="M13.5 10h3.2l2.3 2.6v3.9h-5.5z"/>
+        <path d="M9 12.5h4"/>
+      </svg>
+    </span>
+    <strong>Tracked delivery</strong>
+    <span>A tracking link is emailed as soon as your order is dispatched</span>
   </div>
   <div class="trust-card">
     <span class="trust-icon" aria-hidden="true">
