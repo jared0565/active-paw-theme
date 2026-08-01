@@ -1,0 +1,111 @@
+{%- comment -%}
+  Contact page.
+
+  /policies/contact-information already tells customers "you can also reach us
+  through the contact form on our website", but no such form existed and
+  /pages/contact returned 404. This makes that statement true.
+
+  Every detail shown here is copied from what the store already publishes in
+  /policies/contact-information and /policies/legal-notice, so the two cannot
+  drift apart or contradict each other.
+
+  {% form 'contact' %} posts to Shopify's own contact endpoint, which mails the
+  store's configured customer-service address. No third-party service, no
+  storefront JavaScript, and nothing to keep in sync.
+{%- endcomment -%}
+
+<section class="section">
+  <div class="section-heading">
+    <p class="eyebrow">Contact</p>
+    <h1>{{ page.title | default: 'Contact us' }}</h1>
+    {%- if page.content != blank -%}
+      <div class="page-body">{{ page.content }}</div>
+    {%- endif -%}
+  </div>
+
+  <div class="contact-grid">
+    <div class="contact-form-wrap">
+      {%- form 'contact' -%}
+        {%- if form.posted_successfully? -%}
+          <p class="contact-success" role="status">
+            Thanks, we have got your message. We aim to reply within one working day.
+          </p>
+        {%- endif -%}
+
+        {%- if form.errors -%}
+          <p class="contact-error" role="alert">
+            {{ form.errors | default_errors }}
+          </p>
+        {%- endif -%}
+
+        <label class="contact-label" for="contact-name">Name</label>
+        <input class="contact-input" type="text" id="contact-name" name="contact[name]"
+               value="{{ form.name }}" autocomplete="name" required>
+
+        <label class="contact-label" for="contact-email">Email</label>
+        <input class="contact-input" type="email" id="contact-email" name="contact[email]"
+               value="{{ form.email }}" autocomplete="email" required>
+
+        <label class="contact-label" for="contact-order">Order number (optional)</label>
+        <input class="contact-input" type="text" id="contact-order" name="contact[order number]">
+
+        <label class="contact-label" for="contact-body">How can we help?</label>
+        <textarea class="contact-input" id="contact-body" name="contact[body]" rows="6" required>{{ form.body }}</textarea>
+
+        <button class="button button-primary" type="submit">Send message</button>
+      {%- endform -%}
+    </div>
+
+    <aside class="contact-details">
+      <h2>Other ways to reach us</h2>
+      <p>
+        <strong>Email</strong><br>
+        <a href="mailto:contact@activepaw.co.uk">contact@activepaw.co.uk</a><br>
+        We aim to reply within one working day.
+      </p>
+      <p>
+        <strong>Trading address</strong><br>
+        Active Paw<br>
+        Office 19589<br>
+        182-184 High Street North<br>
+        East Ham, London E6 2JA<br>
+        United Kingdom
+      </p>
+      <p class="contact-note">
+        This is our correspondence address. Please do not send returns here without
+        contacting us first, so we can confirm the correct return instructions.
+      </p>
+      <p>
+        Before writing, our <a href="{{ routes.root_url }}policies/shipping-policy">Shipping policy</a>
+        and <a href="{{ routes.root_url }}policies/refund-policy">Returns and refunds policy</a>
+        answer most delivery and returns questions.
+      </p>
+    </aside>
+  </div>
+</section>
+
+{% style %}
+  .contact-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 40px; align-items: start; }
+  .contact-label { display: block; margin: 16px 0 6px; font-weight: 700; font-size: 14px; color: var(--ink); }
+  .contact-input {
+    width: 100%; padding: 11px 12px; font: inherit; color: var(--ink);
+    background: var(--surface); border: 1px solid rgba(0,0,0,0.18); border-radius: 10px;
+  }
+  .contact-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  textarea.contact-input { resize: vertical; min-height: 120px; }
+  .contact-form-wrap .button { margin-top: 20px; }
+  .contact-details { color: var(--muted); line-height: 1.65; }
+  .contact-details h2 { margin: 0 0 12px; font-size: 20px; color: var(--ink); }
+  .contact-details a { color: var(--accent); }
+  .contact-note { font-size: 14px; }
+  .contact-success, .contact-error { padding: 12px 14px; border-radius: 10px; margin-bottom: 8px; }
+  .contact-success { background: rgba(22,163,74,0.10); color: #15803d; }
+  .contact-error { background: rgba(220,38,38,0.10); color: #b91c1c; }
+  @media (max-width: 860px) {
+    .contact-grid { grid-template-columns: 1fr; gap: 28px; }
+  }
+{% endstyle %}
+
+{% schema %}
+{ "name": "Contact page", "settings": [] }
+{% endschema %}

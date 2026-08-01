@@ -1,0 +1,52 @@
+{%- comment -%}
+  Generic content page.
+
+  The theme shipped with NO page template at all (templates/ held only 404,
+  article, blog, cart, collection, index, product and search), so every
+  /pages/* URL was unrenderable. That stayed invisible because /policies/*
+  is rendered by Shopify itself, not by the theme, so the footer's legal
+  links all worked while the store could not host a single content page.
+
+  Styles are scoped here rather than added to assets/theme.css on purpose:
+  the live theme carries edits the git repo does not, so touching a shared
+  file risks clobbering them on push. Nothing here depends on new CSS.
+{%- endcomment -%}
+
+<section class="section">
+  <div class="section-heading">
+    {%- if section.settings.eyebrow != blank -%}
+      <p class="eyebrow">{{ section.settings.eyebrow }}</p>
+    {%- endif -%}
+    <h1>{{ page.title }}</h1>
+  </div>
+
+  <div class="page-body">
+    {{ page.content }}
+  </div>
+</section>
+
+{% style %}
+  .page-body { max-width: 760px; color: var(--muted); }
+  .page-body h2 { margin: 32px 0 10px; font-size: 22px; color: var(--ink); }
+  .page-body h3 { margin: 24px 0 8px; font-size: 17px; color: var(--ink); }
+  .page-body p, .page-body li { line-height: 1.65; }
+  .page-body ul, .page-body ol { padding-left: 20px; margin: 0 0 16px; }
+  .page-body li { margin-bottom: 6px; }
+  .page-body a { color: var(--accent); }
+  .page-body table { border-collapse: collapse; width: 100%; margin: 16px 0; display: block; overflow-x: auto; }
+  .page-body td, .page-body th { border: 1px solid rgba(0,0,0,0.12); padding: 8px 10px; text-align: left; }
+{% endstyle %}
+
+{% schema %}
+{
+  "name": "Page",
+  "settings": [
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "info": "Small label above the page title. Leave empty to hide."
+    }
+  ]
+}
+{% endschema %}
