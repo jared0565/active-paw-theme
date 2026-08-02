@@ -1,4 +1,24 @@
-<section class="hero hero-marketplace" style="--hero-bg: url('{{ 'pawmerce-hero-background.jpg' | asset_url }}');">
+{%- comment -%}
+  This hero photo is the LCP element of the homepage, and it was invisible to
+  the browser's preload scanner: the URL only ever reached the browser as a CSS
+  custom property, so nothing could discover it until theme.css had been
+  fetched, parsed and applied.
+
+  Measured on live 2026-08-02 (mobile, 4x CPU throttle): LCP 2,701ms, of which
+  2,498ms was pure load delay. TTFB was 17ms and the download itself 1ms, so
+  the server and the file were never the problem - the image simply was not
+  requested until 2,514ms. Chrome's LCP-discovery audit failed both
+  "discoverable in initial document" and "fetchpriority=high".
+
+  Declared HERE rather than in layout/theme.liquid on purpose: the URL stays
+  next to the only element that uses it (one `assign`, so it cannot drift), and
+  a preload in the shared <head> would pull 137KB on every page that does NOT
+  render this hero. `rel=preload` is body-ok, and the scanner reads it from the
+  raw HTML stream well before any stylesheet is applied.
+{%- endcomment -%}
+{%- assign hero_bg = 'pawmerce-hero-background.jpg' | asset_url -%}
+<link rel="preload" as="image" href="{{ hero_bg }}" fetchpriority="high">
+<section class="hero hero-marketplace" style="--hero-bg: url('{{ hero_bg }}');">
   <div class="hero-marketplace-copy">
     <p class="eyebrow">{{ section.settings.eyebrow }}</p>
     <h1>{{ section.settings.heading }}</h1>
