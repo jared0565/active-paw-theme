@@ -469,7 +469,20 @@ img { max-width: 100%; display: block; }
 }
 .hero p { max-width: 650px; color: rgba(255,255,255,0.84); font-size: 18px; line-height: 1.65; }
 .eyebrow { margin: 0 0 12px; color: var(--accent); font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0; }
-.hero .eyebrow { color: #ffb28d; }
+/* REMOVED 2026-08-02: `.hero .eyebrow { color: #ffb28d; }`.
+   It rendered "Happier pets, easier care" at a 1.72:1 contrast ratio (WCAG AA
+   needs 4.5:1 at this size), i.e. effectively invisible on the hero - measured
+   on the live storefront, not guessed.
+   It was never a deliberate choice for this hero. `.hero-marketplace .eyebrow`
+   (above) already sets #101820, the same ink the hero h1 uses, but the two
+   selectors tie at 0,2,0 specificity and this one came LATER in the file, so
+   source order silently beat the intent.
+   Deleting rather than out-specifying it, because `class="hero` appears exactly
+   ONCE in the theme (sections/hero-commerce.liquid:1) and always alongside
+   `hero-marketplace` - so this rule could never apply anywhere else, and its
+   only effect was to override the colour that was meant to win.
+   If a second hero variant ever needs a pale eyebrow, scope it to THAT variant
+   rather than reviving a bare `.hero` rule. */
 .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
 .button, button {
   min-height: 48px;
