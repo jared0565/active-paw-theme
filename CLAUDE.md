@@ -2,9 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+<!-- graphite:managed version=14 -->
 ## Shared Graphite Instructions
 
-Follow `GRAPHITE.md` before making non-trivial code changes. Use the existing `graph-out/graph.json` as the shared project graph, and do not edit `graph-out/` manually.
+Graphite-first is required in this repo. Follow `GRAPHITE.md` before making non-trivial code changes: for cross-file questions (who-calls, where-defined, impact, data flow, structure) run the Graphite commands first; grep/glob are for literal text and filename lookups only. Fall back to manual search only after a Graphite answer proved insufficient, and say so. Use the existing `graph-out/graph.json` as the shared project graph, and do not edit `graph-out/` manually.
+
+**Stay inside this repository.** Do not read, write, or run commands in any other repo, including its graph. Findings about another repo go to its agent as a recommendation through the shared `.agent-channel/` (see its `PROTOCOL.md`); that agent decides and acts. A tool doing its designed job is a separate question from an agent's boundary. See `GRAPHITE.md` section "Repository Isolation".
+<!-- graphite:managed-end -->
+
 ## What this repo is
 
 **Active Paw** - a Shopify theme (custom Liquid) paired with a set of Python Admin API scripts. The theme powers a pet-care demo store hosted at `4qkudm-ez.myshopify.com`. The Python scripts handle one-off data operations (product import, inventory, collection setup) against the Shopify Admin API and the CJDropshipping API.
@@ -115,3 +120,17 @@ Configured in Shopify admin (Theme Editor) or via `config/settings_schema.json`:
 - `color_ink` / `color_accent` / `color_surface` - CSS color tokens
 
 All Liquid reads `settings.demo_brand_name | default: 'Active Paw'` as the fallback.
+
+<!-- aramid:begin -- managed by `aramid init`; hand-edits inside the fence are overwritten -->
+## Aramid (security & quality gate)
+
+This repo is gated by aramid. Read `ARAMID.md` before your first commit.
+
+- Before committing: run `aramid check --staged`. Read findings with
+  `aramid ledger filter --status open`.
+- NEVER pass `--no-verify` (or `-n`) to `git commit`, or `--no-verify` to
+  `git push` -- it disables secret scanning along with everything else.
+  Armed repos reject the call outright.
+- To suppress a WARN finding, use `aramid override <id> --reason "..."`
+  (ledger-logged); never edit findings away by hand.
+<!-- aramid:end -->
