@@ -133,7 +133,7 @@ export default defineWorkersConfig({
         wrangler: { configPath: './wrangler.toml' },
         miniflare: {
           d1Databases: ['DB'],
-          bindings: { PAWSCOUT_MASTER_KEY: 'dGVzdC1tYXN0ZXIta2V5LTMyLWJ5dGVzLWxvbmchIQ==' } // 32-byte test KEK (base64)
+          bindings: { PAWSCOUT_MASTER_KEY: btoa('test-master-key-32-bytes-long!!') } // 32-byte test KEK (base64)
         }
       }
     }
@@ -278,7 +278,7 @@ git add -A && git commit -m "feat: d1 schema + domain types"
 import { describe, it, expect } from 'vitest';
 import { Vault } from '../src/vault';
 
-const KEK_B64 = 'dGVzdC1tYXN0ZXIta2V5LTMyLWJ5dGVzLWxvbmchIQ=='; // 32 bytes
+const KEK_B64 = btoa('test-master-key-32-bytes-long!!'); // 32 bytes
 
 describe('Vault', () => {
   it('round-trips a secret under a fresh tenant DEK', async () => {
@@ -423,7 +423,7 @@ Add the migrations binding to `vitest.config.ts` miniflare bindings so `env.TEST
 ```ts
 // inside miniflare: {...}
             bindings: {
-              PAWSCOUT_MASTER_KEY: 'dGVzdC1tYXN0ZXIta2V5LTMyLWJ5dGVzLWxvbmchIQ=='
+              PAWSCOUT_MASTER_KEY: btoa('test-master-key-32-bytes-long!!')
             },
 // and read migrations for applyD1Migrations:
 ```
