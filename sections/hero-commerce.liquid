@@ -29,15 +29,16 @@
     </div>
   </div>
   {% if section.settings.badge_enabled %}
-    <a
-      class="hero-event-badge"
-      href="{{ section.settings.badge_link | default: '/collections/keep-them-cool' }}"
-      aria-label="{{ section.settings.badge_line1 | strip_html }} {{ section.settings.badge_line2 | strip_html }}"
-    >
-      <span class="hero-event-badge-emoji" aria-hidden="true">{{ section.settings.badge_emoji }}</span>
-      <span class="hero-event-badge-title">{{ section.settings.badge_line1 }}</span>
-      <span class="hero-event-badge-sub">{{ section.settings.badge_line2 }}</span>
-    </a>
+    {%- comment -%}
+      The seal renders these Theme Editor lines first, then theme.js repaints
+      it from PawScout's storewide-event feed (running event, or the next
+      planned one). See snippets/hero-event-badge.liquid for the rules.
+    {%- endcomment -%}
+    {% render 'hero-event-badge',
+      emoji: section.settings.badge_emoji,
+      line1: section.settings.badge_line1,
+      line2: section.settings.badge_line2,
+      link: section.settings.badge_link %}
   {% endif %}
   <div class="hero-background-spacer" aria-hidden="true"></div>
 </section>

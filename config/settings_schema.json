@@ -53,40 +53,9 @@
       {
         "type": "checkbox",
         "id": "welcome_enabled",
-        "label": "Offer pop-up slot",
-        "info": "Master switch for the event pop-up. Shows once per visitor per event (after 3 seconds or their first scroll). PawScout events wake this slot automatically with their own wording, so leave it on unless you never want any offer pop-up; the fields below are only the fallback shown if PawScout is unreachable.",
+        "label": "Event pop-up slot",
+        "info": "Master switch for the storewide event pop-up. It opens once per visitor per event (after 3 seconds or their first scroll) and only while PawScout reports a running storewide event; the headline, wording, code and end date all come from that event, so there is nothing to type here. Leave it on unless you never want an offer pop-up.",
         "default": false
-      },
-      {
-        "type": "text",
-        "id": "welcome_headline",
-        "label": "Headline",
-        "default": "10% off your first order"
-      },
-      {
-        "type": "text",
-        "id": "welcome_subline",
-        "label": "Supporting line",
-        "default": "On top of free UK delivery on every order."
-      },
-      {
-        "type": "text",
-        "id": "welcome_code",
-        "label": "Discount code",
-        "info": "Must match the code created in Shopify admin. Every button in the modal applies it automatically via the discount link.",
-        "default": "WELCOME10"
-      },
-      {
-        "type": "text",
-        "id": "welcome_ends",
-        "label": "End date line",
-        "info": "Shown as typed, e.g. \"Ends 20 July\". Leave empty to hide. State the event's real end date only - no invented urgency."
-      },
-      {
-        "type": "text",
-        "id": "welcome_ends_date",
-        "label": "Offer end date (YYYY-MM-DD)",
-        "info": "The modal hides itself after this day and derives its \"Ends\" line from it, overriding the free-text line above. The live storewide event from PawScout takes precedence over both when reachable."
       },
       {
         "type": "text",
