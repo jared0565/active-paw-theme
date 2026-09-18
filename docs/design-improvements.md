@@ -586,3 +586,39 @@
 ### Graphify sync
 - **Completed:** 2026-06-09 via `python -m graphify build . --semantic` (~0.6s).
 - Token cost: **0**
+
+---
+
+## Entry 15 - 2026-09-18: Storewide event surfaces read PawScout's feed (hero badge, announcement bar, welcome modal)
+
+### What changed
+- `snippets/hero-event-badge.liquid` (new) - the hero seal's markup moved here from `sections/hero-commerce.liquid`, plus a scoped `{% style %}` block for feed-driven copy (smaller title/sub sizes so an event name or a date range fits the circle) and a `[hidden]` rule. The seal renders the Theme Editor lines server-side, then theme.js repaints it in place.
+- `snippets/announcement-event.liquid` (new) - a `<template>` for the event item (tag icon, link to all products) plus a scoped style block. On desktop, while an event runs, the event slot takes two grid shares and the three benefit items condense to their bold titles so the bar keeps its silhouette; the mobile marquee keeps every word.
+- `sections/hero-commerce.liquid` - renders the badge snippet. `sections/announcement-bar.liquid` - renders the template snippet.
+- `layout/theme.liquid` - `<body data-storewide-event-src="https://pawscout.activepaw.co.uk/public/event">` is now the ONE place the theme names the feed.
+- `snippets/welcome-modal.liquid` - feed-driven only. The shell carries no code, percentage, headline or end date; the old `data-welcome-until` gate and the retired welcome code are gone.
+- `config/settings_schema.json` - removed `welcome_headline`, `welcome_subline`, `welcome_code`, `welcome_ends`, `welcome_ends_date`; the master-switch info text explains the slot is fed by PawScout.
+- `assets/theme.js` - `loadStorewideEvent()` makes ONE memoised fetch per page view (3s cap, resolves to null on failure) shared by three consumers: the hero badge painter, the announcement bar painter and the welcome modal. The modal is closed by default and only opens when the feed says `active:true` with a code; a verdict landing after the 3s/first-scroll trigger still opens it. The install pill now waits for the same verdict instead of reading a dismissal flag (that flag was never set when the modal was absent, which silently suppressed the pill).
+
+### Why it changed
+- The hero seal was hard-coded "Stay cool! Shop the summer range" and would have stayed on the page in November. The owner's complaint (design approved 2026-09-17, channel rounds 219 and 221) was a seasonal stamp that no longer matched the calendar.
+- The welcome modal's settings fallback advertised a code that ended on 19 July 2026 and kept rendering it into the page.
+- Everything a visitor reads about an event must come from the feed: no hard-coded code, percentage, date or event name in Liquid or JS.
+
+### How it was solved
+- Hero badge states: running event -> name, "<pct>% off with code <code>" (plus "until <end>" while the line stays within 52 characters), link to all products; idle with a planned event -> "Next: <name>" and "<start> to <end>" (name and dates only, never a code or percentage ahead of time); idle with nothing planned -> the seal hides; feed unreachable -> the server-rendered copy stays untouched.
+- Announcement bar: only a RUNNING event adds an item, cloned to the front of BOTH announcement sets (the duplicate set's copy is `tabindex="-1"` because that set is `aria-hidden`). A planned event adds nothing.
+- Desktop layout decision: four equal-ish columns made the benefit items wrap to 3-4 lines and the bar grew from 48px to 99px (measured on the preview). With the event at 2fr and the benefits condensed to titles the bar measures 52px.
+- Every field is feature-detected (`name` and `next` are optional); `pctOff` is only used when it is a positive number.
+
+### Files touched
+- `layout/theme.liquid`, `sections/hero-commerce.liquid`, `sections/announcement-bar.liquid`, `snippets/hero-event-badge.liquid` (new), `snippets/announcement-event.liquid` (new), `snippets/welcome-modal.liquid`, `config/settings_schema.json`, `assets/theme.js`
+
+### Verification (2026-09-18, first-hand)
+- Reconcile against live: the Admin API's `checksumMd5` for all 58 live theme files matched the local files (settings_data.json identical modulo line endings), so no live-only work was at risk. The Shopify CLI needed a device-code login, so `theme pull` and `theme dev` could not run in this session.
+- Preview: an unpublished duplicate of the live theme (id 207677620562, "Preview 2026-09-18 storewide event badge (delete after review)") received the seven Liquid/JSON files via `themeFilesUpsert` (checksums verified after upload). `assets/theme.js` was served from the working copy by Playwright (`LOCAL_THEME_JS=1`) because the 46KB file could not be passed inline.
+- `node output/playwright/storewide-event-check.cjs https://activepaw.co.uk 207677620562`: 82/82 assertions across (A) real feed, idle today: badge "Next: Black Friday to Cyber Monday" / "Friday 27 November to Monday 30 November", no announcement item, no modal, one feed request; (B) stubbed active payload: badge name + "15% off with code SUMMERSALE until 31 August", announcement item "Summer bank holiday: 15% off everything with code SUMMERSALE, until 31 August" in both sets, modal with code, headline, subline, chips, "Ends 31 August"; (C) feed aborted: server default stays, nothing else; (D) `{"active":false}`: badge hidden. The string WELCOME10 is absent from the rendered page in every scenario. Screenshots: `output/playwright/storewide-*.png`.
+- `shopify theme check`: 8 offences, all pre-existing (same set as before the change); `node --check assets/theme.js` clean; no en/em dashes in any touched file.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.

@@ -702,20 +702,138 @@ document.addEventListener('click', (event) => {
   }
 });
 
+/* ---------------- Storewide event feed (shared) ---------------- */
+// PawScout's /public/event is the single source of truth for which storewide
+// event is running (name, code, percentage, end date) and which enabled
+// calendar event comes next (name and dates only, never a code or a
+// percentage ahead of time). The welcome modal, the hero event badge and the
+// announcement bar all read ONE fetch per page view; the feed is cached 10
+// minutes server-side and 120 seconds in the browser. Resolves to null when
+// the feed is unreachable, slow (3s cap) or malformed, so a failure can never
+// paint anything: every consumer keeps its server-rendered state.
+let storewideEventPromise = null;
+const loadStorewideEvent = () => {
+  if (storewideEventPromise) return storewideEventPromise;
+  const host = document.querySelector('[data-storewide-event-src]');
+  const src = host ? host.getAttribute('data-storewide-event-src') : '';
+  if (!src || !window.fetch) {
+    storewideEventPromise = Promise.resolve(null);
+    return storewideEventPromise;
+  }
+  const controller = ('AbortController' in window) ? new AbortController() : null;
+  const abortTimer = controller ? setTimeout(() => controller.abort(), 3000) : null;
+  storewideEventPromise = fetch(src, controller ? { signal: controller.signal } : {})
+    .then((response) => (response.ok ? response.json() : null))
+    .then((event) => (event && typeof event === 'object' ? event : null))
+    .catch(() => null)
+    .then((event) => {
+      if (abortTimer) clearTimeout(abortTimer);
+      return event;
+    });
+  return storewideEventPromise;
+};
+
+// Feature-detect every field: `name` and `next` are optional, and an active
+// payload is only trusted when it carries a code.
+const storewideEventRunning = (event) => Boolean(event) && event.active === true && Boolean(event.code);
+const storewideEventNext = (event) => {
+  const next = event && event.next;
+  return next && typeof next === 'object' && next.name ? next : null;
+};
+const storewidePctOff = (event) => {
+  const pct = Number(event.pctOff);
+  return Number.isFinite(pct) && pct > 0 ? pct : null;
+};
+// Running-event offer line, e.g. "15% off with code SUMMERSALE until 31 August".
+// The end date is appended only while the whole line still fits the seal.
+const storewideBadgeOffer = (event) => {
+  const pct = storewidePctOff(event);
+  const base = pct ? `${pct}% off with code ${event.code}` : `Code ${event.code}`;
+  const withEnd = event.endsLabel ? `${base} until ${event.endsLabel}` : base;
+  return withEnd.length <= 52 ? withEnd : base;
+};
+// Next-event date line, e.g. "Friday 27 November to Monday 30 November".
+const storewideNextDates = (next) => [next.startsLabel, next.endsLabel].filter(Boolean).join(' to ');
+
+/* ---------------- Hero event badge ---------------- */
+// The seal renders its Theme Editor copy server-side, then swaps in place
+// once the feed answers: the running event, else the next planned one, else
+// it hides (nothing to stamp that the calendar can vouch for). An unreachable
+// feed leaves the server copy alone. See snippets/hero-event-badge.liquid.
+(() => {
+  const badge = document.querySelector('[data-event-badge]');
+  if (!badge) return;
+  const paint = (state, emojiText, titleText, subText) => {
+    const emoji = badge.querySelector('.hero-event-badge-emoji');
+    const title = badge.querySelector('.hero-event-badge-title');
+    const sub = badge.querySelector('.hero-event-badge-sub');
+    if (emoji && emojiText) emoji.textContent = emojiText;
+    if (title) title.textContent = titleText;
+    if (sub) sub.textContent = subText;
+    badge.setAttribute('href', badge.getAttribute('data-event-badge-href') || '/collections/all');
+    badge.setAttribute('aria-label', `${titleText} ${subText}`.trim());
+    badge.setAttribute('data-event-state', state);
+  };
+  loadStorewideEvent().then((event) => {
+    if (!event) return;
+    if (storewideEventRunning(event)) {
+      paint('active', badge.getAttribute('data-event-emoji-active'), event.name || event.code, storewideBadgeOffer(event));
+      return;
+    }
+    const next = storewideEventNext(event);
+    if (next) {
+      paint('next', badge.getAttribute('data-event-emoji-next'), `Next: ${next.name}`, storewideNextDates(next));
+      return;
+    }
+    badge.hidden = true;
+  });
+})();
+
+/* ---------------- Announcement bar event item ---------------- */
+// While an event runs, one extra item leads the bar: "<name>: <pct>% off
+// everything with code <code>, until <end>". It is cloned from the template
+// in snippets/announcement-event.liquid into EVERY announcement set (the bar
+// renders its set twice for the seamless mobile marquee). Nothing is added
+// when no event runs, a planned event included.
+(() => {
+  const template = document.querySelector('[data-announcement-event-template]');
+  const bar = document.querySelector('.announcement');
+  if (!template || !bar || !('content' in template) || !template.content.firstElementChild) return;
+  loadStorewideEvent().then((event) => {
+    if (!storewideEventRunning(event)) return;
+    const pct = storewidePctOff(event);
+    const offer = pct ? `${pct}% off everything with code ${event.code}` : `Use code ${event.code}`;
+    const text = event.endsLabel ? `${offer}, until ${event.endsLabel}` : offer;
+    bar.querySelectorAll('.announcement-set').forEach((set) => {
+      const item = template.content.firstElementChild.cloneNode(true);
+      const nameEl = item.querySelector('[data-event-name]');
+      const textEl = item.querySelector('[data-event-text]');
+      if (nameEl) nameEl.textContent = `${event.name || event.code}:`;
+      if (textEl) textEl.textContent = text;
+      // The duplicate set is aria-hidden for the marquee; keep its copy of the
+      // link out of the tab order too.
+      if (set.classList.contains('announcement-dup')) {
+        item.querySelectorAll('a').forEach((link) => link.setAttribute('tabindex', '-1'));
+      }
+      set.insertBefore(item, set.firstChild);
+    });
+    bar.classList.add('has-event');
+  });
+})();
+
 /* ---------------- Welcome offer modal (event slot) ---------------- */
-// Shows once per browser: after 3 seconds or the visitor's first scroll,
-// whichever comes first - never instantly on load (mobile interstitial
+// Shows once per browser per event: after 3 seconds or the visitor's first
+// scroll, whichever comes first - never instantly on load (mobile interstitial
 // etiquette, and Google penalises intrusive entry interstitials). Rendered
 // only while the Theme-settings toggle is on, and skipped server-side for
 // logged-in customers with orders. Every CTA routes through /discount/<code>
 // so the offer is already applied at checkout. The only urgency shown is the
-// event's real end date from settings.
+// event's real end date from the feed.
 const getWelcomeModal = () => document.querySelector('[data-welcome-modal]');
 const WELCOME_SEEN_KEY = 'ap_welcome_dismissed';
 
 // Dismissals are remembered PER EVENT CODE: closing the welcome offer in June
-// must not hide the Summer sale in August. The legacy un-suffixed key counts
-// as a dismissal of WELCOME10 only (it was the only event when it was written).
+// must not hide the Summer sale in August.
 const welcomeCurrentCode = () => {
   const modal = getWelcomeModal();
   return modal ? (modal.getAttribute('data-welcome-code') || '') : '';
@@ -725,9 +843,9 @@ const welcomeCurrentCode = () => {
 // never pestered on every page view.
 const welcomeSeen = () => {
   const code = welcomeCurrentCode();
+  if (!code) return false;
   try {
-    if (localStorage.getItem(`${WELCOME_SEEN_KEY}:${code}`)) return true;
-    return code === 'WELCOME10' && Boolean(localStorage.getItem(WELCOME_SEEN_KEY));
+    return Boolean(localStorage.getItem(`${WELCOME_SEEN_KEY}:${code}`));
   } catch (error) { return true; }
 };
 const markWelcomeSeen = () => {
@@ -736,11 +854,20 @@ const markWelcomeSeen = () => {
 
 let welcomeReturnFocus = null;
 
-// Self-tearing gate: set when the event is over (client clock past the
-// rendered end date, or PawScout reports no running storewide event). Checked
-// at the door like welcomeSeen(), so an async verdict landing after the 3s
+// Closed until PawScout confirms a running event. The modal has no offer of
+// its own any more (the last settings fallback kept rendering for weeks after
+// its event ended), so only a successful fetch reporting active:true with a
+// code can flip this; an unreachable feed or an idle store means no modal.
+// Checked at the door like welcomeSeen(), so a verdict landing after the 3s
 // timer armed still wins.
-let welcomeEventOver = false;
+let welcomeEventOver = true;
+// Set once the 3s timer or the first scroll has passed, so a late verdict can
+// still open the modal without ever opening it instantly on load.
+let welcomeTriggerFired = false;
+
+// True while the offer may still open in this page view: used by the install
+// pill so two overlays never stack.
+const welcomeMayOpen = () => Boolean(getWelcomeModal()) && !welcomeSeen() && !welcomeEventOver;
 
 const openWelcomeModal = () => {
   const modal = getWelcomeModal();
@@ -784,85 +911,82 @@ const applyWelcomeCodeThenGo = (targetPath) => {
   });
 };
 
+// Paint the whole modal from a running event: headline, wording, chips, code,
+// link and end line. Catalogue codes bring their own headline/subline/chips;
+// a plain code falls back to lines built from its percentage and name, so no
+// wording is ever invented beyond what the feed states.
+const paintWelcomeModal = (modal, event) => {
+  modal.setAttribute('data-welcome-code', event.code);
+  const codeEl = modal.querySelector('.welcome-modal__code strong');
+  if (codeEl) codeEl.textContent = event.code;
+  const browse = modal.querySelector('[data-welcome-browse]');
+  if (browse) {
+    const redirect = modal.getAttribute('data-welcome-redirect') || '/collections/all';
+    browse.setAttribute('href', `/discount/${encodeURIComponent(event.code)}?redirect=${encodeURIComponent(redirect)}`);
+  }
+  const pct = storewidePctOff(event);
+  const heading = modal.querySelector('#WelcomeModalTitle');
+  if (heading) heading.textContent = event.headline || (pct ? `${pct}% off everything` : (event.name || event.code));
+  const sub = modal.querySelector('.welcome-modal__sub');
+  if (sub) {
+    const eventName = event.name && event.name !== event.code ? event.name : '';
+    sub.textContent = event.subline || eventName;
+    sub.hidden = !sub.textContent;
+  }
+  if (event.chips && event.chips.length) {
+    const wrap = modal.querySelector('.welcome-modal__chips');
+    if (wrap) {
+      wrap.textContent = '';
+      event.chips.forEach((chip) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.setAttribute('data-welcome-chip', chip);
+        b.textContent = chip;
+        wrap.appendChild(b);
+      });
+    }
+  }
+  let ends = modal.querySelector('.welcome-modal__ends');
+  if (event.endsLabel) {
+    if (!ends) {
+      ends = document.createElement('p');
+      ends.className = 'welcome-modal__ends';
+      const later = modal.querySelector('.welcome-modal__later');
+      if (later && later.parentNode) later.parentNode.insertBefore(ends, later);
+    }
+    ends.textContent = `Ends ${event.endsLabel}`;
+  } else if (ends) {
+    ends.remove();
+  }
+};
+
 (() => {
   const modal = getWelcomeModal();
   if (!modal) return;
   // NOTE: no early return on welcomeSeen() here - dismissal is per event code,
-  // and the feed below may repaint the modal to a DIFFERENT event this visitor
-  // has not dismissed. openWelcomeModal re-checks at the door.
+  // and the feed below decides WHICH event this visitor is being offered.
+  // openWelcomeModal re-checks at the door.
 
-  // Layer 1 (client clock): the end date rendered into the fallback content.
-  // The event runs through the whole of its final day.
-  const until = modal.getAttribute('data-welcome-until');
-  if (until) {
-    const end = new Date(`${until}T23:59:59`);
-    if (!Number.isNaN(end.getTime()) && Date.now() > end.getTime()) welcomeEventOver = true;
-  }
+  // Ask PawScout which storewide event is actually running - the Shopify
+  // discount is the single source of truth. Only a successful answer with a
+  // running code can open the modal; anything else keeps it closed.
+  loadStorewideEvent().then((event) => {
+    if (!storewideEventRunning(event)) return;
+    paintWelcomeModal(modal, event);
+    welcomeEventOver = false;
+    // The verdict can land after the 3s timer or the first scroll has already
+    // passed; opening now still honours "never instantly on load".
+    if (welcomeTriggerFired) openWelcomeModal();
+  });
 
-  // Layer 2 (authoritative): ask PawScout which storewide event is actually
-  // running - the Shopify discount is the single source of truth. No running
-  // code event keeps the modal closed; a running catalogue event repaints the
-  // whole modal (headline, wording, chips, code, link, end line) so a new
-  // event never needs a theme edit. Only the fetch SUCCEEDING can change
-  // anything: a network failure leaves the server-rendered state in charge.
-  const eventSrc = modal.getAttribute('data-welcome-event-src');
-  if (eventSrc && window.fetch) {
-    const controller = ('AbortController' in window) ? new AbortController() : null;
-    const abortTimer = controller ? setTimeout(() => controller.abort(), 3000) : null;
-    fetch(eventSrc, controller ? { signal: controller.signal } : {})
-      .then((response) => (response.ok ? response.json() : null))
-      .then((event) => {
-        if (abortTimer) clearTimeout(abortTimer);
-        if (!event) return; // 5xx or bad payload: keep the rendered state
-        if (event.active !== true || !event.code) { welcomeEventOver = true; return; }
-        welcomeEventOver = false; // live event confirmed (overrides layer 1)
-        modal.setAttribute('data-welcome-code', event.code);
-        const codeEl = modal.querySelector('.welcome-modal__code strong');
-        if (codeEl) codeEl.textContent = event.code;
-        const browse = modal.querySelector('[data-welcome-browse]');
-        if (browse) {
-          const redirect = modal.getAttribute('data-welcome-redirect') || '/collections/all';
-          browse.setAttribute('href', `/discount/${encodeURIComponent(event.code)}?redirect=${encodeURIComponent(redirect)}`);
-        }
-        if (event.headline) {
-          const h = modal.querySelector('#WelcomeModalTitle');
-          if (h) h.textContent = event.headline;
-        }
-        if (event.subline) {
-          const s = modal.querySelector('.welcome-modal__sub');
-          if (s) s.textContent = event.subline;
-        }
-        if (event.chips && event.chips.length) {
-          const wrap = modal.querySelector('.welcome-modal__chips');
-          if (wrap) {
-            wrap.textContent = '';
-            event.chips.forEach((chip) => {
-              const b = document.createElement('button');
-              b.type = 'button';
-              b.setAttribute('data-welcome-chip', chip);
-              b.textContent = chip;
-              wrap.appendChild(b);
-            });
-          }
-        }
-        if (event.endsLabel) {
-          let ends = modal.querySelector('.welcome-modal__ends');
-          if (!ends) {
-            ends = document.createElement('p');
-            ends.className = 'welcome-modal__ends';
-            const later = modal.querySelector('.welcome-modal__later');
-            if (later && later.parentNode) later.parentNode.insertBefore(ends, later);
-          }
-          ends.textContent = `Ends ${event.endsLabel}`;
-        }
-      })
-      .catch(() => { if (abortTimer) clearTimeout(abortTimer); });
-  }
-
-  const timer = setTimeout(openWelcomeModal, 3000);
+  const trigger = () => {
+    welcomeTriggerFired = true;
+    openWelcomeModal();
+  };
+  const timer = setTimeout(trigger, 3000);
   window.addEventListener('scroll', () => {
     clearTimeout(timer);
-    openWelcomeModal();
+    trigger();
   }, { once: true, passive: true });
 
   modal.addEventListener('click', (event) => {
@@ -1002,12 +1126,17 @@ const isIosDevice = () =>
   // a beat after load, and skipped entirely on the page view where the
   // welcome offer shows so two overlays never stack.
   const scheduleReveal = () => {
-    if (!smallScreen() || installDismissed() || !welcomeSeen()) return;
-    setTimeout(() => {
-      if (pill.hidden === false || steps.hidden === false || installDismissed()) return;
-      pill.hidden = false;
-      window.requestAnimationFrame(() => pill.classList.add('is-visible'));
-    }, 4500);
+    if (!smallScreen() || installDismissed()) return;
+    // Wait for PawScout's verdict on the storewide event so the pill never
+    // races the welcome offer: it yields whenever the offer may still open.
+    loadStorewideEvent().then(() => {
+      if (welcomeMayOpen()) return;
+      setTimeout(() => {
+        if (pill.hidden === false || steps.hidden === false || installDismissed()) return;
+        pill.hidden = false;
+        window.requestAnimationFrame(() => pill.classList.add('is-visible'));
+      }, 4500);
+    });
   };
 
   window.addEventListener('beforeinstallprompt', (event) => {

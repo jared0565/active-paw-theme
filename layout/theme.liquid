@@ -57,7 +57,13 @@
     <script src="{{ 'theme.js' | asset_url }}" defer></script>
     <script src="{{ 'pawscout.js' | asset_url }}" defer></script>
   </head>
-  <body>
+  {%- comment -%}
+    data-storewide-event-src is the ONE place the theme names PawScout's
+    storewide-event feed. theme.js fetches it once per page view and shares
+    the answer between the welcome modal, the hero event badge and the
+    announcement bar, so it lives on <body> rather than on any one of them.
+  {%- endcomment -%}
+  <body data-storewide-event-src="https://pawscout.activepaw.co.uk/public/event">
     <a class="skip-link" href="#MainContent">Skip to content</a>
     {% section 'announcement-bar' %}
     <div class="sticky-header-stack">

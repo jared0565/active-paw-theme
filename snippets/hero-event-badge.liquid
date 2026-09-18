@@ -1,0 +1,49 @@
+{%- comment -%}
+  Hero event badge (seal sticker). Renders the Theme Editor copy first so the
+  seal is never empty and nothing jumps, then theme.js repaints it in place
+  from PawScout's /public/event feed (ONE fetch per page view, shared with the
+  welcome modal and the announcement bar; feed cached 10 minutes server-side,
+  120 seconds in the browser):
+    - a running event: its name, then "<pct>% off with code <code>" (plus
+      "until <end>" when it fits the seal), linking to all products;
+    - nothing running but a planned event: "Next: <name>" and its dates.
+      Name and dates only: codes and percentages are never announced ahead;
+    - nothing running and nothing planned: the seal hides. A seasonal stamp
+      that cannot be checked against the calendar is exactly the stale
+      "summer" badge the owner asked to retire;
+    - feed unreachable or malformed: the copy below stays, untouched.
+  Every word a visitor reads in the two feed states comes from the feed. The
+  emoji for those states live here rather than in JS so a copy tweak never
+  needs a script change. Sizes for feed copy are scoped below instead of in
+  theme.css: event names and date ranges run longer than the two-word stamp
+  the seal was drawn for.
+{%- endcomment -%}
+<a
+  class="hero-event-badge"
+  data-event-badge
+  data-event-badge-href="{{ routes.all_products_collection_url }}"
+  data-event-emoji-active="🎉"
+  data-event-emoji-next="📅"
+  href="{{ link | default: '/collections/keep-them-cool' }}"
+  aria-label="{{ line1 | strip_html }} {{ line2 | strip_html }}"
+>
+  <span class="hero-event-badge-emoji" aria-hidden="true">{{ emoji }}</span>
+  <span class="hero-event-badge-title">{{ line1 }}</span>
+  <span class="hero-event-badge-sub">{{ line2 }}</span>
+</a>
+{% style %}
+  .hero-event-badge[hidden] { display: none; }
+  .hero-event-badge[data-event-state] { gap: 4px; }
+  .hero-event-badge[data-event-state] .hero-event-badge-emoji { font-size: 24px; }
+  .hero-event-badge[data-event-state] .hero-event-badge-title {
+    font-size: 13px;
+    line-height: 1.12;
+    letter-spacing: 0.01em;
+    overflow-wrap: anywhere;
+  }
+  .hero-event-badge[data-event-state] .hero-event-badge-sub {
+    max-width: 118px;
+    font-size: 10.5px;
+    line-height: 1.25;
+  }
+{% endstyle %}
