@@ -2,6 +2,8 @@
 
 **Rule:** Every change to the theme that affects aesthetics, UX, or compliance must be logged here before the task is considered done. Entries are append-only and dated.
 
+**Tool lineage (2026-09-18):** entries 6 and 14 describe the in-repo prototype of the code-graph builder. That prototype moved to its own repository, was renamed Graphite and is now installed as a package; the old name was retired from this repo on 2026-09-18 and older entries were updated to the current name. `GRAPHITE.md` is the current reference.
+
 ---
 
 ## Entry 1 - 2026-06-08: Mobile Announcement Bar Marquee
@@ -34,8 +36,8 @@
 - ✅ Respects `prefers-reduced-motion`
 - ✅ `aria-hidden` prevents double-announcement
 
-### Graphify sync
-- **Attempted:** `graphify . --update` on 2026-06-08.
+### Graphite sync
+- **Attempted:** the LLM graph-update skill on 2026-06-08.
 - **Result:** 5 docs changed detected, but semantic extraction requires an API key (GEMINI_API_KEY, GOOGLE_API_KEY, or other). Code-only AST extraction would proceed without a key, but the new markdown docs triggered the semantic path. Re-run locally after setting a key, or skip if the graph remains sufficiently current for queries.
 
 ---
@@ -141,8 +143,8 @@
 - ✅ No external dependencies
 - ✅ Accessibility: contrast on category showcase headings is now AA-compliant (dark on cream)
 
-### Graphify sync
-- **Attempted:** `graphify . --update` on 2026-06-08.
+### Graphite sync
+- **Attempted:** the LLM graph-update skill on 2026-06-08.
 - **Result:** 1 doc changed (`design-improvements.md`), 0 code files changed. Semantic extraction requires an API key (GEMINI_API_KEY, GOOGLE_API_KEY, etc.). The code files (`theme.css`, `main-product.liquid`, `product-card-commerce.liquid`) are handled by AST extraction and do not need a key, but the updated markdown doc triggers semantic mode. The existing graph remains current for code queries; set an API key to enable full semantic doc updates.
 
 ---
@@ -195,8 +197,8 @@
 - ✅ FAQ animation respects `prefers-reduced-motion` implicitly via `::details-content` support detection
 - ✅ Hero overlay guarantees WCAG AA contrast on variable background images
 
-### Graphify sync
-- **Attempted:** `graphify . --update` on 2026-06-08.
+### Graphite sync
+- **Attempted:** the LLM graph-update skill on 2026-06-08.
 - **Result:** Same as Entry 3 - semantic extraction requires an API key. The code changes are handled by AST extraction without a key; only the updated markdown doc blocks the pipeline. Set `GEMINI_API_KEY` or `GOOGLE_API_KEY` to enable full semantic updates.
 
 ---
@@ -245,25 +247,25 @@
 
 ---
 
-## Entry 6 - 2026-06-08: Zero-LLM Incremental Graphify Pipeline
+## Entry 6 - 2026-06-08: Zero-LLM Incremental Graphite Pipeline
 
 ### What changed
-- Created `graphify/` package - standalone, portable CLI for any codebase:
-  - `graphify/incremental.py` - main orchestrator with SHA256 manifest and surgical merge.
-  - `graphify/extractors.py` - deterministic rule-based extractors for Liquid, CSS, JS, Python, Markdown, JSON, and GraphQL.
-  - `graphify/graph.py` - graph merge, conditional Louvain community detection, community consolidation, and HTML/Report generation.
-  - `graphify/cli.py` - argparse CLI with `build` and `serve` commands.
-  - `graphify/__main__.py` - enables `python -m graphify`.
-  - `pyproject.toml` - pip-installable package (`pip install -e .`) registering the `graphify` console script.
+- Created `graphite/` package - standalone, portable CLI for any codebase:
+  - `graphite/incremental.py` - main orchestrator with SHA256 manifest and surgical merge.
+  - `graphite/extractors.py` - deterministic rule-based extractors for Liquid, CSS, JS, Python, Markdown, JSON, and GraphQL.
+  - `graphite/graph.py` - graph merge, conditional Louvain community detection, community consolidation, and HTML/Report generation.
+  - `graphite/cli.py` - argparse CLI with `build` and `serve` commands.
+  - `graphite/__main__.py` - enables `python -m graphite`.
+  - `pyproject.toml` - pip-installable package (`pip install -e .`) registering the `graphite` console script.
 - Key architectural decisions:
-  - **Manifest tracking** (`graphify-out/.graphify_manifest.json`) - only re-extracts files whose hash changed.
+  - **Manifest tracking** (`graph-out/.graphite_manifest.json`) - only re-extracts files whose hash changed.
   - **Surgical merge** - removes stale nodes for changed files, injects new ones, preserves the rest.
   - **Conditional community detection** - only re-runs Louvain if >5% of nodes changed; otherwise assigns new nodes to nearest neighbor community.
   - **Community consolidation** - merges tiny communities into nearest large neighbor or a catch-all misc bucket.
   - **Cross-file edges** - JSON templates extract Shopify section references as `includes` edges; Liquid `render`/`section` tags create `renders`/`includes` edges; Python imports create `imports` edges (stdlib filtered); Markdown code spans create `references` edges.
 
 ### Why it changed
-- The existing `/graphify update` Skill burned **~60,000 tokens per run** by dispatching Claude subagents for every markdown file. For a project with 100+ files, this was unsustainable for daily use.
+- The earlier LLM-driven graph-update skill burned **~60,000 tokens per run** by dispatching Claude subagents for every markdown file. For a project with 100+ files, this was unsustainable for daily use.
 - We needed a graph that stays current after every edit without token cost.
 
 ### How it was solved
@@ -272,16 +274,16 @@
 - **Performance:** Full rebuild of 102 files takes ~4.5s. Single-file incremental update takes **~0.4s**.
 
 ### Files touched
-- `graphify/__init__.py` (new)
-- `graphify/__main__.py` (new)
-- `graphify/cli.py` (new)
-- `graphify/extractors.py` (new)
-- `graphify/graph.py` (new)
-- `graphify/incremental.py` (new)
+- `graphite/__init__.py` (new)
+- `graphite/__main__.py` (new)
+- `graphite/cli.py` (new)
+- `graphite/extractors.py` (new)
+- `graphite/graph.py` (new)
+- `graphite/incremental.py` (new)
 - `pyproject.toml` (new)
-- `scripts/graphify_incremental.py` (kept as backward-compat wrapper)
-- `scripts/graphify_extractors.py` (kept as backward-compat wrapper)
-- `scripts/graphify_graph.py` (kept as backward-compat wrapper)
+- `scripts/graphite_incremental.py` (kept as backward-compat wrapper)
+- `scripts/graphite_extractors.py` (kept as backward-compat wrapper)
+- `scripts/graphite_graph.py` (kept as backward-compat wrapper)
 - `docs/design-improvements.md` (this entry)
 
 ### Metrics
@@ -323,13 +325,13 @@
 - ✅ Pure SVG (no JS)
 - ✅ Accessible: `aria-label` on logo image, `aria-hidden` on marquee duplicates
 
-### Graphify sync
-- **Completed:** 2026-06-08 via `python -m graphify build .` (0.40s).
+### Graphite sync
+- **Completed:** 2026-06-08 via `python -m graphite build .` (0.40s).
 - Token cost: **0**
 
-### Graphify sync
-- **Completed:** 2026-06-08 via `python -m graphify build .` (zero-LLM CLI).
-- **Result:** Graph rebuilt deterministically. All 108 files extracted (including new `graphify/` package itself), 29 communities detected, HTML + Report regenerated.
+### Graphite sync
+- **Completed:** 2026-06-08 via `python -m graphite build .` (zero-LLM CLI).
+- **Result:** Graph rebuilt deterministically. All 108 files extracted (including new `graphite/` package itself), 29 communities detected, HTML + Report regenerated.
 
 ---
 
@@ -366,8 +368,8 @@
 | Text | Over dark area | Over image's natural orange |
 | Column gap | Wide | Tighter |
 
-### Graphify sync
-- **Completed:** 2026-06-08 via `python -m graphify build .` (0.43s).
+### Graphite sync
+- **Completed:** 2026-06-08 via `python -m graphite build .` (0.43s).
 - Token cost: **0**
 
 ---
@@ -417,8 +419,8 @@
 - ✅ Text readability maintained via existing `::before` dark gradient overlay
 - ✅ `prefers-reduced-motion` unaffected
 
-### Graphify sync
-- **Completed:** 2026-06-08 via `python -m graphify build .` (~0.4s).
+### Graphite sync
+- **Completed:** 2026-06-08 via `python -m graphite build .` (~0.4s).
 - Token cost: **0**
 
 ---
@@ -439,8 +441,8 @@
 - ✅ No external dependencies
 - ✅ No accessibility loss: the Contact button and footer `#support` / mailto links remain available
 
-### Graphify sync
-- **Completed:** 2026-06-08 via `python -m graphify build .` (~0.4s).
+### Graphite sync
+- **Completed:** 2026-06-08 via `python -m graphite build .` (~0.4s).
 - Token cost: **0**
 
 ---
@@ -462,8 +464,8 @@
 - ✅ No structural changes
 - ✅ No external dependencies
 
-### Graphify sync
-- **Completed:** 2026-06-08 via `python -m graphify build .` (~0.4s).
+### Graphite sync
+- **Completed:** 2026-06-08 via `python -m graphite build .` (~0.4s).
 - Token cost: **0**
 
 ---
@@ -517,8 +519,8 @@
 - ✅ All changes preserve accessibility (nav structure, ARIA labels, semantic markup)
 - ✅ Mobile-first responsive design
 
-### Graphify sync
-- **Completed:** 2026-06-08 via `python -m graphify build .` (~0.42s).
+### Graphite sync
+- **Completed:** 2026-06-08 via `python -m graphite build .` (~0.42s).
 - Token cost: **0**
 
 ---
@@ -555,36 +557,36 @@
 - ✅ No external dependencies
 - ✅ No structural changes
 
-### Graphify sync
-- **Completed:** 2026-06-08 via `python -m graphify build .` (~0.42s).
+### Graphite sync
+- **Completed:** 2026-06-08 via `python -m graphite build .` (~0.42s).
 - Token cost: **0**
 
 ---
 
-## Entry 14 - 2026-06-09: Graphify Performance Fix + TF-IDF Semantic Overlay
+## Entry 14 - 2026-06-09: Graphite Performance Fix + TF-IDF Semantic Overlay
 
 ### What changed
-- `graphify/extractors.py` (and the `scripts/graphify_extractors.py` duplicate) - replaced the O(n²) `_find_enclosing_function` (it re-walked the whole AST per call node) with a single-pass child→parent map, and collapsed three full tree-walks (parent-map + imports + calls) into one. Output is byte-identical.
-- `graphify/semantic.py` (new) - pure, stdlib-only TF-IDF similarity layer producing additive `semantically_similar_to` edges between lexically-similar files. 0 LLM tokens, offline, deterministic.
-- `graphify/incremental.py`, `graphify/cli.py` - new opt-in `--semantic` / `--semantic-threshold` / `--semantic-top-n` flags; overlay injected *after* community detection (never influences clustering).
-- `graphify/graph.py` - "Cross-cutting semantic links" section in `GRAPH_REPORT.md` (bucketed cross-area vs. same-area, per-file diversity cap) + dashed-amber styling for semantic edges in `graph.html`.
+- `graphite/extractors.py` (and the `scripts/graphite_extractors.py` duplicate) - replaced the O(n²) `_find_enclosing_function` (it re-walked the whole AST per call node) with a single-pass child→parent map, and collapsed three full tree-walks (parent-map + imports + calls) into one. Output is byte-identical.
+- `graphite/semantic.py` (new) - pure, stdlib-only TF-IDF similarity layer producing additive `semantically_similar_to` edges between lexically-similar files. 0 LLM tokens, offline, deterministic.
+- `graphite/incremental.py`, `graphite/cli.py` - new opt-in `--semantic` / `--semantic-threshold` / `--semantic-top-n` flags; overlay injected *after* community detection (never influences clustering).
+- `graphite/graph.py` - "Cross-cutting semantic links" section in `GRAPH_REPORT.md` (bucketed cross-area vs. same-area, per-file diversity cap) + dashed-amber styling for semantic edges in `graph.html`.
 - `tests/test_semantic.py` (new) - 9 unit tests for the TF-IDF layer.
 
 ### Why it changed
 - **Performance:** the docs claimed "<10ms per file" but the Python extractor took ~300ms on a 10 KB file (quadratic). Verified empirically, then fixed.
-- **Accuracy/recall:** the zero-LLM build has near-zero cross-file semantic recall (it only sees structural relationships). The overlay recovers *some* of that - at the same ~0 token cost as the original zero-LLM build, far below the LLM Graphify's ~42k/run - without sacrificing the structural truth the coding workflow relies on.
+- **Accuracy/recall:** the zero-LLM build has near-zero cross-file semantic recall (it only sees structural relationships). The overlay recovers *some* of that - at the same ~0 token cost as the original zero-LLM build, far below the LLM pass's ~42k/run - without sacrificing the structural truth the coding workflow relies on.
 
 ### How it was solved
 - Parent-map lookup is O(1) per call; verified identical `calls` edges across all 29 Python files (0 mismatches). `incremental.py` 299ms→5ms (~60×).
 - Overlay is strictly additive: a plain `build` adds 0 semantic edges; structural edge count is unchanged (1106) whether or not `--semantic` is passed. Decoupled from Louvain so the community map is never reshuffled by lexical noise.
 - Calibrated defaults (threshold 0.12, top_n 4) so the motivating cross-file link (`import-cj-category-products.py` ↔ `2026-06-08-pawscout-collection-mapping-design.md`) is recovered as a graph edge (cosine 0.245).
-- **Honest limitation documented:** TF-IDF recovers that files are *related* but cannot rank which link is *important* - reasoning-grade conflict detection still needs an LLM pass. See `docs/graphify-documentation.md`.
+- **Honest limitation documented:** TF-IDF recovers that files are *related* but cannot rank which link is *important* - reasoning-grade conflict detection still needs an LLM pass. See `GRAPHITE.md`.
 
 ### Files touched
-- `graphify/semantic.py` (new), `graphify/extractors.py`, `graphify/incremental.py`, `graphify/cli.py`, `graphify/graph.py`, `scripts/graphify_extractors.py`, `tests/test_semantic.py`, `docs/graphify-documentation.md`
+- `graphite/semantic.py` (new), `graphite/extractors.py`, `graphite/incremental.py`, `graphite/cli.py`, `graphite/graph.py`, `scripts/graphite_extractors.py`, `tests/test_semantic.py`, `docs/graphite-documentation.md`
 
-### Graphify sync
-- **Completed:** 2026-06-09 via `python -m graphify build . --semantic` (~0.6s).
+### Graphite sync
+- **Completed:** 2026-06-09 via `python -m graphite build . --semantic` (~0.6s).
 - Token cost: **0**
 
 ---

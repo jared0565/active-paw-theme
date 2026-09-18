@@ -189,7 +189,7 @@ Whichever ran last owns the live rule - a coin-flip. **Resolution (design §11 o
 
 ## 12. Internal tooling - `graphite` (zero-LLM knowledge graph)
 
-`graphite/` package (run `python -m graphite build .`). Deterministic, **0 LLM tokens**, ~0.4s incremental. Builds a navigable graph of the demo-store2 repo (`graph-out/graph.html` + `GRAPH_REPORT.md`). Docs: `docs/graphite-documentation.md`. **Recently (2026-06-09):** fixed an O(n²) Python-extractor bug (~60× faster) and added an opt-in **`--semantic`** TF-IDF overlay that surfaces cross-file similarity links (0 tokens, additive, doesn't touch clustering).
+Graphite, installed as a package (run `python -m graphite build .`). Deterministic, **0 LLM tokens**, ~0.4s incremental. Builds a navigable graph of the demo-store2 repo (`graph-out/graph.html` + `GRAPH_REPORT.md`). Docs: `GRAPHITE.md`. **Recently (2026-06-09):** fixed an O(n²) Python-extractor bug (~60× faster) and added an opt-in **`--semantic`** TF-IDF overlay that surfaces cross-file similarity links (0 tokens, additive, doesn't touch clustering).
 
 ### Proper usage - three modes, used at the right time
 
@@ -204,7 +204,7 @@ Whichever ran last owns the live rule - a coin-flip. **Resolution (design §11 o
 **The discipline (this is the part that matters):**
 - The **zero-LLM structural build** is now automatic (above) - you rarely run it by hand. It only does work when structure actually changes; prose-only doc edits produce a near-zero delta.
 - **Reserve the LLM `/graphite` pass for design checkpoints** - most importantly **at the top of Plan 2b**. It is the *only* mode that reasons about relationships and can catch a conflict like §9 (`ensure_collections` ↔ `appliedDisjunctively`). The zero-LLM build and the `--semantic` overlay give *structural + similarity hints only* - they surface that two files are *related*, never that a relationship is *dangerous*. **The overlay does NOT make the LLM pass optional.**
-- **Never treat the graph as an input to code correctness.** It's a discovery/navigation aid; it does not change what code gets written. (See `docs/graphite-documentation.md` for the full rationale and the honest limitations.)
+- **Never treat the graph as an input to code correctness.** It's a discovery/navigation aid; it does not change what code gets written. (See `GRAPHITE.md` for the full rationale and the honest limitations.)
 - **Token economics:** the hybrid (free build routinely + one ~40k LLM pass at each cross-file checkpoint) is ~80% cheaper than running the LLM pass on every change, while still protecting against the expensive failure mode - an undetected cross-file conflict that causes rework.
 
 ---

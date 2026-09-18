@@ -14,7 +14,7 @@
 
 This is **Plan 1 of the search-trigger path**, not the whole path. The design doc (`docs/superpowers/specs/2026-06-07-pawscout-search-trigger-design.md`) §9 makes the timing probe **build step 0** - the explicit prerequisite to everything else - because the progressive-fill UX numbers (poll interval ≈1.5s, cadence ≈2s, parallelization) are estimates that must be validated before they're baked into the Cloudflare Worker and theme code. Writing those plans now would hardcode unvalidated constants. **This plan produces the numbers; Plan 2 (PawScout Worker) and Plan 3 (theme progressive fill) get written once the probe has run.**
 
-**Not a git repository.** `f:\Projects\Shopify\demo-store2` is not under git (verified: `git rev-parse` fails). The standard "commit" step is therefore replaced throughout by a **Checkpoint** note (run tests green, eyeball the diff). If you want version control, `git init` is a separate decision out of scope here - do not `git add` blindly, the directory contains `node_modules/`, `output/`, and `graphify-out/`.
+**Not a git repository.** `f:\Projects\Shopify\demo-store2` is not under git (verified: `git rev-parse` fails). The standard "commit" step is therefore replaced throughout by a **Checkpoint** note (run tests green, eyeball the diff). If you want version control, `git init` is a separate decision out of scope here - do not `git add` blindly, the directory contains `node_modules/`, `output/`, and `graph-out/`.
 
 ---
 
