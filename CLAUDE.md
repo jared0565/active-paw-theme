@@ -33,7 +33,7 @@ templates/                # JSON templates that compose sections per page type
 locales/                  # Translation strings
 ```
 
-There is no package.json, no bundler, and no build step. Edit `assets/theme.css` and `assets/theme.js` directly. Deploy by pushing files to Shopify via the CLI or Theme Editor.
+The theme has no bundler and no build step. Edit `assets/theme.css` and `assets/theme.js` directly. Deploy by pushing files to Shopify via the CLI or Theme Editor. The root `package.json` is dev tooling only (Playwright for browser checks, eslint for the Aramid gate, wrangler); `.shopifyignore` keeps it and every other root file out of the theme push.
 
 ## Supplier metafields (the core data contract)
 
@@ -103,6 +103,17 @@ shopify theme dev
 These require the Shopify CLI authenticated against the store. The store handle is `4qkudm-ez.myshopify.com`.
 
 **Known `theme dev` gotcha (read before debugging a wedged dev server):** editing a theme file while `shopify theme dev` is running can wedge its sync - pages return 500 with title "Failed to Upload Theme Files" and the log shows `*.liquid.tmp.<pid>.<hash> contains illegal characters`. Cause: Claude Code's atomic Edit/Write creates a temp file the watcher tries to upload (the `<pid>` is the `claude.exe` process - **never kill it**). Your real edit still syncs ("Synced » update …" appears in the log). Fix: finish edits, kill **only** the `node` process on port 9292, then restart `theme dev`. **Prevention: batch all edits, then run `theme dev` once to verify.** Full playbook with copy-paste commands (and the auth-expiry + "linters pass but page is broken" gotchas): `docs/shopify-theme-dev-troubleshooting.md`.
+
+## Fresh clone: arm the agent tooling
+
+`.githooks/` is gitignored (each hook embeds this machine's Python path), so a fresh clone has the committed instructions and `-P` launch surfaces but no git hooks. Run:
+
+```sh
+npm install
+python -P bootstrap-agent-tooling.py
+```
+
+The script runs `aramid init .` first and `python -P -m graphite init . --yes --strict` second. That order matters: both tools want `post-commit`, and only Graphite knows how to chain the other's copy (as `post-commit.local`). It then reads the hook files back and runs both doctors. `python -P bootstrap-agent-tooling.py --check` reports without changing anything. `requirements.txt` is intentionally empty of packages: the scripts are standard library only, and the file exists so the gate's pip-audit has a declared source to audit.
 
 ## Collections used in the theme
 
