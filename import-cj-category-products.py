@@ -1,5 +1,6 @@
 import json
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -7,13 +8,20 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-from cj_client import request_json, get_token
-from shopify_product import handleize, money, retail_price, compare_price
+from cj_client import get_token, request_json
+from shopify_product import compare_price, handleize, money, retail_price
 from store_collections import COLLECTION_TITLES
-
 
 STORE = "4qkudm-ez.myshopify.com"
 ROOT = Path(__file__).resolve().parent
+
+
+def powershell_executable():
+    """Absolute path to PowerShell (ruff S607: never start a process from a partial path)."""
+    found = shutil.which("powershell")
+    if not found:
+        raise RuntimeError("powershell not found on PATH; this script drives the Shopify CLI through PowerShell")
+    return found
 
 SELECTED_PRODUCTS = {
     "Pet Cleaning": [
@@ -158,12 +166,13 @@ def run_shopify(query_file, variables=None, label="run", mutation=False):
         "$env:SHOPIFY_CLI_AGENT_IDS='s:55406e8c-167a-451a-9ceb-c1ab1849ba0f|r:import-cj-category-products|i:codex-desktop'; "
         + " ".join(args)
     )
-    completed = subprocess.run(
-        ["powershell", "-NoProfile", "-Command", command],
+    completed = subprocess.run(  # noqa: S603 - argv is fixed; the command string is built from module constants and local temp-file names, never from user input
+        [powershell_executable(), "-NoProfile", "-Command", command],
         cwd=ROOT,
         text=True,
         capture_output=True,
         timeout=180,
+        check=False,
     )
     if completed.returncode != 0:
         print(completed.stdout)
@@ -345,7 +354,7 @@ def main():
                 continue
             try:
                 result = create_product(detail, category, index)
-            except Exception as error:
+            except Exception as error:  # noqa: BLE001 - batch import: record the failure for the summary and carry on with the next product
                 skipped.append({"id": product_id, "category": category, "reason": str(error)})
                 print(f"Skipped {product_id}: {error}", file=sys.stderr)
                 continue

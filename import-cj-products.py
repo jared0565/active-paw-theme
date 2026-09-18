@@ -1,5 +1,6 @@
 import json
 import random
+import shutil
 import subprocess
 import sys
 import time
@@ -7,12 +8,19 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-from cj_client import request_json, get_token
-from shopify_product import handleize, money, retail_price, compare_price
-
+from cj_client import get_token, request_json
+from shopify_product import compare_price, handleize, money, retail_price
 
 STORE = "4qkudm-ez.myshopify.com"
 ROOT = Path(__file__).resolve().parent
+
+
+def powershell_executable():
+    """Absolute path to PowerShell (ruff S607: never start a process from a partial path)."""
+    found = shutil.which("powershell")
+    if not found:
+        raise RuntimeError("powershell not found on PATH; this script drives the Shopify CLI through PowerShell")
+    return found
 KEYWORDS = ["pet grooming", "dog grooming", "pet brush", "dog bath", "pet cleaning"]
 MAX_PRODUCTS = 10
 MAX_ATTEMPTS = 24
@@ -59,12 +67,13 @@ def run_shopify(query_file, variables, label):
         + f"shopify store execute --store {STORE} --query-file {query_file} "
         + f"--variable-file {var_file.name} --allow-mutations --json --output-file {out_file.name}"
     )
-    completed = subprocess.run(
-        ["powershell", "-NoProfile", "-Command", cmd],
+    completed = subprocess.run(  # noqa: S603 - argv is fixed; the command string is built from module constants and local temp-file names, never from user input
+        [powershell_executable(), "-NoProfile", "-Command", cmd],
         cwd=ROOT,
         text=True,
         capture_output=True,
         timeout=160,
+        check=False,
     )
     if completed.returncode != 0:
         print(completed.stdout)
@@ -223,7 +232,7 @@ def main():
         used_titles.add(title)
         try:
             result = create_product(detail, len(imported) + 1)
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - batch import: record the failure for the summary and carry on with the next product
             print(f"Skipped {title}: {error}", file=sys.stderr)
             continue
         if result:

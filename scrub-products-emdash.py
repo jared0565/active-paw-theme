@@ -3,6 +3,7 @@ Replaces em-dash (U+2014), en-dash (U+2013), and horizontal bar (U+2015) -> hyph
 in product title, descriptionHtml, and SEO description (matches the worker's
 sanitizeOutbound and the import strip_dashes; all read as an AI tell)."""
 import sys
+
 import shopify_admin as sa
 
 DASHES = (0x2014, 0x2013, 0x2015)  # em, en, horizontal bar
