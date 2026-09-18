@@ -7,10 +7,11 @@ rebuild). Both want post-commit. Graphite chains a sibling `post-commit.local`
 if one exists, and its init relocates a foreign post-commit there; Aramid's init
 refuses to touch a hook it does not own. So the order matters:
 
-    1. aramid init .                      (installs Aramid's hooks, post-commit included)
+    1. aramid init .
+       Installs Aramid's hooks, post-commit included.
     2. python -P -m graphite init . --yes --strict
-                                          (moves Aramid's post-commit to post-commit.local
-                                           and installs its own, which chains it)
+       Moves Aramid's post-commit to post-commit.local and installs its own,
+       which chains it.
 
 This script runs that sequence, handles the case where Graphite already owns
 post-commit but no Aramid shim exists yet, then proves the result by reading
@@ -61,13 +62,21 @@ def verdict() -> list[str]:
     post = owner(HOOKS / "post-commit")
     local = owner(HOOKS / "post-commit.local")
     if post != "graphite":
-        problems.append(f".githooks/post-commit is {post or 'absent'}, expected Graphite's rebuild hook")
+        problems.append(
+            f".githooks/post-commit is {post or 'absent'}, "
+            "expected Graphite's rebuild hook"
+        )
     if local != "aramid":
-        problems.append(f".githooks/post-commit.local is {local or 'absent'}, expected Aramid's triage shim")
+        problems.append(
+            f".githooks/post-commit.local is {local or 'absent'}, "
+            "expected Aramid's triage shim"
+        )
     for name in GATE_HOOKS:
         who = owner(HOOKS / name)
         if who != "aramid":
-            problems.append(f".githooks/{name} is {who or 'absent'}, expected Aramid's gate")
+            problems.append(
+                f".githooks/{name} is {who or 'absent'}, expected Aramid's gate"
+            )
     return problems
 
 
@@ -77,14 +86,21 @@ def report(problems: list[str]) -> None:
         for p in problems:
             print("  -", p)
     else:
-        print("hooks: armed (Graphite post-commit chains Aramid's post-commit.local; Aramid gates pre-commit and pre-push)")
+        print(
+            "hooks: armed (Graphite post-commit chains Aramid's post-commit.local; "
+            "Aramid gates pre-commit and pre-push)"
+        )
 
 
 def main() -> int:
     check_only = "--check" in sys.argv[1:]
     missing = [m for m in ("aramid", "graphite") if importlib.util.find_spec(m) is None]
     if missing:
-        print(f"missing package(s) for {sys.executable}: {', '.join(missing)}; install them first", file=sys.stderr)
+        print(
+            f"missing package(s) for {sys.executable}: {', '.join(missing)}; "
+            "install them first",
+            file=sys.stderr,
+        )
         return 2
     if check_only:
         problems = verdict()
@@ -97,7 +113,10 @@ def main() -> int:
     if owner(post) == "graphite" and owner(HOOKS / "post-commit.local") != "aramid":
         # Aramid will not overwrite Graphite's hook, so park it; Graphite's init
         # below re-installs it once Aramid's copy is in place.
-        print(f"parking Graphite's post-commit so Aramid can install its own: {parked.name}")
+        print(
+            "parking Graphite's post-commit so Aramid can install its own: "
+            f"{parked.name}"
+        )
         post.replace(parked)
 
     rc = run_module("aramid", "init", ".")
@@ -112,7 +131,11 @@ def main() -> int:
         if owner(post) == "graphite":
             parked.unlink()
         else:
-            print(f"warning: Graphite did not re-install post-commit; its previous hook is kept at {parked.name}", file=sys.stderr)
+            print(
+                "warning: Graphite did not re-install post-commit; "
+                f"its previous hook is kept at {parked.name}",
+                file=sys.stderr,
+            )
 
     problems = verdict()
     report(problems)

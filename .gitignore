@@ -55,3 +55,12 @@ graph-out/
 !/package-lock.json
 !/eslint.config.js
 !/bootstrap-agent-tooling.py
+
+# tests/ is committed file by file: probe_lib.py and its test stay machine-local
+!/tests/
+/tests/*
+!/tests/__init__.py
+!/tests/test_bootstrap_agent_tooling.py
+!/tests/test_import_cj_category_products.py
+!/tests/test_import_cj_products.py
+!/tests/test_scrub_products_emdash.py

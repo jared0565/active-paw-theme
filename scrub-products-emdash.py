@@ -30,37 +30,42 @@ M = """mutation($product: ProductUpdateInput!){
   productUpdate(product:$product){ product{ id } userErrors{ field message } }
 }"""
 
-cursor = None
-total = 0
-affected = []
-while True:
-    r = sa.admin_graphql(Q, {"c": cursor})
-    p = r["products"]
-    for n in p["nodes"]:
-        total += 1
-        t, tc = fix(n.get("title"))
-        d, dc = fix(n.get("descriptionHtml"))
-        seo = (n.get("seo") or {}).get("description")
-        s2, sc = fix(seo)
-        if tc or dc or sc:
-            affected.append((n["id"], n.get("title"), tc, dc, sc))
-            if APPLY:
-                inp = {"id": n["id"]}
-                if tc:
-                    inp["title"] = t
-                if dc:
-                    inp["descriptionHtml"] = d
-                if sc:
-                    inp["seo"] = {"description": s2}
-                res = sa.admin_graphql(M, {"product": inp})
-                errs = res["productUpdate"]["userErrors"]
-                if errs:
-                    print("ERR", n["id"], errs)
-    if not p["pageInfo"]["hasNextPage"]:
-        break
-    cursor = p["pageInfo"]["endCursor"]
+def main():
+    cursor = None
+    total = 0
+    affected = []
+    while True:
+        r = sa.admin_graphql(Q, {"c": cursor})
+        p = r["products"]
+        for n in p["nodes"]:
+            total += 1
+            t, tc = fix(n.get("title"))
+            d, dc = fix(n.get("descriptionHtml"))
+            seo = (n.get("seo") or {}).get("description")
+            s2, sc = fix(seo)
+            if tc or dc or sc:
+                affected.append((n["id"], n.get("title"), tc, dc, sc))
+                if APPLY:
+                    inp = {"id": n["id"]}
+                    if tc:
+                        inp["title"] = t
+                    if dc:
+                        inp["descriptionHtml"] = d
+                    if sc:
+                        inp["seo"] = {"description": s2}
+                    res = sa.admin_graphql(M, {"product": inp})
+                    errs = res["productUpdate"]["userErrors"]
+                    if errs:
+                        print("ERR", n["id"], errs)
+        if not p["pageInfo"]["hasNextPage"]:
+            break
+        cursor = p["pageInfo"]["endCursor"]
 
-print(f"total={total}  affected={len(affected)}  (title/desc/seo per row)")
-for a in affected[:80]:
-    print(f"  - title_dash={a[2]} desc_dash={a[3]} seo_dash={a[4]} :: {a[1][:60]}")
-print("APPLIED (catalog written)" if APPLY else "DRY RUN (no writes made)")
+    print(f"total={total}  affected={len(affected)}  (title/desc/seo per row)")
+    for a in affected[:80]:
+        print(f"  - title_dash={a[2]} desc_dash={a[3]} seo_dash={a[4]} :: {a[1][:60]}")
+    print("APPLIED (catalog written)" if APPLY else "DRY RUN (no writes made)")
+
+
+if __name__ == "__main__":
+    main()
