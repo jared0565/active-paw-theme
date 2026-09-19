@@ -824,6 +824,8 @@
 ### How it was solved
 - Verified on live after the last merge: footer links to `/pages/affiliates`; the page renders the Apply card hidden server-side with the email route; "Fulfilled by" absent from a product page; run 35457784390 (dispatched from shopify-deploy after the last merge): blocked 80/80 and control 77/77, 0 hard failures; the affiliates page is now the Shopify page, so the worker form's console error no longer appears in the run.
 
+- T4 closed the same evening: with the owner's Theme Access password in `SHOPIFY_CLI_THEME_TOKEN`, the preview job's first real run (35458099218, attempt 2) pushed preview theme 207796928850, passed blocked 89/89 and control 86/86, and deleted the preview. R3 is met in full.
+
 ### Files touched
 - `.github/workflows/independence-daily.yml`, `docs/RUNBOOK-THEME-DEPLOY.md`, `docs/theme-production-grade-prd.md`.
 

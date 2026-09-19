@@ -54,7 +54,7 @@ Delete the preview once the pull request is merged: `shopify theme delete --them
 
 ## 4. Pull request
 
-Every pull request also runs `theme-preview` (T5): it pushes the branch to a preview theme named `preview/pr-<n>-run-<id>`, runs the independence check on it in both modes, and deletes the preview. It needs the repository secret `SHOPIFY_CLI_THEME_TOKEN` (a Theme Access password, T4); without it the job warns and passes. A preview left behind by a cancelled run is named after the pull request and can be deleted with `shopify theme delete --theme <id> --force`.
+Every pull request also runs `theme-preview` (T5): it pushes the branch to a preview theme named `preview/pr-<n>-run-<id>`, runs the independence check on it in both modes, and deletes the preview. It uses the repository secret `SHOPIFY_CLI_THEME_TOKEN` (a Theme Access password, in place since 2026-09-19); if the secret is ever removed the job warns and passes instead of failing. A preview left behind by a cancelled run is named after the pull request and can be deleted with `shopify theme delete --theme <id> --force`.
 
 ```sh
 git push -u origin <branch>
