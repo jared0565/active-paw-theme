@@ -696,3 +696,26 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 19 - 2026-09-19: One availability snippet with the 3-day freshness rule (PRD tasks T8 and T12, R4)
+
+### What changed
+- `snippets/supplier-availability.liquid` (new) - decides label, detail, purchase cap, urgency, sold-out, freshness, the "Availability updated" label and the delivery range for one variant, and prints them as one pipe-separated line that callers capture and split. Tracked Shopify inventory (policy deny) is authoritative for the cap and the quantity banner; supplier fields count only while `supplier.last_checked_at` is within 3 days and the status is not `unknown_stale`. The status values the worker writes today (`available`, `out_of_stock`) are mapped with the documented ones.
+- `sections/main-product.liquid` - the 70-line availability block is replaced by the capture; the "Availability updated" line and the hidden "Estimated delivery" property render only when fresh.
+- `sections/main-cart.liquid` - same capture; the note wording is composed from the snippet's fields (unchanged strings). One semantic change: with both `max_order_qty` and `available_qty` present, the cart now shows the small-quantity wording the product page already used.
+- `snippets/cart-drawer-contents.liquid` - same capture for the cap.
+- `snippets/delivery-info.liquid` - takes `delivery_days` from the caller (fresh or blank) instead of reading the metafield.
+
+### Why it changed
+- Contract rule 2 and PRD R4: nothing on the storefront should repeat a supplier check that is days old. Measured on live before the change: 6 of 50 active products carried stamps from 5 July to 14 September and still showed "Availability updated <old date>" and their synced delivery window.
+
+### How it was solved
+- Verified on preview theme 207763407186 (deleted after) against live with a probe of four real products: the two fresh ones render identically on both; the two stale ones lose the date line on the preview, their delivery window falls back to the static band (4-12 became 3-10 on the 14 September one) and the hidden estimate is absent; the cart note for a fresh product is unchanged ("In stock. Availability updated 19 Sep 2026.", cap 33). Independence run on the preview: blocked 80/81 with 0 hard failures, control 77/78 (the worker's affiliate page).
+- Not covered by live data: `unknown_stale`, a product with no metafields, a low-stock quantity of 10 or fewer, an untracked variant. Fixtures requested from the worker (channel round 238).
+- `shopify theme check --fail-level error`: exit 0, one warning left (hero preload, T18).
+
+### Files touched
+- `snippets/supplier-availability.liquid`, `sections/main-product.liquid`, `sections/main-cart.liquid`, `snippets/cart-drawer-contents.liquid`, `snippets/delivery-info.liquid`, `docs/theme-production-grade-prd.md`, `docs/theme-worker-contract.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.

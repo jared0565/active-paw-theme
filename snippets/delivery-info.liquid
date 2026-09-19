@@ -11,10 +11,12 @@
   a conservative static window is shown. Rule: only surface what is real and
   defensible - the synced figure when we have it, a conservative window otherwise.
   @param {product} product - Product being viewed
+  @param {string} delivery_days - synced order-to-door range when fresh, blank when stale or absent
 {% enddoc %}
 
 {%- liquid
-  assign delivery_days = product.metafields.supplier.delivery_days.value
+  # delivery_days arrives from the caller (supplier-availability field 11): the synced
+  # range when the supplier check is fresh, blank otherwise (PRD R4, decision 5b).
   comment
     Fallback bands (2026-07-06, owner-approved envelope: processing 1-3 +
     door transit + 2 days slack, customs rides inside CJ door transit):
