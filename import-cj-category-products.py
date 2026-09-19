@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -21,7 +22,7 @@ def powershell_executable():
     found = shutil.which("powershell")
     if not found:
         raise RuntimeError("powershell not found on PATH; this script drives the Shopify CLI through PowerShell")
-    return found
+    return os.path.abspath(found)  # which() can answer relative to the cwd on Windows
 
 SELECTED_PRODUCTS = {
     "Pet Cleaning": [

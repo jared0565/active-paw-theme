@@ -30,7 +30,8 @@ class TestPowershellExecutable(unittest.TestCase):
         for name in SCRIPTS:
             with self.subTest(script=name):
                 module = load(name)
-                with mock.patch.object(module.shutil, "which", return_value=r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"):
+                fixture = str(Path(Path.cwd().anchor, "tools", "powershell.exe"))  # absolute on Windows and POSIX alike
+                with mock.patch.object(module.shutil, "which", return_value=fixture):
                     found = module.powershell_executable()
                 self.assertTrue(Path(found).is_absolute())
                 self.assertTrue(found.lower().endswith("powershell.exe"))
