@@ -1190,3 +1190,18 @@ const isIosDevice = () =>
     });
   }
 })();
+
+/* ---------------- Affiliates page: Apply button (PRD T10) ---------------- */
+// The Shopify page /pages/affiliates is complete on its own (copy plus an
+// email route). The Apply link to the worker's form appears only once the
+// storewide feed has answered, which proves the worker is reachable; with
+// the worker down the button stays hidden and the offline note stays.
+(() => {
+  const buttons = document.querySelectorAll('[data-affiliate-apply]');
+  if (!buttons.length) return;
+  loadStorewideEvent().then((event) => {
+    if (!event) return;
+    buttons.forEach((el) => { el.hidden = false; });
+    document.querySelectorAll('[data-affiliate-apply-note]').forEach((el) => { el.hidden = true; });
+  });
+})();
