@@ -3,13 +3,17 @@
  * Usage:
  *   node tests/independence.cjs [baseUrl]            worker domain + /apps/ proxy BLOCKED
  *   BLOCK=0 node tests/independence.cjs [baseUrl]    control run, nothing blocked
+ *   PREVIEW_THEME_ID=<id> node tests/independence.cjs  run against an unpublished theme
+ *                                                   (one visit with ?preview_theme_id= sets
+ *                                                   Shopify's preview cookie for the context;
+ *                                                   every page then asserts Shopify.theme.id)
  *
  * Pass (blocked mode) = every page complete, no errors from the theme's own code,
  * no empty region, server-rendered defaults kept, checkout reachable. The affiliate
  * page is worker-rendered through the app proxy and is measured, not asserted.
  * Writes output/playwright/independence-<mode>.json and one screenshot per page.
  */
-/* global document */
+/* global document, window */
 const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
@@ -17,6 +21,7 @@ const { chromium } = require('playwright');
 const BASE = (process.argv[2] || 'https://activepaw.co.uk').replace(/\/$/, '');
 const BLOCK = process.env.BLOCK !== '0';
 const MODE = BLOCK ? 'blocked' : 'control';
+const PREVIEW = process.env.PREVIEW_THEME_ID || '';
 const OUT = path.join(__dirname, '..', 'output', 'playwright');
 const WORKER_RE = /pawscout\.activepaw\.co\.uk|\/apps\//;
 const SETTLE_MS = 4500; // past the theme's 3 s feed cap
@@ -24,7 +29,7 @@ const THIN_TERMS = ['launcher', 'sisal', 'orthopedic', 'fountain', 'harness', 's
 
 fs.mkdirSync(OUT, { recursive: true });
 
-const results = { mode: MODE, base: BASE, at: new Date().toISOString(), pages: [] };
+const results = { mode: MODE, base: BASE, preview: PREVIEW || null, at: new Date().toISOString(), pages: [] };
 let hardFailures = 0;
 
 const check = (rec, name, ok, detail, hard = true) => {
@@ -71,6 +76,10 @@ async function visit(context, name, url, specific, generic = true) {
   rec.mainHeightSettled = h1;
 
   if (generic) {
+    if (PREVIEW) { // theme pages only: checkout and the worker's affiliate page are not rendered by the theme
+      const themeId = await page.evaluate(() => String((window.Shopify && window.Shopify.theme && window.Shopify.theme.id) || '')).catch(() => '');
+      check(rec, 'served by the preview theme', themeId === PREVIEW, `Shopify.theme.id ${themeId || 'unknown'}`);
+    }
     check(rec, 'http 200', status === 200, `status ${status}`);
     const headerCount = await count(page, 'header.site-header');
     const footerCount = await count(page, 'footer.site-footer');
@@ -111,6 +120,11 @@ async function pickThinSearchTerm(context) {
 (async () => {
   const browser = await chromium.launch();
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  if (PREVIEW) {
+    const p = await context.newPage();
+    await p.goto(`${BASE}/?preview_theme_id=${PREVIEW}`, { waitUntil: 'load', timeout: 45000 });
+    await p.close();
+  }
   if (BLOCK) {
     await context.route(WORKER_RE, (route) => route.abort('failed'));
   }
