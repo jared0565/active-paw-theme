@@ -625,3 +625,29 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 16 - 2026-09-19: Continuous integration for the theme (PRD task T3)
+
+### What changed
+- `.github/workflows/theme-ci.yml` (new) - on every push to any branch: `npm ci`, `eslint .`, Shopify CLI 4.8.0 `theme check --fail-level error`, and `python -m unittest discover -s tests -t .` on Python 3.14. About 26 seconds end to end.
+- `.theme-check.yml` (new) - theme check runs from the repository root, which also holds dev tooling, docs, tests and the nested worker; those are ignored. `/*.json` is root-only. A bare `*.json` also skipped `templates/` and `config/` when measured with planted invalid files, so it is not used.
+- `layout/theme.liquid` - three comment lines around the manifest link suppress theme check's MissingAsset for `manifest.json`. `assets/manifest.json.liquid` is compiled to that file on Shopify; the live theme lists both and the storefront serves the compiled one. No rendered markup changes; the comments add whitespace only.
+- `import-cj-products.py`, `import-cj-category-products.py`, and their tests - the PowerShell path test used a Windows path as its fixture, which `Path.is_absolute()` rejects on Linux; the fixture is now built from the current drive anchor, and the helper returns `os.path.abspath(found)`.
+
+### Why it changed
+- Decision 5e of the production-grade PRD: fast checks everywhere, full runs on pull requests and after deploy. Until today nothing ran on a push; a broken template could reach the live branch unchecked.
+
+### How it was solved
+- The workflow was written, pushed, and watched. The first run (35433334488) went red on the unit-test step only, on a genuine platform-specific test, which is the "red on a failing test" half of the acceptance. The fix run (35433567778) is green on every step.
+- Theme check had two errors locally: the MissingAsset above and an untracked `audit-out.json` at the root. The config removes the second for every local run; the first is suppressed on its one line with the reason beside it.
+
+### Files touched
+- `.github/workflows/theme-ci.yml`, `.theme-check.yml`, `.gitignore` (negation for the config), `layout/theme.liquid`, `import-cj-products.py`, `import-cj-category-products.py`, `tests/test_import_cj_products.py`, `tests/test_import_cj_category_products.py`, `docs/theme-production-grade-prd.md`.
+
+### Verification (2026-09-19, first-hand)
+- `shopify theme check --fail-level error`: exit 0, 66 files, 6 warnings (the T18 set), 0 errors.
+- `python -m unittest discover -s tests -t .`: 37 tests OK locally; 19 in CI, where the machine-local tests and helper modules are absent.
+- Pre-flight for T2: `shopify theme pull --live` into a detached worktree of `ddb7de0` left `git status` empty; a planted change in the worktree was overwritten on re-pull.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
