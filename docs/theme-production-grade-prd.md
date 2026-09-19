@@ -123,7 +123,7 @@ Ordered. Each task names its files and its acceptance check. Tasks marked (owner
 ### Phase 2: honesty and independence
 
 - [ ] T8 Extract `snippets/supplier-availability.liquid` returning label, detail, cap and urgency for a variant; use it from `sections/main-product.liquid`, `sections/main-cart.liquid` and `snippets/cart-drawer-contents.liquid`; map `unknown_stale` and a `last_checked_at` older than 3 days to the conservative default. Acceptance: R4 fixtures.
-- [ ] T9 Remove "Fulfilled by" from `snippets/product-details-modal.liquid`; delete the orphaned `snippets/product-details.liquid`; clear the four unused assigns theme check reports. Acceptance: R5.
+- [x] T9 Done 2026-09-19: "Fulfilled by" and its two assigns removed from `snippets/product-details-modal.liquid`; orphaned `snippets/product-details.liquid` deleted; the four unused assigns cleared (theme check now reports one warning, the hero preload, for T18). `tests/independence.cjs` asserts "product details never name the supplier" on the product page from now on. Measured on preview 207762719058: the same 8 product pages show "Fulfilled by CJ" on live and nothing on the preview; blocked run 80/81 with 0 hard failures, control 77/78. Acceptance: R5.
 - [ ] T10 Create the Shopify page `/pages/affiliates` (programme copy, Apply button to the worker form, email route); point the footer at it; hide the Apply button in `theme.js` when the feed verdict is null. Acceptance: R6.
 - [ ] T11 Reserve the supplier row's space on `sections/main-search.liquid` or place it below the native grid's fold. Acceptance: R7.
 - [ ] T12 Apply the 3-day staleness rule to the delivery window in `snippets/delivery-info.liquid`. Acceptance: part of R4.

@@ -37,8 +37,6 @@ Always ends with a specifications list built from real catalog data.
     endif
   endif
 
-  assign supplier_name = details_variant.metafields.supplier.name.value | default: product.metafields.supplier.name.value
-  assign supplier_warehouse = details_variant.metafields.supplier.warehouse.value | default: product.metafields.supplier.warehouse.value
 %}
 
 <div class="contact-modal pdp-details-modal" data-details-modal aria-hidden="true">
@@ -95,9 +93,6 @@ Always ends with a specifications list built from real catalog data.
         {% endif %}
         {% if details_variant.weight > 0 %}
           <div><dt>Weight</dt><dd>{{ details_variant.weight | weight_with_unit }}</dd></div>
-        {% endif %}
-        {% if supplier_name != blank %}
-          <div><dt>Fulfilled by</dt><dd>{{ supplier_name }}{% if supplier_warehouse != blank %} · {{ supplier_warehouse }}{% endif %}</dd></div>
         {% endif %}
       </dl>
     </div>

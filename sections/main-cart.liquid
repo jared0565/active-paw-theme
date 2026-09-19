@@ -29,7 +29,6 @@
               assign max_line_quantity = 20
               assign inventory_note = 'In stock. Quantity is capped per order.'
               assign line_has_quantity_issue = false
-              assign supplier_status = item.variant.metafields.supplier.status.value | default: item.product.metafields.supplier.status.value
               assign supplier_available_qty = item.variant.metafields.supplier.available_qty.value
               assign supplier_max_order_qty = item.variant.metafields.supplier.max_order_qty.value
               assign supplier_last_checked_at = item.variant.metafields.supplier.last_checked_at.value | default: item.product.metafields.supplier.last_checked_at.value

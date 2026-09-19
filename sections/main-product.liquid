@@ -1,13 +1,10 @@
 {% liquid
   assign demo_title = 'CoatGuard Glide 3-in-1 Shampoo + Conditioner'
-  assign brand_name = settings.demo_brand_name | default: 'Active Paw'
   assign product_title = product.title | default: demo_title
   assign selected_variant = product.selected_or_first_available_variant
   assign supplier_name = selected_variant.metafields.supplier.name.value | default: product.metafields.supplier.name.value
   assign supplier_status = selected_variant.metafields.supplier.status.value | default: product.metafields.supplier.status.value
-  assign supplier_warehouse = selected_variant.metafields.supplier.warehouse.value | default: product.metafields.supplier.warehouse.value
   assign supplier_last_checked_at = selected_variant.metafields.supplier.last_checked_at.value | default: product.metafields.supplier.last_checked_at.value
-  assign supplier_fulfillment_confidence = selected_variant.metafields.supplier.fulfillment_confidence.value | default: product.metafields.supplier.fulfillment_confidence.value
   assign supplier_available_qty = selected_variant.metafields.supplier.available_qty.value
   assign supplier_max_order_qty = selected_variant.metafields.supplier.max_order_qty.value
   assign pdp_max_order_qty = 20
