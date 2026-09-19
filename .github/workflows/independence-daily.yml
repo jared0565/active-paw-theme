@@ -1,0 +1,100 @@
+# Daily independence run against the live store (PRD R9, task T17): the theme
+# must stay complete with the PawScout worker unreachable. Blocked mode is the
+# gate; the control run (worker up) is recorded for information only.
+# A failure opens one GitHub issue and keeps commenting on it until it closes.
+# Only runs from the live branch (schedule, dispatch, after a deploy) can fail the
+# job or touch the issue: the script on any other branch is newer than what is
+# deployed, so a run from there is a dry run that reports and stops.
+name: independence-daily
+
+on:
+  schedule:
+    - cron: "17 6 * * *" # 06:17 UTC daily
+  workflow_dispatch:
+  workflow_run: # once after each deploy: theme-ci finished on the live branch
+    workflows: [theme-ci]
+    types: [completed]
+    branches: [shopify-deploy]
+  push:
+    paths:
+      - ".github/workflows/independence-daily.yml"
+      - "tests/independence.cjs"
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: independence-daily
+  cancel-in-progress: false
+
+jobs:
+  live:
+    name: live store, worker blocked
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      STORE_URL: https://activepaw.co.uk
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dev tooling
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Wait for Shopify to deploy the push (about a minute after it lands)
+        if: github.event_name == 'workflow_run' || (github.event_name == 'push' && github.ref_name == 'shopify-deploy')
+        run: sleep 120
+
+      - name: Independence run (worker blocked)
+        id: blocked
+        continue-on-error: ${{ github.ref_name != 'shopify-deploy' }}
+        run: node tests/independence.cjs "$STORE_URL"
+
+      - name: Dry run verdict
+        if: github.ref_name != 'shopify-deploy'
+        run: |
+          if [ "${{ steps.blocked.outcome }}" = "failure" ]; then
+            echo "::warning::Dry run from ${{ github.ref_name }}: live failed this branch's script (see the log above); no issue opened."
+          else
+            echo "Dry run from ${{ github.ref_name }}: live passes this branch's script."
+          fi
+
+      - name: Control run (worker up, informational)
+        if: always()
+        continue-on-error: true
+        run: BLOCK=0 node tests/independence.cjs "$STORE_URL"
+
+      - name: Keep the results and screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: independence-${{ github.run_id }}
+          path: output/playwright
+          retention-days: 14
+
+      - name: Open or update the failure issue
+        if: failure() && github.ref_name == 'shopify-deploy'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          title="Independence run failed against live"
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          body="The blocked-mode independence run failed on $(date -u +'%Y-%m-%d %H:%MZ'). Run and artifacts: $run_url"
+          gh label create independence --description "Daily independence run against live" --color B60205 --force
+          existing=$(gh issue list --state open --label independence --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh issue create --title "$title" --label independence --body "$body"
+          fi

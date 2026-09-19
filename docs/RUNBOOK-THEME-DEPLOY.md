@@ -25,9 +25,11 @@ The same three checks CI runs on every push (`.github/workflows/theme-ci.yml`):
 
 ```sh
 npx eslint .
-shopify theme check --fail-level error
+shopify theme check --fail-level warning     # zero warnings is the standard since T18
 python -m unittest discover -s tests -t .
 ```
+
+CI's theme check is the authority: at the same CLI version its rule set has found warnings the local run did not (2026-09-19, `UnrecognizedRenderSnippetArguments`), so a local "no offences" is necessary, not sufficient.
 
 Then `aramid check --staged` before committing. Never pass `--no-verify` to git; armed repos reject it, and it would switch off the secret scan.
 
@@ -72,7 +74,7 @@ Shopify redeploys within about a minute of the push. Check, in this order:
    git worktree remove --force /tmp/live-check
    ```
    or compare one changed file's `checksumMd5` from the Admin API with its local md5. Compiled assets (`assets/manifest.json` from `manifest.json.liquid`) are not written by the pull and are not a difference.
-3. Independence run against live: `node tests/independence.cjs` (blocked mode, 0 hard failures expected; 2026-09-19 baseline 71 of 72, the informational affiliate page being the one non-pass).
+3. Independence run against live: `node tests/independence.cjs` (blocked mode, 0 hard failures expected; the informational affiliate line is the one non-pass until the Affiliates page exists). Since T17 this also happens by itself: the `independence-daily` workflow runs two minutes after theme-ci finishes on `shopify-deploy`, and every day at 06:17 UTC. A failure opens or updates the issue "Independence run failed against live" (label `independence`); close it once live is fixed.
 4. Tag the release and push the tag:
    ```sh
    git tag -a release-<yyyy-mm-dd>-<n> <merge-sha> -m "<one line>"

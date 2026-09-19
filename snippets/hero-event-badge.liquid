@@ -24,7 +24,7 @@
   data-event-badge-href="{{ routes.all_products_collection_url }}"
   data-event-emoji-active="🎉"
   data-event-emoji-next="📅"
-  href="{{ link | default: '/collections/keep-them-cool' }}"
+  href="{{ link | default: routes.all_products_collection_url }}"
   aria-label="{{ line1 | strip_html }} {{ line2 | strip_html }}"
 >
   <span class="hero-event-badge-emoji" aria-hidden="true">{{ emoji }}</span>

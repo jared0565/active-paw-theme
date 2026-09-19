@@ -1,0 +1,12 @@
+{% doc %}
+  The ordered list of the store's home collections, from the theme setting
+  "Home collections, in order" (config/settings_schema.json holds the default).
+  This is the ONE place the list is read (PRD R8); callers capture the output
+  and split it:
+    capture category_handles_raw
+      render 'collection-handles'
+    endcapture
+    assign category_handles = category_handles_raw | strip | split: ','
+  Output: comma-separated handles with no spaces, e.g. pet-cleaning,pet-toys
+{% enddoc %}
+{{- settings.home_collection_handles | remove: ' ' -}}
