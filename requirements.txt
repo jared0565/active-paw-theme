@@ -1,0 +1,4 @@
+# Active Paw scripts use only the Python standard library (urllib, json, pathlib, subprocess, time).
+# There are no third-party runtime dependencies. This file exists so the Aramid gate has a
+# declared Python dependency source to audit (pip-audit -r requirements.txt); keep it empty
+# unless a script genuinely gains a dependency.

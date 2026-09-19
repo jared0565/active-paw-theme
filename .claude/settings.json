@@ -1,0 +1,81 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:developers.cjdropshipping.cn)",
+      "Bash(python -c ' *)",
+      "Bash(python -m graphite build . --semantic)",
+      "Bash(grep -vE \"WARNING|out-of-date|Please update|After install|npm install|^$|wrangler 3|----|update available|⛅\")",
+      "Read(//c//**)",
+      "Bash(python -c \"import json; d=json.load\\(open\\('.claude/settings.json',encoding='utf-8'\\)\\); print\\('valid JSON'\\); print\\('hooks.Stop entries:', len\\(d['hooks']['Stop']\\)\\); print\\('command:', d['hooks']['Stop'][0]['hooks'][0]['command']\\); print\\('permissions preserved:', 'permissions' in d\\)\")",
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__new_page",
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__take_screenshot",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(graphite build *)",
+      "Bash(graphite check *)",
+      "Bash(graphite context *)",
+      "Bash(graphite impact *)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -P -m graphite build \"f:/Projects/Shopify/demo-store2\"",
+            "timeout": 60,
+            "statusMessage": "Updating Graphite knowledge graph (0 tokens)"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -P -m graphite agent-hook stop"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -P -m aramid agent-hook pre-tool-use"
+          }
+        ]
+      },
+      {
+        "matcher": "Grep|Glob|Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -P -m graphite agent-hook pre-tool-use --mode strict"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -P -m aramid agent-hook session-start"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -P -m graphite agent-hook session-start"
+          }
+        ]
+      }
+    ]
+  }
+}

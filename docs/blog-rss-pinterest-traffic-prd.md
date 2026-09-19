@@ -1,0 +1,158 @@
+# PRD: Blog + RSS + Pinterest Traffic Channel
+
+## Status
+
+Proposed. Not started. Theme-only for the MVP (no pawscout-worker changes required). Originated from an owner question ("do we have RSS feed?") while reviewing the Traffic strategy board.
+
+## Summary
+
+Active Paw has no blog and no content marketing. The store can only rank for searches that name a product directly ("automatic pet water fountain"); it cannot rank for the much larger volume of top-of-funnel searches ("why won't my cat drink enough water", "best litter box for multi-cat homes") that a buying-guide article can capture and convert into a collection/product visit.
+
+RSS itself is not a traffic source in 2026 - direct RSS-reader subscribership is niche and Google does not rank on feed presence. Its real value here is as free, zero-maintenance plumbing: the moment a blog article is published, Shopify auto-generates its Atom feed entry, and that feed can drive an auto-pin pipeline to Pinterest, which is a strong organic-traffic fit for a visual, lifestyle-adjacent niche like pet products.
+
+This PRD scopes the three things that actually need building: (1) a themed blog that doesn't exist today, (2) a sustainable content cadence grounded in the real catalog, (3) the RSS-to-Pinterest wiring that turns each new post into ongoing referral traffic.
+
+## Problem (verified against the live store, 2026-07-07)
+
+- `activepaw.co.uk/blogs/news` returns **404**. The theme has no `templates/blog.json`, no `templates/article.json`, and no `sections/main-blog.liquid` / `sections/main-article.liquid`. Online Store 2.0 requires these JSON templates to render blog routes at all; without them the route simply fails.
+- Despite this, `/blogs/news.atom` returns **200** with a valid, empty Atom feed (Shopify generates this automatically regardless of theme support), and `/blogs/news` is **already listed in the live sitemap** (`sitemap_blogs_1.xml`, one entry, itself pointing at the 404). Google has already been told about a URL that doesn't work.
+- `/collections/all.atom` (the product catalog's own auto-generated Atom feed) works fine today and is fully populated - proving the platform's feed generation isn't the gap; the theme's blog support is.
+- The Traffic strategy board (`pawscout-worker` `src/traffic.ts`) tracks seven channels (Google free listings, email, affiliates, SEO, short-video, retention email, paid ads). None of them is content/blog-driven SEO or Pinterest - this is a genuinely new channel, not an extension of an existing one.
+
+## Goals
+
+- Give the store a themed, on-brand blog capable of publishing buying-guide and how-to content.
+- Make that content rank for long-tail searches the product catalog cannot reach on its own, and funnel that traffic into real collections/products.
+- Turn every new post into a Pinterest pin automatically via the free RSS feed Shopify already generates, with no manual re-entry of content.
+- Fix the existing broken `/blogs/news` sitemap entry as a side effect of building the blog properly.
+
+## Non-Goals
+
+- Do not build a custom CMS, a headless blog, or anything outside Shopify's native blog/article resources.
+- Do not fabricate or AI-generate customer-facing claims without human review. Any AI-assisted drafting (future enhancement, see below) must ground every product claim in verified data, per the store's standing customer-facing-accuracy policy - no invented statistics, no unverifiable "vet-recommended" style claims.
+- Do not build a native Pinterest API integration in v1. Use existing no-code RSS-to-Pinterest tooling (Zapier/Make/Pinterest's own bulk tools) first; only build custom worker-side Pinterest API code if that proves insufficient.
+- Do not add this as an automated pawscout-worker job in v1. Publishing cadence is a human/editorial decision, not a nightly cron.
+- Do not change `sitemap.xml`, `/collections/all.atom`, or any existing product/collection feed behavior - both already work and are out of scope.
+
+## Primary Users
+
+- Store owner (content approver, and likely first-pass writer).
+- Whoever ends up writing posts (owner, hired writer, or AI-assisted-with-owner-review - to be decided, see Open Questions).
+- Future: a PawScout console operator, if Phase 4's Traffic-board tracking is built.
+
+## Customer-Facing Outcomes
+
+- A visitor arriving from a Google search on a pet-care question lands on an on-brand article (not a bare Shopify default page), gets a genuinely useful answer, and sees a natural path into the relevant collection or product.
+- A visitor arriving from Pinterest sees a pin with a real image and title pointing at a real article, not a broken link.
+- The blog looks and feels like Active Paw - same header/footer, same `color_ink` / `color_accent` / `color_surface` tokens, same typography settings, not a generic Shopify default.
+
+## What Already Exists - Do Not Rebuild
+
+| Piece | State | Action needed |
+|---|---|---|
+| Blog Atom feed (`/blogs/<handle>.atom`) | Auto-generated by Shopify, works today | None - populates itself the moment articles publish |
+| Sitemap blog slot (`sitemap_blogs_1.xml`) | Auto-generated, already listing `/blogs/news` | None - will self-correct once the blog route renders and articles exist |
+| `/collections/all.atom` | Working, populated | None - unrelated, do not touch |
+| Product/collection OG image optimisation (`snippets/meta-tags.liquid`) | Built 2026-07-06 for products/collections: 1200x630 crop first, 1200x1200 square second, `twitter:image` | **Extend to article pages** - see Technical Requirements |
+| Share-button behavior (`assets/theme.js` `shareStoreLink`, `sections/main-product.liquid`) | Fixed 2026-07-06: `navigator.share` sends title + URL only, no marketing text (FB chat renders text+URL as a plain message, never a card) | **Reuse the same pattern** on the article page's share button - do not reintroduce a text field |
+
+## Core Workflow (end-to-end)
+
+1. Writer drafts an article in Shopify Admin (Online Store > Blog posts), with a featured image, meta title, and meta description filled in - these three fields are publish-blocking (see Acceptance Criteria).
+2. Article is published. Shopify automatically: adds it to `/blogs/<handle>.atom`, adds it to `sitemap_blogs_1.xml`, and serves it at `/blogs/<handle>/<article-handle>` using the theme's `article.json` template.
+3. The article page renders on-brand (header/footer, brand colors/fonts), shows the featured image, body content, and a "Related products" block linking into the relevant collection(s) - reusing the existing `product-card-commerce` snippet.
+4. The RSS-to-Pinterest automation (Zapier/Make, polling the Atom feed) detects the new entry within its polling interval and creates a Pinterest pin using the featured image + title + article URL.
+5. Search engines discover the article via the (now-working) sitemap; Pinterest traffic and organic search traffic both land on the same on-brand article page.
+6. Visitor clicks through to a collection or product from the in-article links.
+
+## Content Strategy
+
+Grounded in the store's actual five collections (`pet-cleaning`, `pet-accessories`, `pet-health`, `pet-toys`, `pet-grooming`) so every post has a real place to send traffic. Starter topic list (one per collection to launch with, expand from there):
+
+- **pet-cleaning**: "How often should you really clean a cat litter box?" -> links to litter box / litter scoop products.
+- **pet-accessories**: "Choosing the right size dog crate: a measuring guide" -> links to crate/carrier products.
+- **pet-health**: "Why won't my cat drink enough water?" -> links to the water fountain product(s).
+- **pet-toys**: "Best interactive toys for a dog home alone all day" -> links to interactive/puzzle toys.
+- **pet-grooming**: "Deshedding 101: brush types and how often to use them" -> links to grooming glove/brush products.
+
+Editorial rules:
+
+- Every post must link to at least one real, in-stock product or collection - no orphaned content.
+- No claims about product performance, safety, or vet endorsement that aren't independently verifiable (matches the store's standing customer-facing-accuracy policy).
+- Tag each article with its collection handle (`pet-cleaning`, etc.) so a future "related articles" or tag-filtered blog view is possible without restructuring content later.
+
+## Technical Requirements
+
+### New theme templates/sections (Online Store 2.0 pattern, matching existing `product.json` -> `main-product.liquid` convention)
+
+- `templates/blog.json` -> renders `sections/main-blog.liquid` (listing page: title, excerpt, featured image thumbnail, date, pagination; reuse the grid/card visual language from `category-showcase.liquid`).
+- `templates/article.json` -> renders `sections/main-article.liquid` (single post: featured image, title, date/author, body content, related-products block, share button, prev/next navigation).
+- Both sections styled with existing `assets/theme.css` conventions (kebab-case class names, no build step, single file) - add a `.blog-*` / `.article-*` block, do not introduce a second stylesheet.
+- No `assets/theme.js` changes required for MVP. A tag/category filter on the listing page is a reasonable v1.1 addition, not required to launch.
+
+### Article page specifics
+
+- **OG/share image**: extend `snippets/meta-tags.liquid`'s existing platform-optimised image block (already built for `product.featured_media` / `collection.image`) to also handle `article.image` - same 1200x630 crop first, 1200x1200 square second, `twitter:image` pattern. Do not build a parallel/duplicate implementation.
+- **Share button**: reuse the exact `shareStoreLink` pattern from `main-product.liquid` / `theme.js` - title + absolute URL only, no `data-share-text`. This is a hard requirement, not a suggestion: the whole reason the product-page share bug existed was a text payload breaking Facebook Messenger's link-card rendering, and an article share button built independently would very likely reintroduce it.
+- **Related products**: render via the existing `product-card-commerce` snippet, sourced from the article's tag -> collection handle mapping above.
+
+### Blog identity decision (needs an answer before building - see Open Questions)
+
+The store already has one blog resource (handle `news`, title "News", currently zero posts, already indexed in the sitemap under its broken URL). Recommendation: **reuse and rename** rather than create a second blog - rename its title (e.g. "Pet Care Guides") while keeping the handle, so the already-indexed `/blogs/news` URL becomes correct instead of creating a second, orphaned blog resource.
+
+### Theme change process (mandatory - do not skip)
+
+Building and pushing this touches live theme files. Follow the store's standing process exactly: pull-to-reconcile before editing (the live theme has untracked changes beyond this git repo), edit, push to an **unpublished preview theme** first, verify with a real browser check (cookie-jar the `preview_theme_id` - a redirect silently drops it otherwise), get explicit go, push `--allow-live --only <files>`, re-verify on the live URL, delete the preview theme. See `docs/shopify-theme-dev-troubleshooting.md` for the `theme dev` file-watcher gotcha specifically (editing while `theme dev` runs can wedge the sync).
+
+## RSS -> Pinterest Syndication
+
+- Prerequisite: a Pinterest Business account for Active Paw, with the domain (`activepaw.co.uk`) claimed/verified, and Rich Pins (Article type) enabled - Rich Pins pull the same OG title/image/description the article page already emits once the above OG work is done, so no separate Pinterest-specific markup is needed.
+- Wiring: a Zapier or Make.com automation - trigger "New item in RSS feed" pointed at `https://activepaw.co.uk/blogs/<handle>.atom`, action "Create Pinterest Pin" (image = OG image, title = article title, destination link = article URL, board = a dedicated "Pet Care Guides" board).
+- Poll interval: hourly is more than sufficient given expected posting cadence (weekly or slower to start).
+- Manual fallback for launch: if the owner would rather not set up an automation platform immediately, manually pinning each article on publish is a perfectly reasonable v1 - the RSS feed exists either way and the automation can be added later without any article rework.
+
+## Security & Compliance
+
+- No new tokens in theme JavaScript - this feature has none to expose (blog content is public by nature).
+- If a Zapier/Make/Pinterest API credential is ever needed in the worker (future, not MVP), it goes through the existing vault pattern (`supplier_credentials`-style sealed storage), never logged, matching how `RESEND_API_KEY` / CJ credentials are already handled.
+- No PECR/marketing-consent implications - RSS/blog content is not an email send and does not touch `email_unsubscribes` or marketing consent at all.
+
+## MVP Scope
+
+1. Rename/repurpose the existing `news` blog (or create a new one - owner's call), with `templates/blog.json` + `templates/article.json` + `sections/main-blog.liquid` + `sections/main-article.liquid`, on-brand styled.
+2. Extend `meta-tags.liquid`'s OG-image block to cover articles.
+3. Reuse the existing share-button pattern on the article page - no new text payload.
+4. Publish the first five articles (one per collection, from the starter list above), each with featured image + meta title + meta description filled in, each linking to a real collection/product.
+5. Verify: article page renders on-brand on preview, `/blogs/<handle>.atom` contains the five entries, `sitemap_blogs_1.xml` contains the five article URLs and the (now-working) blog index, live Facebook/Pinterest debugger scrape shows a proper card for an article link.
+6. Manual Pinterest pinning of the first five articles (automation is Phase 2, not blocking launch).
+
+## Acceptance Criteria
+
+- [ ] `/blogs/<handle>` returns 200 and renders on-brand (not a bare Shopify default).
+- [ ] Each of the first 5 articles has a featured image, meta title, and meta description - publishing is blocked without all three.
+- [ ] `/blogs/<handle>.atom` returns valid Atom XML with 5 entries, each with a populated `<title>`, `<link>`, and image reference.
+- [ ] `sitemap_blogs_1.xml` lists the blog index plus all 5 article URLs.
+- [ ] Every article contains at least one working link to a real, active collection or product.
+- [ ] Sharing an article link in Facebook Messenger/Pinterest's own debugger shows a proper title + image card (not a bare text link) - proves the OG-image extension and share-button reuse both worked.
+- [ ] No new console errors, no `assets/theme.js` regressions on existing pages (spot-check PDP share button still works after the shared-pattern reuse).
+
+## Open Questions for the Owner
+
+1. Reuse the existing `news` blog (renamed) or start a fresh one with a different handle (e.g. `guides`)? Recommendation above: reuse/rename.
+2. Who writes the content - you, a hired writer, or AI-assisted drafts with your review before publish? This decides whether Phase 2 needs a review workflow built into the console, or is just a manual Shopify Admin task.
+3. What cadence is realistically sustainable - weekly, biweekly, monthly? A slower cadence kept consistently beats an ambitious one that lapses after a month (see Risks).
+4. Who owns the Pinterest Business account and its ongoing board curation?
+
+## Risks & Mitigations
+
+- **Thin/abandoned content risk**: a blog that goes quiet after 3 posts can read worse to Google than no blog at all, and wastes the Pinterest pipeline. Mitigation: commit to a cadence in Open Question 3 that is sustainable, not aspirational, before publishing the first post.
+- **Duplicate/thin content risk**: generic, non-specific buying-guide filler ranks poorly and can drag down overall site quality signals. Mitigation: every post must be genuinely useful and specific (measurable claims, real product tie-ins), per the Editorial rules above.
+- **Broken automation risk**: an auto-pin firing on a post with no featured image produces an ugly, low-performing pin. Mitigation: featured image is publish-blocking (Acceptance Criteria), not optional.
+- **Fabrication risk**: pet-care content invites confident-sounding claims that aren't actually verified. Mitigation: the same customer-facing-accuracy discipline already standing elsewhere in this project applies here - unverifiable claims get hedged or cut, never invented.
+
+## Future Enhancements
+
+- Add "Blog content + Pinterest" as an eighth channel on the pawscout-worker Traffic strategy board (`src/traffic.ts`), with basic performance tracking (sessions/clicks from Pinterest and organic blog referrals, if/when analytics access is wired up).
+- AI-assisted first-draft generation using the worker's existing LLM wiring, with the same strict fact-grounding discipline used in `src/inbox/draft-quality.ts` - never fabricate, always hedge the unknown, human review before publish.
+- Native Pinterest API integration in the worker if the no-code automation proves limiting (e.g. needing per-pin custom copy rather than a 1:1 title/image mirror of the article).
+- Tag-based filtering on the blog listing page (`sections/main-blog.liquid`) once there are enough posts per category to make filtering useful.
