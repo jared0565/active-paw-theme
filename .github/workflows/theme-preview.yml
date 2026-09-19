@@ -1,0 +1,96 @@
+# Pull-request preview (PRD R3, decision 5e, task T5): push the pull request's theme
+# files to an unpublished preview theme, run the independence check on it in both
+# modes, then delete the preview. Needs the Theme Access password in the repository
+# secret SHOPIFY_CLI_THEME_TOKEN (task T4); without it the job warns and passes.
+name: theme-preview
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: theme-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    name: preview theme, independence both modes
+    # Secrets are not available to pull requests from forks.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SHOPIFY_CLI_NO_ANALYTICS: "1"
+      SHOPIFY_FLAG_STORE: 4qkudm-ez.myshopify.com
+      SHOPIFY_CLI_THEME_TOKEN: ${{ secrets.SHOPIFY_CLI_THEME_TOKEN }}
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      STORE_URL: https://activepaw.co.uk
+    steps:
+      - name: Check the Theme Access token
+        id: token
+        run: |
+          if [ -z "$SHOPIFY_CLI_THEME_TOKEN" ]; then
+            echo "::warning::No SHOPIFY_CLI_THEME_TOKEN secret (PRD T4); the preview job is skipped."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.token.outputs.skip != 'true'
+
+      - uses: actions/setup-node@v7
+        if: steps.token.outputs.skip != 'true'
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dev tooling
+        if: steps.token.outputs.skip != 'true'
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Chromium for Playwright
+        if: steps.token.outputs.skip != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Shopify CLI
+        if: steps.token.outputs.skip != 'true'
+        # Pinned to the version verified locally; bump here, in theme-ci.yml and locally together.
+        run: npm install -g @shopify/cli@4.8.0 --no-audit --no-fund
+
+      - name: Push the preview theme
+        if: steps.token.outputs.skip != 'true'
+        id: push
+        run: |
+          name="preview/pr-${{ github.event.pull_request.number }}-run-${{ github.run_id }}"
+          shopify theme push --unpublished --theme "$name" --json > push.json
+          id=$(node -e 'const j=JSON.parse(require("fs").readFileSync("push.json","utf8")); console.log(j.theme.id)')
+          echo "preview theme $name has id $id"
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+      - name: Independence run on the preview (worker blocked)
+        if: steps.token.outputs.skip != 'true'
+        env:
+          PREVIEW_THEME_ID: ${{ steps.push.outputs.id }}
+        run: node tests/independence.cjs "$STORE_URL"
+
+      - name: Control run on the preview (worker up, informational)
+        if: always() && steps.push.outputs.id != ''
+        continue-on-error: true
+        env:
+          PREVIEW_THEME_ID: ${{ steps.push.outputs.id }}
+          BLOCK: "0"
+        run: node tests/independence.cjs "$STORE_URL"
+
+      - name: Keep the results and screenshots
+        if: always() && steps.push.outputs.id != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: preview-pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
+          path: output/playwright
+          retention-days: 14
+
+      - name: Delete the preview theme
+        # Runs on success, failure and cancellation, so no preview copy is left behind.
+        if: always() && steps.push.outputs.id != ''
+        run: shopify theme delete --theme "${{ steps.push.outputs.id }}" --force
