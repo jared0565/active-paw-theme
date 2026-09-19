@@ -1,0 +1,7 @@
+{
+  "sections": {
+    "main": { "type": "main-page", "settings": { "eyebrow": "Partner programme" } },
+    "apply": { "type": "affiliate-apply", "settings": {} }
+  },
+  "order": ["main", "apply"]
+}

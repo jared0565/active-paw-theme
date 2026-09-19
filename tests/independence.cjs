@@ -87,7 +87,14 @@ async function visit(context, name, url, specific, generic = true) {
     const mainText = await text(page, '#MainContent');
     check(rec, 'main content not empty', mainText.trim().length > 200, `${mainText.trim().length} chars`);
     check(rec, 'no open dialog', (await page.locator('[role="dialog"]:visible').count()) === 0);
-    check(rec, 'no layout shift after the feed window', h0 !== null && h1 !== null && Math.abs(h1 - h0) <= 2, `main ${h0}px -> ${h1}px`);
+    if (BLOCK) {
+      check(rec, 'no layout shift after the feed window', h0 !== null && h1 !== null && Math.abs(h1 - h0) <= 2, `main ${h0}px -> ${h1}px`);
+    } else {
+      // Content the worker adds below the fold grows the page without moving what is on screen (PRD R7).
+      const cls = await page.evaluate(() => (typeof window.__cls === 'number' ? +window.__cls.toFixed(4) : null)).catch(() => null);
+      rec.cls = cls;
+      check(rec, 'no visible layout shift (CLS below 0.05)', cls === null || cls < 0.05, `CLS ${cls}, main ${h0}px -> ${h1}px`);
+    }
   }
   if (specific) await specific(page, rec);
 
@@ -120,6 +127,14 @@ async function pickThinSearchTerm(context) {
 (async () => {
   const browser = await chromium.launch();
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  await context.addInitScript(() => {
+    window.__cls = 0;
+    try {
+      new PerformanceObserver((list) => {
+        for (const e of list.getEntries()) if (!e.hadRecentInput) window.__cls += e.value;
+      }).observe({ type: 'layout-shift', buffered: true });
+    } catch { /* observer unsupported: cls stays 0 and the check is skipped */ }
+  });
   if (PREVIEW) {
     const p = await context.newPage();
     await p.goto(`${BASE}/?preview_theme_id=${PREVIEW}`, { waitUntil: 'load', timeout: 45000 });
@@ -200,12 +215,26 @@ async function pickThinSearchTerm(context) {
     check(rec, 'contact form present', (await count(page, 'form[action^="/contact"]')) > 0);
   });
 
-  // Affiliate pages are rendered by the worker through the app proxy: measured only.
-  await visit(context, 'affiliate', `${BASE}/apps/pawscout/affiliate/apply`, async (page, rec) => {
-    const body = await text(page, 'body');
-    rec.renders = rec.status === 200 && body.trim().length > 100;
-    check(rec, 'affiliate page renders (worker dependency, informational)', rec.renders, rec.navigationError || `status ${rec.status}`, false);
-  }, false);
+  // Affiliate entry point (PRD T10, decision 5c): the Shopify page /pages/affiliates
+  // carries the programme copy, an email route and the Apply button to the worker's
+  // form; the button is hidden until the feed verdict proves the worker reachable.
+  // Until the owner creates the page, the worker-rendered form is measured instead.
+  const affPage = await context.request.get(`${BASE}/pages/affiliates`);
+  if (affPage.status() === 200) {
+    await visit(context, 'affiliate', `${BASE}/pages/affiliates`, async (page, rec) => {
+      const apply = page.locator('[data-affiliate-apply]');
+      const applyCount = await apply.count();
+      const applyVisible = applyCount ? await apply.first().isVisible() : false;
+      check(rec, 'apply button present in markup', applyCount === 1, `${applyCount} button(s)`);
+      if (BLOCK) check(rec, 'apply button stays hidden without the worker', !applyVisible);
+      else check(rec, 'apply button shown and links to the worker form', applyVisible && /\/apps\/pawscout\/affiliate\/apply/.test((await apply.first().getAttribute('href')) || ''));
+      check(rec, 'email route present', (await count(page, 'a[href^="mailto:"]')) > 0);
+    });
+  } else {
+    await visit(context, 'affiliate', `${BASE}/apps/pawscout/affiliate/apply`, async (page, rec) => {
+      check(rec, 'affiliate page renders (worker dependency, informational)', rec.status === 200, `status ${rec.status}; /pages/affiliates not created yet (${affPage.status()})`, false);
+    }, false);
+  }
 
   // Cart and checkout with a real line in the basket, then clear it.
   if (variantId) {

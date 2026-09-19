@@ -741,3 +741,24 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 21 - 2026-09-19: Affiliates page entry point, and the search page measured for layout shift (PRD tasks T10 and T11)
+
+### What changed
+- `sections/affiliate-apply.liquid` (new) and `templates/page.affiliates.json` (new) - the Affiliates page renders its owner-edited body plus a card with the Apply button to the worker's form (hidden until proven reachable) and an email route. Settings: heading, text, button label, form URL, email, subject, offline note.
+- `assets/theme.js` - a consumer of the shared storewide feed shows the Apply button and hides the offline note once the feed answers.
+- `sections/site-footer.liquid` - "Affiliates" links to `/pages/affiliates`.
+- `tests/independence.cjs` - visits `/pages/affiliates` once it exists (blocked: complete, button hidden, email present; control: button visible and linking to the worker form), the worker form until then; measures the cumulative layout-shift score on every page and fails control runs above 0.05; blocked runs keep the main-height rule.
+
+### Why it changed
+- Decision 5c: the Shopify page is the affiliate entry point so the footer link never dead-ends (contract rule 1). R7: no visible layout shift when the worker succeeds.
+
+### How it was solved
+- T11 by measurement rather than code: on the thin search "sisal" the ghost row lands at 922 px on 1280x900 with the footer at 1100 px; on 390x844 the footer is at 1702 px; CLS 0 on both. Appending below the fold grows the page but moves nothing on screen. Recorded in the PRD with the taller-viewport caveat.
+- T10 needs the owner to create the page (title "Affiliates", handle `affiliates`, template `page.affiliates`, body from the worker's page). Until then the footer link 404s, so the pull request waits for the page.
+
+### Files touched
+- `sections/affiliate-apply.liquid`, `templates/page.affiliates.json`, `assets/theme.js`, `sections/site-footer.liquid`, `tests/independence.cjs`, `docs/theme-production-grade-prd.md`, `docs/theme-worker-contract.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
