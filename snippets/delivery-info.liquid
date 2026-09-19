@@ -10,6 +10,9 @@
   matrix. When present it's shown verbatim; when blank (stale / not yet synced)
   a conservative static window is shown. Rule: only surface what is real and
   defensible - the synced figure when we have it, a conservative window otherwise.
+  Market rule (PRD R11, decision 5f): the free-delivery row and the estimate are
+  UK facts (the estimate is the CJ-to-UK lane), so both render only for a GB
+  market visitor; other markets get the neutral Delivery setting line.
   @param {product} product - Product being viewed
   @param {string} delivery_days - synced order-to-door range when fresh, blank when stale or absent
 {% enddoc %}
@@ -34,8 +37,12 @@
     a viewport-scaled font so every row stays a single line on phones. {%- endcomment -%}
 <div class="delivery-info" aria-label="Delivery information">
   <ul class="di-rows">
+    {%- if localization.country.iso_code == 'GB' -%}
     <li><strong>FREE UK delivery</strong>&nbsp;on every order</li>
     <li>Estimated {% if delivery_days != blank %}{{ delivery_days }}{% else %}{{ fallback_days }}{% endif %} days to your door</li>
+    {%- else -%}
+    <li>{{ settings.delivery_detail_other | default: 'Delivery options and times are shown at checkout.' }}</li>
+    {%- endif -%}
     <li>14-day returns &middot; <a href="/policies/refund-policy">see our returns policy</a></li>
   </ul>
 </div>

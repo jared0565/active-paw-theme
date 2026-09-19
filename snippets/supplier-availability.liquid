@@ -27,6 +27,8 @@
     static band in delivery-info.
   - Status values the worker writes today ('available', 'out_of_stock') and
     the documented set are both mapped; anything else reads "Ready to order".
+  - The default detail line is the Delivery theme setting for the visitor's
+    market: the UK line for GB, the neutral line for every other market.
   - A number is shown only when it is small (10 or fewer); it is always the
     real quantity that also governs the cap.
   @param {variant} variant - the variant being priced or in the cart
@@ -59,7 +61,13 @@
 
   assign cap = 20
   assign label = 'Ready to ship'
-  assign detail = 'Free UK delivery on every order. Tracking details are sent after dispatch.'
+  # Default detail: the UK line for a GB market visitor, the neutral line elsewhere
+  # (PRD R11, decision 5f). Both are theme settings under Delivery.
+  if localization.country.iso_code == 'GB'
+    assign detail = settings.delivery_detail_uk | default: 'Free UK delivery on every order. Tracking details are sent after dispatch.'
+  else
+    assign detail = settings.delivery_detail_other | default: 'Delivery options and times are shown at checkout.'
+  endif
   assign urgency = ''
   assign sold_out = false
   assign qty_known = false
