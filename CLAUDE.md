@@ -102,6 +102,8 @@ shopify theme dev
 
 These require the Shopify CLI authenticated against the store. The store handle is `4qkudm-ez.myshopify.com`.
 
+**Deploy path since 2026-09-19 (PRD decision 5a):** `shopify-deploy` is the single live branch and Shopify's GitHub integration deploys every push to it. Change the theme on a feature branch, open a pull request, and merge when CI is green; the merge is the deploy, and rollback is a `git revert` on the same branch. Every deployed merge gets a `release-<date>-<n>` tag. `shopify theme push` is for an unpublished preview theme only, never for live. The runbook is written in PRD task T6.
+
 **Known `theme dev` gotcha (read before debugging a wedged dev server):** editing a theme file while `shopify theme dev` is running can wedge its sync - pages return 500 with title "Failed to Upload Theme Files" and the log shows `*.liquid.tmp.<pid>.<hash> contains illegal characters`. Cause: Claude Code's atomic Edit/Write creates a temp file the watcher tries to upload (the `<pid>` is the `claude.exe` process - **never kill it**). Your real edit still syncs ("Synced » update …" appears in the log). Fix: finish edits, kill **only** the `node` process on port 9292, then restart `theme dev`. **Prevention: batch all edits, then run `theme dev` once to verify.** Full playbook with copy-paste commands (and the auth-expiry + "linters pass but page is broken" gotchas): `docs/shopify-theme-dev-troubleshooting.md`.
 
 ## Fresh clone: arm the agent tooling

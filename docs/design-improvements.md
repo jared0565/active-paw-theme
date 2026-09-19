@@ -648,6 +648,7 @@
 - `shopify theme check --fail-level error`: exit 0, 66 files, 6 warnings (the T18 set), 0 errors.
 - `python -m unittest discover -s tests -t .`: 37 tests OK locally; 19 in CI, where the machine-local tests and helper modules are absent.
 - Pre-flight for T2: `shopify theme pull --live` into a detached worktree of `ddb7de0` left `git status` empty; a planted change in the worktree was overwritten on re-pull.
+- **Live (2026-09-19 10:31Z):** the owner ran the T2 merge script: merge `c1e2d93` on `shopify-deploy`, tree identical to the working branch, tag `release-2026-09-19-1`. Shopify redeployed on the push (live `layout/theme.liquid` checksum `f1903bdf…` equals the file). CI run 35437647493 green. Independence run against live: blocked 71/72 (0 hard failures), control 68/69 (one console error on the worker's affiliate page, not theme code). The working branch `claude/search-supplier-suggestions` is deleted; work continues on feature branches off `shopify-deploy`.
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
