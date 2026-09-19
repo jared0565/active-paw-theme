@@ -652,3 +652,26 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 17 - 2026-09-19: Deploy runbook, theme-worker contract, preview-theme support in the independence check (PRD task T6)
+
+### What changed
+- `docs/RUNBOOK-THEME-DEPLOY.md` (new) - branch, fast checks, preview theme, pull request, post-merge verification, tag, rollback by revert, and the list of things that do not happen.
+- `docs/theme-worker-contract.md` (new) - the four rules, every live call with its failure behaviour, the payload fields read, the metafields read natively, the open questions, and how the contract changes.
+- `tests/independence.cjs` - `PREVIEW_THEME_ID=<id>` runs the check against an unpublished theme: one visit with `?preview_theme_id=` sets Shopify's preview cookie for the browser context, and every theme page asserts `Shopify.theme.id` equals the id, so a run that fell back to live fails. Checkout and the worker's affiliate page are not theme-rendered and carry no such check.
+
+### Why it changed
+- PRD R2 and R10: the deploy path decided on 2026-09-19 has to live in the repository, and every Phase 2 change needs a preview verification that cannot silently test live instead.
+
+### How it was solved
+- `shopify theme push --unpublished --theme "preview/t6-rehearsal" --json` created theme 207761965394 from the deploy branch. First preview run: 79/82 with two false failures, checkout and the affiliate page (neither is served by the theme, so `Shopify.theme` is absent). The check was scoped to theme pages. Second run: blocked 79/80 with 0 hard failures, control 76/77 (the affiliate page console error, the worker's). The preview theme was then deleted with `shopify theme delete --theme 207761965394 --force`; the theme list holds live plus the owner's two copies.
+- Rollback rehearsal: `git revert -m 1 --no-commit c1e2d93` in a throwaway worktree produced a tree identical to `994d44a`, 14 theme files. Not rehearsed: a throwaway branch connected to a preview theme through Shopify's GitHub integration (owner-only in admin).
+
+### Files touched
+- `docs/RUNBOOK-THEME-DEPLOY.md`, `docs/theme-worker-contract.md`, `tests/independence.cjs`, `docs/theme-production-grade-prd.md`.
+
+### Verification (2026-09-19, first-hand)
+- `node --check` and eslint clean on the script; the preview runs above; no en/em dashes in the new files.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
