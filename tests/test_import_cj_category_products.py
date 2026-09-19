@@ -2,7 +2,7 @@
 
 The script is a dev-era one-off tool (see CLAUDE.md, "Python scripts"); it
 only defines functions at import time, so it can be loaded by path without
-touching the network. `powershell_executable()` must hand subprocess an
+touching the network. Its helper modules are machine-local, so they are stubbed. `powershell_executable()` must hand subprocess an
 absolute path (ruff S607) and fail loudly when PowerShell is not on PATH.
 """
 
@@ -11,6 +11,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from tests.script_stubs import stubbed_helpers
+
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ("import-cj-category-products.py",)
 
@@ -18,7 +20,8 @@ SCRIPTS = ("import-cj-category-products.py",)
 def load(name):
     spec = importlib.util.spec_from_file_location(name.replace("-", "_").removesuffix(".py"), ROOT / name)
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    with stubbed_helpers():
+        spec.loader.exec_module(module)
     return module
 
 

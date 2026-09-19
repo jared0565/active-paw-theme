@@ -2,13 +2,16 @@
 
 The script is a dev-era one-off (see CLAUDE.md, "Python scripts"). Its catalog
 walk lives in main() behind a __main__ guard, so loading it by path defines
-fix() without calling the Admin API; the test proves both.
+fix() without calling the Admin API; the test proves both. The shopify_admin
+helper is machine-local, so a stub stands in for it.
 """
 
 import importlib.util
 import unittest
 from pathlib import Path
 from unittest import mock
+
+from tests.script_stubs import stubbed_helpers
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scrub-products-emdash.py"
@@ -17,7 +20,8 @@ SCRIPT = ROOT / "scrub-products-emdash.py"
 def load():
     spec = importlib.util.spec_from_file_location("scrub_products_emdash", SCRIPT)
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    with stubbed_helpers():
+        spec.loader.exec_module(module)
     return module
 
 
@@ -39,7 +43,7 @@ class TestFix(unittest.TestCase):
 
 class TestImportIsInert(unittest.TestCase):
     def test_loading_the_script_does_not_call_the_admin_api(self):
-        with mock.patch("shopify_admin.admin_graphql") as admin_graphql:
+        with stubbed_helpers() as stubs, mock.patch.object(stubs["shopify_admin"], "admin_graphql") as admin_graphql:
             load()
         admin_graphql.assert_not_called()
 

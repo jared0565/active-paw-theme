@@ -70,7 +70,7 @@ Both `sections/main-product.liquid` (PDP) and `sections/main-cart.liquid` follow
 
 > **Operational policy (2026-07-07, owner rule):** these scripts and `shopify_admin.py` are a dev-era one-off tool. **Do NOT use them for operational or feature Shopify work** - the `pawscout-worker` is the production Shopify integration and the sole operational Admin API actor. Never propose adding scopes to the scripts app or call its Admin API for a feature; build the capability into the worker instead. See `pawscout-worker/CLAUDE.md` ("The worker is the system").
 
-All scripts use only the Python standard library (`urllib`, `json`, `pathlib`, `subprocess`, `time`). Run any of them directly with `python <script>.py`.
+All scripts use only the Python standard library (`urllib`, `json`, `pathlib`, `subprocess`, `time`). Run any of them directly with `python <script>.py`. The helper modules they import (`cj_client.py`, `shopify_product.py`, `store_collections.py`, `shopify_admin.py`) are machine-local and not committed because they carry store access, so a clean checkout cannot run the scripts; the unit tests load the scripts with stand-ins from `tests/script_stubs.py`.
 
 Key scripts:
 

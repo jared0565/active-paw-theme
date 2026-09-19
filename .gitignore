@@ -66,3 +66,4 @@ graph-out/
 !/tests/test_scrub_products_emdash.py
 !/tests/independence.cjs
 !/TASKS.md
+!/tests/script_stubs.py
