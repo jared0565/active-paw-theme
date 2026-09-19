@@ -12,7 +12,10 @@
       extend under the status bar - safe-area CSS handles the insets).
       apple-touch-icon must be a raster image; iOS ignores SVG there.
     {%- endcomment -%}
+    {% # theme-check-disable MissingAsset %}
+    {% # assets/manifest.json.liquid is compiled to manifest.json on Shopify; theme check only looks for the static file %}
     <link rel="manifest" href="{{ 'manifest.json' | asset_url }}">
+    {% # theme-check-enable MissingAsset %}
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">

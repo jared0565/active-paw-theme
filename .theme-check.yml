@@ -1,0 +1,15 @@
+# Theme check runs from the repository root, where dev tooling, docs, tests and
+# the nested worker also live. None of those are theme files, so they are
+# excluded here; the theme directories are always checked. "/*.json" is
+# root-level only: a bare "*.json" would also skip templates/ and config/
+# (measured 2026-09-19 with planted invalid files).
+ignore:
+  - node_modules/**
+  - output/**
+  - graph-out/**
+  - pawscout-worker/**
+  - tests/**
+  - docs/**
+  - test-results/**
+  - .playwright-mcp/**
+  - "/*.json"
