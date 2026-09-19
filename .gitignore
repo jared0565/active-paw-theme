@@ -65,3 +65,4 @@ graph-out/
 !/tests/test_import_cj_products.py
 !/tests/test_scrub_products_emdash.py
 !/tests/independence.cjs
+!/TASKS.md
