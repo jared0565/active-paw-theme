@@ -26,40 +26,22 @@
                 unchanged. Never expose internal sourcing (supplier names, system
                 terms) to the customer.
               endcomment
-              assign max_line_quantity = 20
-              assign inventory_note = 'In stock. Quantity is capped per order.'
+
+              capture sa
+                render 'supplier-availability', variant: item.variant, product: item.product
+              endcapture
+              assign sa = sa | strip | split: '|'
+              assign max_line_quantity = sa[2] | plus: 0
               assign line_has_quantity_issue = false
-              assign supplier_available_qty = item.variant.metafields.supplier.available_qty.value
-              assign supplier_max_order_qty = item.variant.metafields.supplier.max_order_qty.value
-              assign supplier_last_checked_at = item.variant.metafields.supplier.last_checked_at.value | default: item.product.metafields.supplier.last_checked_at.value
-              assign uses_tracked_inventory_limit = false
-              assign line_known_qty = 0
-              assign line_qty_known = false
-
-              if item.variant.inventory_management != blank
-                if item.variant.inventory_policy == 'deny'
-                  assign uses_tracked_inventory_limit = true
-                  assign tracked_inventory = item.variant.inventory_quantity | default: 0
-                  assign max_line_quantity = tracked_inventory
-                  assign line_qty_known = true
-                  assign line_known_qty = tracked_inventory
-                else
-                  assign inventory_note = 'Available to order. Quantity is capped per order.'
-                endif
+              assign inventory_note = 'In stock. Quantity is capped per order.'
+              if sa[10] == 'true'
+                assign inventory_note = 'Available to order. Quantity is capped per order.'
               endif
-
-              unless uses_tracked_inventory_limit
-                if supplier_max_order_qty != blank
-                  assign max_line_quantity = supplier_max_order_qty
-                  assign inventory_note = 'In stock. Capped at ' | append: supplier_max_order_qty | append: ' per order.'
-                elsif supplier_available_qty != blank
-                  assign max_line_quantity = supplier_available_qty
-                  assign line_qty_known = true
-                  assign line_known_qty = supplier_available_qty
-                endif
-              endunless
-
-              if line_qty_known
+              if sa[9] == 'supplier_max'
+                assign inventory_note = 'In stock. Capped at ' | append: sa[2] | append: ' per order.'
+              endif
+              if sa[7] == 'true'
+                assign line_known_qty = sa[8] | plus: 0
                 if line_known_qty <= 0
                   assign inventory_note = 'Currently unavailable.'
                 elsif line_known_qty <= 3
@@ -70,16 +52,9 @@
                   assign inventory_note = 'In stock.'
                 endif
               endif
-
-              if supplier_last_checked_at != blank
-                assign supplier_checked_label = supplier_last_checked_at | date: "%d %b %Y"
-                assign inventory_note = inventory_note | append: ' Availability updated ' | append: supplier_checked_label | append: '.'
+              if sa[6] != blank
+                assign inventory_note = inventory_note | append: ' Availability updated ' | append: sa[6] | append: '.'
               endif
-
-              if max_line_quantity < 1
-                assign max_line_quantity = 1
-              endif
-
               if item.quantity > max_line_quantity
                 assign line_has_quantity_issue = true
                 assign cart_has_quantity_issue = true

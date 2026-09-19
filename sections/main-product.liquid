@@ -3,86 +3,30 @@
   assign product_title = product.title | default: demo_title
   assign selected_variant = product.selected_or_first_available_variant
   assign supplier_name = selected_variant.metafields.supplier.name.value | default: product.metafields.supplier.name.value
-  assign supplier_status = selected_variant.metafields.supplier.status.value | default: product.metafields.supplier.status.value
-  assign supplier_last_checked_at = selected_variant.metafields.supplier.last_checked_at.value | default: product.metafields.supplier.last_checked_at.value
-  assign supplier_available_qty = selected_variant.metafields.supplier.available_qty.value
-  assign supplier_max_order_qty = selected_variant.metafields.supplier.max_order_qty.value
-  assign pdp_max_order_qty = 20
-  assign pdp_status_label = 'Ready to ship'
-  assign pdp_status_detail = 'Free UK delivery on every order. Tracking details are sent after dispatch.'
-  assign pdp_sold_out = false
-  assign pdp_urgency = ''
-  assign pdp_qty_known = false
-  assign pdp_known_qty = 0
-
   comment
-    Purchase CAP priority is unchanged (tracked inventory -> supplier max order qty
-    -> supplier available qty -> conservative 20). The availability BANNER is computed
-    separately below: a number is shown ONLY when the real synced quantity is small
-    (10 or fewer). A large raw count ("466 available") reads like a data dump and
-    kills urgency, so bigger stock renders as a plain "In stock". Every number shown
-    is the real quantity that also governs the buy cap - never an invented one.
+    Availability, detail, purchase cap and urgency come from ONE snippet shared
+    with the cart page and the cart drawer (PRD R4/R8). Priority is unchanged:
+    tracked inventory -> supplier max order qty -> supplier available qty ->
+    conservative 20. Supplier data counts only while its check is fresh (3 days).
   endcomment
-  if selected_variant.inventory_management != blank and selected_variant.inventory_policy == 'deny'
-    assign pdp_max_order_qty = selected_variant.inventory_quantity | default: 0
-    assign pdp_qty_known = true
-    assign pdp_known_qty = pdp_max_order_qty
-  elsif supplier_max_order_qty != blank
-    assign pdp_max_order_qty = supplier_max_order_qty
-    if supplier_available_qty != blank
-      assign pdp_qty_known = true
-      assign pdp_known_qty = supplier_available_qty
-    endif
-  elsif supplier_available_qty != blank
-    assign pdp_max_order_qty = supplier_available_qty
-    assign pdp_qty_known = true
-    assign pdp_known_qty = supplier_available_qty
-  endif
-
-  if pdp_qty_known
-    if pdp_known_qty <= 0
-      assign pdp_sold_out = true
-      assign pdp_status_label = 'Out of stock'
-      assign pdp_status_detail = 'Currently unavailable - check back soon.'
-    elsif pdp_known_qty <= 3
-      assign pdp_status_label = 'Almost gone'
-      assign pdp_status_detail = 'Only ' | append: pdp_known_qty | append: ' left in stock - restock not guaranteed.'
-      assign pdp_urgency = 'high'
-    elsif pdp_known_qty <= 10
-      assign pdp_status_label = 'Low stock'
-      assign pdp_status_detail = 'Only ' | append: pdp_known_qty | append: ' left in stock.'
-      assign pdp_urgency = 'low'
-    else
-      assign pdp_status_label = 'In stock'
-    endif
-  elsif supplier_status != blank
-    case supplier_status
-      when 'in_stock'
-        assign pdp_status_label = 'In stock'
-      when 'low_stock'
-        assign pdp_status_label = 'Low stock'
-        assign pdp_urgency = 'low'
-      when 'supplier_available'
-        assign pdp_status_label = 'In stock'
-      when 'backorder_possible'
-        assign pdp_status_label = 'Available to order'
-        assign pdp_status_detail = 'May take a little longer to dispatch than usual.'
-      when 'unavailable'
-        assign pdp_status_label = 'Currently unavailable'
-      else
-        assign pdp_status_label = 'Ready to order'
-    endcase
-  endif
-  unless selected_variant.available
+  capture sa
+    render 'supplier-availability', variant: selected_variant, product: product
+  endcapture
+  assign sa = sa | strip | split: '|'
+  assign pdp_status_label = sa[0]
+  assign pdp_status_detail = sa[1]
+  assign pdp_max_order_qty = sa[2] | plus: 0
+  assign pdp_urgency = sa[3]
+  assign pdp_sold_out = false
+  if sa[4] == 'true'
     assign pdp_sold_out = true
-    assign pdp_status_label = 'Out of stock'
-    assign pdp_status_detail = 'Currently unavailable - check back soon.'
-  endunless
-  # A max of 0 produces an invalid <input max="0" min="1"> that blocks the form;
-  # sold-out states disable the buy controls outright instead.
-  if pdp_max_order_qty < 1
-    assign pdp_max_order_qty = 1
   endif
+  assign supplier_fresh = false
+  if sa[5] == 'true'
+    assign supplier_fresh = true
+  endif
+  assign supplier_checked_label = sa[6]
+  assign supplier_delivery_days = sa[11]
   assign product_title_length = product_title | size
   assign product_title_max_size = 30
 
@@ -242,8 +186,8 @@
     <div class="pdp-delivery-banner{% if pdp_urgency != '' %} pdp-delivery-banner--{{ pdp_urgency }}{% endif %}">
       <strong>{{ pdp_status_label }}{% if supplier_demand == 'selling_fast' and pdp_sold_out == false %} <span class="pdp-demand-badge">Selling fast</span>{% endif %}</strong>
       <span>{{ pdp_status_detail }}</span>
-      {% if supplier_last_checked_at != blank %}
-        <small>Availability updated {{ supplier_last_checked_at | date: "%d %b %Y" }}.</small>
+      {% if supplier_checked_label != blank %}
+        <small>Availability updated {{ supplier_checked_label }}.</small>
       {% endif %}
     </div>
     <p class="pdp-lede">
@@ -289,7 +233,10 @@
         the product's own actual band, falling back to the representative if not yet
         synced. Only a real value is attached (rule: real & defensible).
       {%- endcomment -%}
-      {%- assign checkout_estimate = product.metafields.supplier.delivery_days_actual.value | default: product.metafields.supplier.delivery_days.value -%}
+      {%- assign checkout_estimate = '' -%}
+      {%- if supplier_fresh -%}
+        {%- assign checkout_estimate = product.metafields.supplier.delivery_days_actual.value | default: supplier_delivery_days -%}
+      {%- endif -%}
       {%- if checkout_estimate != blank -%}
         <input type="hidden" name="properties[Estimated delivery]" value="{{ checkout_estimate }} days">
       {%- endif -%}
@@ -328,7 +275,7 @@
     {% else %}
       <div class="payment-note">Secure checkout options are shown at checkout.</div>
     {% endif %}
-    {% render 'delivery-info', product: product %}
+    {% render 'delivery-info', product: product, delivery_days: supplier_delivery_days %}
     {%- comment -%} W-ADDON: pawscout.js fills this with hidden filler products
         (cheap add-ons, never browsable) - stays hidden when none exist. {%- endcomment -%}
     <div class="pdp-addons" data-pawscout-pdp-addons hidden>

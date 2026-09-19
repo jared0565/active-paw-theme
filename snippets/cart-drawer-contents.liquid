@@ -9,29 +9,13 @@
   <ul class="cart-drawer__items" role="list">
     {%- for item in cart.items -%}
       {%- liquid
-        assign max_line_quantity = 20
+
+        capture sa
+          render 'supplier-availability', variant: item.variant, product: item.product
+        endcapture
+        assign sa = sa | strip | split: '|'
+        assign max_line_quantity = sa[2] | plus: 0
         assign line_has_quantity_issue = false
-        assign supplier_available_qty = item.variant.metafields.supplier.available_qty.value
-        assign supplier_max_order_qty = item.variant.metafields.supplier.max_order_qty.value
-        assign uses_tracked_inventory_limit = false
-
-        if item.variant.inventory_management != blank and item.variant.inventory_policy == 'deny'
-          assign uses_tracked_inventory_limit = true
-          assign max_line_quantity = item.variant.inventory_quantity | default: 0
-        endif
-
-        unless uses_tracked_inventory_limit
-          if supplier_max_order_qty != blank
-            assign max_line_quantity = supplier_max_order_qty
-          elsif supplier_available_qty != blank
-            assign max_line_quantity = supplier_available_qty
-          endif
-        endunless
-
-        if max_line_quantity < 1
-          assign max_line_quantity = 1
-        endif
-
         if item.quantity > max_line_quantity
           assign line_has_quantity_issue = true
           assign cart_has_quantity_issue = true

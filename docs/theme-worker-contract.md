@@ -7,7 +7,7 @@ What the Active Paw theme takes from the PawScout worker, how, and what happens 
 Set by the owner on 2026-09-18 (channel round 227):
 
 1. **Every live call is optional.** A page must be complete with the worker unreachable: no empty region, no open dialog, no layout shift, no error from theme code.
-2. **Shopify-held data carries its own freshness.** The theme trusts worker-written metafields only while `supplier.last_checked_at` is recent. *Planned (PRD T8, T12, decision 5b):* older than 3 days, or `supplier.status` equal to `unknown_stale`, renders the conservative default.
+2. **Shopify-held data carries its own freshness.** The theme trusts worker-written metafields only while `supplier.last_checked_at` is within 3 days and `supplier.status` is not `unknown_stale` (decision 5b, implemented 2026-09-19 in `snippets/supplier-availability.liquid`). Stale data renders the conservative default: no status, no supplier quantity, no delivery window, no "Availability updated" line. Tracked Shopify inventory is never subject to this rule.
 3. **The worker assumes no theme.** Nothing the worker serves depends on the theme being present.
 4. **No shared secrets or code.** The theme holds no token; the browser calls the worker only on public routes and through the Shopify app proxy.
 
@@ -39,15 +39,15 @@ A field the worker stops sending must be treated by the theme as absent, never a
 
 ## 4. Worker-written Shopify data the theme reads natively
 
-Namespace `supplier`, variant level with product-level fallback for `name`, `status`, `warehouse`, `last_checked_at`, `fulfillment_confidence`. Full type spec: `docs/shopify-supplier-metafields.md`.
+Namespace `supplier`. The spec (`docs/shopify-supplier-metafields.md`) puts quantities and status at variant level with product-level fallback for `name`, `status`, `warehouse`, `last_checked_at`, `fulfillment_confidence`. Measured 2026-09-19 on all 50 active products: the worker writes every field at PRODUCT level and no variant metafields at all, and every variant is Shopify-tracked with policy deny, so today the theme's supplier-quantity path never runs and the banner comes from Shopify inventory. Raised with the worker in round 238.
 
 | Key | Theme use | When absent |
 |---|---|---|
-| `supplier.status` | `sections/main-product.liquid`: `in_stock` "In stock"; `low_stock` "Low stock" plus urgency; `supplier_available` "In stock"; `backorder_possible` "Available to order"; `unavailable` "Currently unavailable"; anything else, `unknown_stale` included, "Ready to order" today (*planned:* conservative default) | "Ready to ship" |
+| `supplier.status` | `snippets/supplier-availability.liquid`, only when fresh and only when Shopify does not track the variant: `in_stock`, `available`, `supplier_available` "In stock"; `low_stock` "Low stock" plus urgency; `backorder_possible` "Available to order"; `unavailable`, `out_of_stock` "Currently unavailable"; `unknown_stale` counts as stale; anything else "Ready to order". Measured 2026-09-19: the worker writes `available`, `out_of_stock` and `low_stock`, none of which except `low_stock` is in `docs/shopify-supplier-metafields.md` | "Ready to ship" |
 | `supplier.available_qty`, `supplier.max_order_qty` | purchase cap after tracked Shopify inventory (`main-product.liquid`, `main-cart.liquid`, `snippets/cart-drawer-contents.liquid`); a number shown only at 10 or fewer, "Only N left" at 3 or fewer | cap 20 |
-| `supplier.last_checked_at` | "Availability updated <date>" line on the product page and cart; today display only (*planned:* gates status and delivery window at 3 days) | line omitted |
+| `supplier.last_checked_at` | gates every other supplier field (3 days); "Availability updated <date>" on the product page and cart page only while fresh | everything supplier-derived is ignored |
 | `supplier.demand` | "Selling fast" badge on `selling_fast` | nothing |
-| `supplier.delivery_days_actual`, `supplier.delivery_days` | delivery range on the product page (`snippets/delivery-info.liquid`) and a hidden line-item property "Estimated delivery: N days" | 6 to 14 days, or 3 to 10 when `supplier.origin` is GB |
+| `supplier.delivery_days_actual`, `supplier.delivery_days` | while fresh: delivery range on the product page (`snippets/delivery-info.liquid`) and a hidden line-item property "Estimated delivery: N days" | 6 to 14 days, or 3 to 10 when `supplier.origin` is GB; no line-item property |
 | `supplier.name`, `supplier.warehouse` | switches the "Tracked delivery" copy only; never rendered to the customer (the "Fulfilled by <name>" row in Product details was removed 2026-09-19, PRD T9, and the independence run asserts its absence) | "Care add-ons" copy |
 | `supplier.fulfillment_confidence` | assigned, never rendered (open question to the worker, round 230 finding 6) | |
 | `article.metafields.blog.faq_json`, `blog.related_products` | `sections/main-article.liquid`: FAQ with schema, "Shop this guide" | sections omitted |

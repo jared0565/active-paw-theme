@@ -1,0 +1,139 @@
+{% doc %}
+  Availability for ONE variant: the single place that decides the label, the
+  detail line, the purchase cap and the urgency from Shopify inventory and the
+  supplier.* metafields (PRD R4 and R8). Rendered by the product page, the cart
+  page and the cart drawer, so the three always agree.
+
+  Output is one line of pipe-separated fields; callers capture and split it:
+    capture sa
+      render 'supplier-availability', variant: selected_variant, product: product
+    endcapture
+    assign sa = sa | strip | split: '|'
+  Fields: 0 label, 1 detail, 2 cap, 3 urgency ('' | low | high), 4 sold_out,
+  5 fresh, 6 checked_label (blank unless fresh), 7 qty_known, 8 known_qty,
+  9 source (tracked | supplier_max | supplier_qty | default), 10 policy_continue,
+  11 delivery_days (the synced range, blank unless fresh). Booleans are the
+  strings 'true' / 'false'.
+
+  Rules:
+  - Tracked Shopify inventory with policy deny is authoritative for the cap and
+    for the quantity banner. Supplier quantities apply only when Shopify does
+    not track the variant.
+  - Supplier data is trusted only while the supplier check is FRESH: a
+    supplier.last_checked_at within 3 days (owner decision 2026-09-19, two
+    missed nightly runs) and a status other than unknown_stale. Stale or
+    absent supplier data renders the conservative default and hides the
+    "Availability updated" date; the delivery window then falls back to the
+    static band in delivery-info.
+  - Status values the worker writes today ('available', 'out_of_stock') and
+    the documented set are both mapped; anything else reads "Ready to order".
+  - A number is shown only when it is small (10 or fewer); it is always the
+    real quantity that also governs the cap.
+  @param {variant} variant - the variant being priced or in the cart
+  @param {product} product - its product (product-level metafields are the fallback)
+{% enddoc %}
+{%- liquid
+  assign s_status = variant.metafields.supplier.status.value | default: product.metafields.supplier.status.value
+  assign s_checked = variant.metafields.supplier.last_checked_at.value | default: product.metafields.supplier.last_checked_at.value
+  assign s_available_qty = variant.metafields.supplier.available_qty.value
+  assign s_max_order_qty = variant.metafields.supplier.max_order_qty.value
+  assign s_delivery_days = product.metafields.supplier.delivery_days.value
+
+  assign fresh = false
+  assign checked_label = ''
+  if s_checked != blank
+    assign now_s = 'now' | date: '%s' | plus: 0
+    assign checked_s = s_checked | date: '%s' | plus: 0
+    assign age_s = now_s | minus: checked_s
+    if age_s >= 0 and age_s <= 259200 and s_status != 'unknown_stale'
+      assign fresh = true
+      assign checked_label = s_checked | date: '%d %b %Y'
+    endif
+  endif
+  unless fresh
+    assign s_status = ''
+    assign s_available_qty = ''
+    assign s_max_order_qty = ''
+    assign s_delivery_days = ''
+  endunless
+
+  assign cap = 20
+  assign label = 'Ready to ship'
+  assign detail = 'Free UK delivery on every order. Tracking details are sent after dispatch.'
+  assign urgency = ''
+  assign sold_out = false
+  assign qty_known = false
+  assign known_qty = 0
+  assign source = 'default'
+  assign policy_continue = false
+
+  if variant.inventory_management != blank and variant.inventory_policy == 'deny'
+    assign cap = variant.inventory_quantity | default: 0
+    assign qty_known = true
+    assign known_qty = cap
+    assign source = 'tracked'
+  else
+    if variant.inventory_management != blank
+      assign policy_continue = true
+    endif
+    if s_max_order_qty != blank
+      assign cap = s_max_order_qty
+      assign source = 'supplier_max'
+      if s_available_qty != blank
+        assign qty_known = true
+        assign known_qty = s_available_qty
+      endif
+    elsif s_available_qty != blank
+      assign cap = s_available_qty
+      assign qty_known = true
+      assign known_qty = s_available_qty
+      assign source = 'supplier_qty'
+    endif
+  endif
+
+  if qty_known
+    if known_qty <= 0
+      assign sold_out = true
+      assign label = 'Out of stock'
+      assign detail = 'Currently unavailable - check back soon.'
+    elsif known_qty <= 3
+      assign label = 'Almost gone'
+      assign detail = 'Only ' | append: known_qty | append: ' left in stock - restock not guaranteed.'
+      assign urgency = 'high'
+    elsif known_qty <= 10
+      assign label = 'Low stock'
+      assign detail = 'Only ' | append: known_qty | append: ' left in stock.'
+      assign urgency = 'low'
+    else
+      assign label = 'In stock'
+    endif
+  elsif s_status != blank
+    case s_status
+      when 'in_stock', 'available', 'supplier_available'
+        assign label = 'In stock'
+      when 'low_stock'
+        assign label = 'Low stock'
+        assign urgency = 'low'
+      when 'backorder_possible'
+        assign label = 'Available to order'
+        assign detail = 'May take a little longer to dispatch than usual.'
+      when 'unavailable', 'out_of_stock'
+        assign label = 'Currently unavailable'
+      else
+        assign label = 'Ready to order'
+    endcase
+  endif
+
+  unless variant.available
+    assign sold_out = true
+    assign label = 'Out of stock'
+    assign detail = 'Currently unavailable - check back soon.'
+  endunless
+
+  # A cap of 0 would make <input max="0" min="1"> block the form; sold-out
+  # states disable the buy controls instead.
+  if cap < 1
+    assign cap = 1
+  endif
+-%}
+{{- label -}}|{{- detail -}}|{{- cap -}}|{{- urgency -}}|{{- sold_out -}}|{{- fresh -}}|{{- checked_label -}}|{{- qty_known -}}|{{- known_qty -}}|{{- source -}}|{{- policy_continue -}}|{{- s_delivery_days -}}
