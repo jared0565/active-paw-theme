@@ -675,3 +675,24 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 18 - 2026-09-19: Supplier name no longer shown to customers (PRD task T9, R5)
+
+### What changed
+- `snippets/product-details-modal.liquid` - the "Fulfilled by <supplier> · <warehouse>" row and its two assigns are gone from Product details.
+- `snippets/product-details.liquid` - deleted; nothing rendered it (theme check OrphanedSnippet; graphite's impact query answered "none found" for both snippets because Liquid render edges are not in the graph, so a literal grep for `render 'product-details` settled it: only the modal snippet is rendered, from `sections/main-product.liquid`).
+- `sections/main-product.liquid` - unused assigns `brand_name`, `supplier_warehouse`, `supplier_fulfillment_confidence` removed. `sections/main-cart.liquid` - unused `supplier_status` assign removed.
+- `tests/independence.cjs` - the product page now checks "product details never name the supplier" (reads the details modal's text for "Fulfilled by").
+
+### Why it changed
+- Contract rule 3 and PRD R5: internal sourcing is not customer-facing. The banner code already said so; the details modal contradicted it on every imported product.
+
+### How it was solved
+- Removal only; no copy replaces the row. Verified on preview theme 207762719058 (pushed from the branch, deleted after): a probe of the same 8 product pages read "Fulfilled by CJ" on live for 8 of 8 and nothing on the preview for 0 of 8, with `Shopify.theme.id` confirming which theme served each page. Independence run on the preview: blocked 80/81 with 0 hard failures, control 77/78 (the worker's affiliate page console error).
+- `shopify theme check --fail-level error`: exit 0, one warning left (hero image preload, T18).
+
+### Files touched
+- `snippets/product-details-modal.liquid`, `snippets/product-details.liquid` (deleted), `sections/main-product.liquid`, `sections/main-cart.liquid`, `tests/independence.cjs`, `docs/theme-production-grade-prd.md`, `docs/theme-worker-contract.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.

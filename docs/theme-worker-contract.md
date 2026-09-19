@@ -48,7 +48,7 @@ Namespace `supplier`, variant level with product-level fallback for `name`, `sta
 | `supplier.last_checked_at` | "Availability updated <date>" line on the product page and cart; today display only (*planned:* gates status and delivery window at 3 days) | line omitted |
 | `supplier.demand` | "Selling fast" badge on `selling_fast` | nothing |
 | `supplier.delivery_days_actual`, `supplier.delivery_days` | delivery range on the product page (`snippets/delivery-info.liquid`) and a hidden line-item property "Estimated delivery: N days" | 6 to 14 days, or 3 to 10 when `supplier.origin` is GB |
-| `supplier.name`, `supplier.warehouse` | switches the "Tracked delivery" copy; also rendered as "Fulfilled by <name>" in Product details today (*planned, PRD T9:* removed, never customer-facing) | "Care add-ons" copy |
+| `supplier.name`, `supplier.warehouse` | switches the "Tracked delivery" copy only; never rendered to the customer (the "Fulfilled by <name>" row in Product details was removed 2026-09-19, PRD T9, and the independence run asserts its absence) | "Care add-ons" copy |
 | `supplier.fulfillment_confidence` | assigned, never rendered (open question to the worker, round 230 finding 6) | |
 | `article.metafields.blog.faq_json`, `blog.related_products` | `sections/main-article.liquid`: FAQ with schema, "Shop this guide" | sections omitted |
 

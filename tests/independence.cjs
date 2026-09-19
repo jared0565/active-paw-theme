@@ -164,6 +164,9 @@ async function pickThinSearchTerm(context) {
     const addonsHidden = await page.locator('[data-pawscout-pdp-addons][hidden]').count();
     if (BLOCK) check(rec, 'add-on row stays hidden', addonsHidden === 1);
     else rec.addonRowHidden = addonsHidden === 1;
+    // Rule 3 of the contract: internal sourcing is never customer-visible (PRD R5).
+    const detailsText = await page.locator('[data-details-modal]').first().evaluate((el) => el.textContent || '').catch(() => '');
+    check(rec, 'product details never name the supplier', !/Fulfilled by/i.test(detailsText), detailsText.replace(/\s+/g, ' ').trim().slice(0, 100));
     rec.pawscoutPid = await page.locator('meta[name="pawscout-pid"]').getAttribute('content').catch(() => null);
   });
 
