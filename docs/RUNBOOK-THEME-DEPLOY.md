@@ -29,6 +29,8 @@ shopify theme check --fail-level warning     # zero warnings is the standard sin
 python -m unittest discover -s tests -t .
 ```
 
+CI's theme check is the authority: at the same CLI version its rule set has found warnings the local run did not (2026-09-19, `UnrecognizedRenderSnippetArguments`), so a local "no offences" is necessary, not sufficient.
+
 Then `aramid check --staged` before committing. Never pass `--no-verify` to git; armed repos reject it, and it would switch off the secret scan.
 
 Every code change gets an entry in `docs/design-improvements.md` (what, why, how, verification). A change that touches a worker touchpoint also updates `docs/theme-worker-contract.md` and is announced on the agent channel.
