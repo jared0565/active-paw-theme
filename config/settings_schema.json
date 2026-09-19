@@ -19,6 +19,14 @@
     ]
   },
   {
+    "name": "Delivery",
+    "settings": [
+      { "type": "paragraph", "content": "The product page availability banner and the delivery block show the UK line only to visitors whose market country is the United Kingdom; every other market sees the neutral line. Keep both true: nothing here is verified against the carrier." },
+      { "type": "text", "id": "delivery_detail_uk", "label": "Delivery line for UK visitors", "default": "Free UK delivery on every order. Tracking details are sent after dispatch." },
+      { "type": "text", "id": "delivery_detail_other", "label": "Delivery line for other markets", "default": "Delivery options and times are shown at checkout." }
+    ]
+  },
+  {
     "name": "Typography",
     "settings": [
       {

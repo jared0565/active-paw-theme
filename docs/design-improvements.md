@@ -719,3 +719,25 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 20 - 2026-09-19: UK delivery line as a theme setting, shown to UK visitors only (PRD task T13, R11)
+
+### What changed
+- `config/settings_schema.json` - new Delivery block: `delivery_detail_uk` (default "Free UK delivery on every order. Tracking details are sent after dispatch.") and `delivery_detail_other` (default "Delivery options and times are shown at checkout."), with a paragraph that says the two must stay true.
+- `snippets/supplier-availability.liquid` - the default detail line comes from the setting for the visitor's market (`localization.country.iso_code == 'GB'` picks the UK line).
+- `snippets/delivery-info.liquid` - the "FREE UK delivery on every order" row and the "Estimated N days to your door" row (the CJ-to-UK lane) render for GB visitors only; other markets get the neutral setting line above the returns row.
+
+### Why it changed
+- Decision 5f: the claim is true for the UK, so it is a setting shown to UK visitors and other markets read a neutral line. Store markets measured today: United Kingdom (primary), European Union, Australia, United States and Canada, all enabled, none with its own URL.
+
+### How it was solved
+- Wiring control on preview theme 207764619602: `settings_data.json` was pushed with the marker value "Free UK delivery on every order. [setting wired]" and the GB banner read exactly that; the local file was restored before commit and the preview deleted.
+- Non-GB rendering could not be observed: with the `/localization` form switched to AU, US or DE, the product page returns 404 on live and on the preview alike, so those markets have no catalogue. Recorded as an owner item in the PRD (T13). The neutral branch is reviewed in code only.
+- Independence run on the preview: blocked 80/81 with 0 hard failures, control 77/78 (the worker's affiliate page). Theme check: one warning left (hero preload, T18).
+- Out of scope, left as they are: the other UK delivery mentions in the announcement bar setting, trust bar, conversion stack, FAQ, footer and cart drawer. They are true statements about UK delivery rather than promises to the visitor's own market; a decision on them belongs to the owner.
+
+### Files touched
+- `config/settings_schema.json`, `snippets/supplier-availability.liquid`, `snippets/delivery-info.liquid`, `docs/theme-production-grade-prd.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
