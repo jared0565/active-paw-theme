@@ -762,3 +762,29 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 22 - 2026-09-19: one place per fact, zero theme check warnings, daily independence run (PRD tasks T14, T15, T17, T18)
+
+### What changed
+- `config/settings_schema.json` - new "Collections" block: `home_collection_handles` (the one list, default the four handles in priority order) and `search_offer_keywords` (search suggestion rules as `handle: keyword, keyword; ...`); `contact_email` in the Contact form block.
+- `snippets/collection-handles.liquid` (new) - the one reader of the list; callers capture, strip and split.
+- `sections/main-product.liquid` - related-collection walk reads the snippet. `sections/category-showcase.liquid` - a block's default collection and anchor come from its title; the four-way branch is gone. `sections/main-search.liquid` - keyword rules parsed from the setting, first match wins, handles outside the list ignored.
+- `sections/site-footer.liquid`, `sections/main-page-contact.liquid` - mailto from `settings.contact_email`.
+- `snippets/hero-event-badge.liquid` - no second copy of the badge's default link; the hero section's "Badge link URL" setting is the one place, with the all-products route as the last fallback. `snippets/welcome-modal.liquid` - the browse destination decided once (`welcome_redirect` assign). `assets/theme.js` - the three `/collections/all` fallbacks removed; the badge and browse links are only written when Liquid supplied them.
+- `sections/hero-commerce.liquid` - hero background preload through `preload_tag`.
+- `.github/workflows/theme-ci.yml` - `theme check --fail-level warning`.
+- `.github/workflows/independence-daily.yml` (new) - independence run against live: daily 06:17 UTC, on demand, on pushes touching the workflow or the script, and two minutes after theme-ci completes on `shopify-deploy`. Blocked mode gates; control is informational; artifact kept 14 days; failure opens or updates the issue "Independence run failed against live" (label `independence`).
+
+### Why it changed
+- R8: the collection handle list, the contact email and the hero badge's default link each existed in two or three files. R9: the last theme check warning, and no scheduled watch on live.
+
+### How it was solved
+- Consolidation with no visible change, proven on preview 207775727954 against live with the worker blocked: home blocks, three product pages' related collections, six search terms, the footer, the contact page, the badge and the welcome modal attributes all identical. The search rules were proven live with "fountain water", the one probed term that renders the Liquid suggestion block: the same three suggested products on both themes.
+- Independence on the preview: blocked 80/81 with 0 hard failures (the affiliate line is informational until the page exists); control 77/78 (the worker's affiliate page console error, reported in round 235).
+- `shopify theme check`: 69 files, no offences. eslint and the 37 unit tests pass. Preview deleted after use.
+
+### Files touched
+- `config/settings_schema.json`, `snippets/collection-handles.liquid`, `sections/main-product.liquid`, `sections/category-showcase.liquid`, `sections/main-search.liquid`, `sections/site-footer.liquid`, `sections/main-page-contact.liquid`, `snippets/hero-event-badge.liquid`, `snippets/welcome-modal.liquid`, `assets/theme.js`, `sections/hero-commerce.liquid`, `.github/workflows/theme-ci.yml`, `.github/workflows/independence-daily.yml`, `CLAUDE.md`, `docs/RUNBOOK-THEME-DEPLOY.md`, `docs/theme-production-grade-prd.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.

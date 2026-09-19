@@ -26,16 +26,37 @@
           endfor
 
           assign normalized_terms = search.terms | downcase
+          # Suggestion rules come from the theme setting "Search suggestions by
+          # keyword" (handle: keyword, keyword; ...). The first rule with a keyword
+          # in the terms wins, and only handles from the home collection list
+          # count, so the list stays the one place (PRD R8).
+          capture home_handles_raw
+            render 'collection-handles'
+          endcapture
+          assign home_handles = home_handles_raw | strip | split: ','
           assign offer_collection_handle = ''
-          if normalized_terms contains 'food' or normalized_terms contains 'feed' or normalized_terms contains 'bowl' or normalized_terms contains 'water'
-            assign offer_collection_handle = 'pet-accessories'
-          elsif normalized_terms contains 'toy' or normalized_terms contains 'play' or normalized_terms contains 'scratch'
-            assign offer_collection_handle = 'pet-toys'
-          elsif normalized_terms contains 'health' or normalized_terms contains 'dental' or normalized_terms contains 'tooth' or normalized_terms contains 'clean teeth'
-            assign offer_collection_handle = 'pet-health'
-          elsif normalized_terms contains 'groom' or normalized_terms contains 'brush' or normalized_terms contains 'wash' or normalized_terms contains 'shampoo' or normalized_terms contains 'paw' or normalized_terms contains 'clean'
-            assign offer_collection_handle = 'pet-cleaning'
-          endif
+          assign offer_rules = settings.search_offer_keywords | split: ';'
+          for rule in offer_rules
+            assign rule_parts = rule | split: ':'
+            if rule_parts.size < 2
+              continue
+            endif
+            assign rule_handle = rule_parts[0] | strip
+            unless home_handles contains rule_handle
+              continue
+            endunless
+            assign rule_keywords = rule_parts[1] | downcase | split: ','
+            for keyword in rule_keywords
+              assign needle = keyword | strip
+              if needle != '' and normalized_terms contains needle
+                assign offer_collection_handle = rule_handle
+                break
+              endif
+            endfor
+            if offer_collection_handle != ''
+              break
+            endif
+          endfor
           assign offer_collection = collections[offer_collection_handle]
 
           # Suggestions fill in ONLY when the native grid is thin (< 4 real matches),

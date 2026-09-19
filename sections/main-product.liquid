@@ -43,7 +43,10 @@
   endif
 
   assign related_collection = blank
-  assign category_handles = 'pet-cleaning,pet-accessories,pet-health,pet-toys' | split: ','
+  capture category_handles_raw
+    render 'collection-handles'
+  endcapture
+  assign category_handles = category_handles_raw | strip | split: ','
   for category_handle in category_handles
     for candidate_collection in product.collections
       if candidate_collection.handle == category_handle and candidate_collection.products_count > 1

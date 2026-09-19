@@ -4,20 +4,13 @@
       {% liquid
         assign collection_setting = block.settings.collection
         assign collection_handle = collection_setting.handle | default: collection_setting
-        assign anchor = block.settings.title | handleize
-        if anchor == 'pet-cleaning'
-          assign anchor = 'cleaning'
-          assign collection_handle = collection_handle | default: 'pet-cleaning'
-        elsif anchor == 'pet-accessories'
-          assign anchor = 'accessories'
-          assign collection_handle = collection_handle | default: 'pet-accessories'
-        elsif anchor == 'pet-health'
-          assign anchor = 'health'
-          assign collection_handle = collection_handle | default: 'pet-health'
-        elsif anchor == 'pet-toys'
-          assign anchor = 'toys'
-          assign collection_handle = collection_handle | default: 'pet-toys'
-        endif
+        # The block title names the collection (its handleized form), and the
+        # anchor is that handle without its first segment, so #category-cleaning.
+        # No handle list lives here (PRD R8); the home template sets each
+        # block's collection explicitly anyway.
+        assign title_handle = block.settings.title | handleize
+        assign collection_handle = collection_handle | default: title_handle
+        assign anchor = title_handle | remove_first: 'pet-'
         assign collection = collections[collection_handle]
         assign visible_limit = section.settings.visible_limit
         assign total_products = collection.products_count | default: collection.all_products_count | default: collection.products.size

@@ -770,7 +770,8 @@ const storewideNextDates = (next) => [next.startsLabel, next.endsLabel].filter(B
     if (emoji && emojiText) emoji.textContent = emojiText;
     if (title) title.textContent = titleText;
     if (sub) sub.textContent = subText;
-    badge.setAttribute('href', badge.getAttribute('data-event-badge-href') || '/collections/all');
+    const badgeHref = badge.getAttribute('data-event-badge-href');
+    if (badgeHref) badge.setAttribute('href', badgeHref); // Liquid decides the destination (PRD R8)
     badge.setAttribute('aria-label', `${titleText} ${subText}`.trim());
     badge.setAttribute('data-event-state', state);
   };
@@ -921,8 +922,8 @@ const paintWelcomeModal = (modal, event) => {
   if (codeEl) codeEl.textContent = event.code;
   const browse = modal.querySelector('[data-welcome-browse]');
   if (browse) {
-    const redirect = modal.getAttribute('data-welcome-redirect') || '/collections/all';
-    browse.setAttribute('href', `/discount/${encodeURIComponent(event.code)}?redirect=${encodeURIComponent(redirect)}`);
+    const redirect = modal.getAttribute('data-welcome-redirect') || ''; // Liquid decides the destination (PRD R8)
+    browse.setAttribute('href', `/discount/${encodeURIComponent(event.code)}${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`);
   }
   const pct = storewidePctOff(event);
   const heading = modal.querySelector('#WelcomeModalTitle');
@@ -1014,7 +1015,7 @@ const paintWelcomeModal = (modal, event) => {
       markWelcomeSeen();
       applyWelcomeCodeThenGo(query
         ? `/search?q=${encodeURIComponent(query)}`
-        : modal.getAttribute('data-welcome-redirect') || '/collections/all');
+        : modal.getAttribute('data-welcome-redirect') || '/');
     });
   }
 })();

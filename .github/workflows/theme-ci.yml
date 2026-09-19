@@ -1,5 +1,6 @@
 # Fast checks on every push to any branch (PRD R3, decision 5e).
-# The pull-request preview job and the post-deploy run are added by T5.
+# The post-deploy independence run chains off this workflow (independence-daily.yml);
+# the pull-request preview job is added by T5 once the Theme Access token exists.
 name: theme-ci
 
 on:
@@ -39,8 +40,8 @@ jobs:
         run: npm install -g @shopify/cli@4.8.0 --no-audit --no-fund
 
       - name: Theme check
-        # Errors fail the build; warnings are tracked by T18 until the level is raised.
-        run: shopify theme check --fail-level error
+        # Zero warnings since T18 (2026-09-19); a new warning fails the build.
+        run: shopify theme check --fail-level warning
 
       - uses: actions/setup-python@v7
         with:

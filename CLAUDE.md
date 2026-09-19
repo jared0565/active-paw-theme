@@ -119,8 +119,7 @@ The script runs `aramid init .` first and `python -P -m graphite init . --yes --
 
 ## Collections used in the theme
 
-The home page and PDP related-products logic resolve against these collection handles:
-`pet-cleaning`, `pet-accessories`, `pet-health`, `pet-toys`
+The list of home collection handles lives in ONE place: the theme setting `home_collection_handles` ("Collections" block in `config/settings_schema.json`; default `pet-cleaning, pet-accessories, pet-health, pet-toys`), read through `snippets/collection-handles.liquid` (capture, strip, split on commas). Do not write a handle literal into Liquid or JavaScript. The search page's keyword rules are the sibling setting `search_offer_keywords`; the contact email is `contact_email`; the hero badge's default link is the hero section's "Badge link URL" setting.
 
 The PDP walks `product.collections` in that priority order to find a related collection with more than one product. (The old `more-to-love` fallback collection was retired 2026-07-06: its members were all archived, and all theme references were removed.)
 

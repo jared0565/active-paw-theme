@@ -19,6 +19,14 @@
     ]
   },
   {
+    "name": "Collections",
+    "settings": [
+      { "type": "paragraph", "content": "The one list of the store's home collections. The product page walks it in this order to find a related collection with more than one product; a home category block with no collection chosen falls back to the collection whose handle matches its title." },
+      { "type": "text", "id": "home_collection_handles", "label": "Home collections, in order", "default": "pet-cleaning, pet-accessories, pet-health, pet-toys", "info": "Comma-separated collection handles." },
+      { "type": "textarea", "id": "search_offer_keywords", "label": "Search suggestions by keyword", "default": "pet-accessories: food, feed, bowl, water; pet-toys: toy, play, scratch; pet-health: health, dental, tooth, clean teeth; pet-cleaning: groom, brush, wash, shampoo, paw, clean", "info": "Rules separated by semicolons, each written as collection-handle: keyword, keyword. On a thin search result the first rule with a keyword in the search terms supplies the suggested collection. Only handles from the list above count." }
+    ]
+  },
+  {
     "name": "Delivery",
     "settings": [
       { "type": "paragraph", "content": "The product page availability banner and the delivery block show the UK line only to visitors whose market country is the United Kingdom; every other market sees the neutral line. Keep both true: nothing here is verified against the carrier." },
@@ -46,6 +54,13 @@
   {
     "name": "Contact form",
     "settings": [
+      {
+        "type": "text",
+        "id": "contact_email",
+        "label": "Support email",
+        "info": "Shown in the footer and on the contact page.",
+        "default": "contact@activepaw.co.uk"
+      },
       {
         "type": "text",
         "id": "contact_reply_eta",

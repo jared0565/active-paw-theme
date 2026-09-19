@@ -17,7 +17,7 @@
   raw HTML stream well before any stylesheet is applied.
 {%- endcomment -%}
 {%- assign hero_bg = 'pawmerce-hero-background.jpg' | asset_url -%}
-<link rel="preload" as="image" href="{{ hero_bg }}" fetchpriority="high">
+{{ hero_bg | preload_tag: as: 'image' }}
 <section class="hero hero-marketplace" style="--hero-bg: url('{{ hero_bg }}');">
   <div class="hero-marketplace-copy">
     <p class="eyebrow">{{ section.settings.eyebrow }}</p>
@@ -57,7 +57,7 @@
     { "type": "text", "id": "badge_emoji", "label": "Badge emoji", "default": "☀️🧊" },
     { "type": "text", "id": "badge_line1", "label": "Badge headline", "default": "Stay cool!" },
     { "type": "text", "id": "badge_line2", "label": "Badge subline", "default": "Shop the summer range" },
-    { "type": "text", "id": "badge_link", "label": "Badge link URL", "default": "/collections/keep-them-cool" }
+    { "type": "text", "id": "badge_link", "label": "Badge link URL", "default": "/collections/keep-them-cool", "info": "Where the badge links until an event runs; a running event links to all products. This setting is the one place for that default." }
   ],
   "presets": [{ "name": "Commerce hero" }]
 }
