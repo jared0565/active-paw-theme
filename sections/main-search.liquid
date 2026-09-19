@@ -92,7 +92,7 @@
           <div class="commerce-grid search-results-grid" data-pawscout-grid>
             {% for item in search.results %}
               {% if item.object_type == 'product' and item.available %}
-                {% render 'product-card-commerce', product: item, badge: 'Search match', show_purchase_action: true %}
+                {% render 'product-card-commerce', product: item, badge: 'Search match' %}
               {% endif %}
             {% endfor %}
 
@@ -131,7 +131,7 @@
                     endfor
                   %}
                   {% if offer_product.available and is_duplicate_result == false and is_query_relevant %}
-                    {% render 'product-card-commerce', product: offer_product, badge: 'Suggested', show_purchase_action: true %}
+                    {% render 'product-card-commerce', product: offer_product, badge: 'Suggested' %}
                     {% assign suggested_count = suggested_count | plus: 1 %}
                   {% endif %}
                 {% endfor %}

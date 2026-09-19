@@ -2,6 +2,9 @@
 # must stay complete with the PawScout worker unreachable. Blocked mode is the
 # gate; the control run (worker up) is recorded for information only.
 # A failure opens one GitHub issue and keeps commenting on it until it closes.
+# Only runs from the live branch (schedule, dispatch, after a deploy) can fail the
+# job or touch the issue: the script on any other branch is newer than what is
+# deployed, so a run from there is a dry run that reports and stops.
 name: independence-daily
 
 on:
@@ -53,7 +56,18 @@ jobs:
         run: sleep 120
 
       - name: Independence run (worker blocked)
+        id: blocked
+        continue-on-error: ${{ github.ref_name != 'shopify-deploy' }}
         run: node tests/independence.cjs "$STORE_URL"
+
+      - name: Dry run verdict
+        if: github.ref_name != 'shopify-deploy'
+        run: |
+          if [ "${{ steps.blocked.outcome }}" = "failure" ]; then
+            echo "::warning::Dry run from ${{ github.ref_name }}: live failed this branch's script (see the log above); no issue opened."
+          else
+            echo "Dry run from ${{ github.ref_name }}: live passes this branch's script."
+          fi
 
       - name: Control run (worker up, informational)
         if: always()
@@ -69,7 +83,7 @@ jobs:
           retention-days: 14
 
       - name: Open or update the failure issue
-        if: failure()
+        if: failure() && github.ref_name == 'shopify-deploy'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
