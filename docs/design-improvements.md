@@ -789,3 +789,23 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 23 - 2026-09-19: owner steps processed on the owner's instruction (T4 half, T5, T7 prepared, T10 page, T19 diagnosed)
+
+### What changed
+- `.github/workflows/theme-preview.yml` (new, PR #9) - pull-request preview job: push to an unpublished preview theme, independence run in both modes, results kept 14 days, preview deleted whatever the outcome. Guarded: without `SHOPIFY_CLI_THEME_TOKEN` it warns and passes (run 35456558183).
+- Store, not repo: the Affiliates page (179229753682, handle `affiliates`, template `page.affiliates`) created through the Admin API with the programme copy from the worker's page; the Theme Access app installed in the admin.
+- `docs/theme-production-grade-prd.md` - T4, T5, T7, T10 updated; T19 added (non-GB markets diagnosis and options). `docs/RUNBOOK-THEME-DEPLOY.md` - the preview job in section 4.
+
+### Why it changed
+- The owner asked for the outstanding owner steps to be processed. Merging into `shopify-deploy`, creating a credential and deleting theme copies are refused by the agent's tooling (production deploy, secret creation, irreversible deletion), so those were prepared for the owner instead: a merge script that merges #1 to #7 in order with CI gate, tag and live verification per merge, then deletes the two copies.
+
+### How it was solved
+- Unknown theme copy 207749579090: its seven files that differ from live are byte-identical to commit 994d44a (the old `shopify-deploy` tip, parent of c1e2d93), so it holds nothing git lacks.
+- Non-GB 404s: not the theme and not shipping; imported products are absent from the market publications. Recommended to pawscout-agent (round 240) as a worker capability; decision (publish or deactivate) with the owner as T19.
+
+### Files touched
+- `.github/workflows/theme-preview.yml`, `docs/theme-production-grade-prd.md`, `docs/RUNBOOK-THEME-DEPLOY.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
