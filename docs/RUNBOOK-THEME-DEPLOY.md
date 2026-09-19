@@ -63,6 +63,8 @@ gh pr create --base shopify-deploy
 
 The pull request says what changed, why, and what was verified on the preview (theme id, independence results). CI must be green. The owner merges with a merge commit; that merge is the deploy.
 
+**Stacked pull requests (learned 2026-09-19):** merging with `--delete-branch` through the API closes any pull request whose base was that branch (the web UI retargets instead), and a closed pull request with a deleted base can be neither retargeted nor reopened; it has to be recreated from the same head branch. Retarget every stacked pull request to `shopify-deploy` (`gh pr edit <n> --base shopify-deploy`) before merging the one below it.
+
 ## 5. After the merge: verify and tag
 
 Shopify redeploys within about a minute of the push. Check, in this order:
