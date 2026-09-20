@@ -2,12 +2,12 @@
   assign demo_title = 'CoatGuard Glide 3-in-1 Shampoo + Conditioner'
   assign product_title = product.title | default: demo_title
   assign selected_variant = product.selected_or_first_available_variant
-  assign supplier_name = selected_variant.metafields.supplier.name.value | default: product.metafields.supplier.name.value
+  assign supplier_name = product.metafields.supplier.name.value
   comment
     Availability, detail, purchase cap and urgency come from ONE snippet shared
-    with the cart page and the cart drawer (PRD R4/R8). Priority is unchanged:
-    tracked inventory -> supplier max order qty -> supplier available qty ->
-    conservative 20. Supplier data counts only while its check is fresh (3 days).
+    with the cart page and the cart drawer (PRD R4/R8). The cap is tracked
+    Shopify inventory, else a conservative 20. supplier.* is product-level
+    only and counts only while its check is fresh (3 days).
   endcomment
   capture sa
     render 'supplier-availability', variant: selected_variant, product: product
@@ -290,7 +290,27 @@
 
 {% render 'product-details-modal', product: product %}
 
-{% if related_collection != blank and related_collection.products_count > 1 %}
+{%- comment -%}
+  The cards are rendered first and counted: the heading appears only above at
+  least one card. In a sparse market (PRD T19) a collection can hold this
+  product and one other that is sold out, which used to leave the heading over
+  an empty grid. The walk above is market-aware as it stands: products_count,
+  all_products_count and collection.products are all scoped to the visitor's
+  market (measured on a preview for GB, US, AU and DE, 2026-09-20), so no card
+  links to a product the market excludes.
+{%- endcomment -%}
+{% assign rendered_related_products = 0 %}
+{% capture related_cards %}
+  {% if related_collection != blank %}
+    {% for related_product in related_collection.products limit: 8 %}
+      {% if related_product.id != product.id and related_product.available and rendered_related_products < 4 %}
+        {% render 'product-card-commerce', product: related_product, badge: related_collection.title %}
+        {% assign rendered_related_products = rendered_related_products | plus: 1 %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+{% endcapture %}
+{% if rendered_related_products > 0 %}
   <section class="section related-products pdp-priority-related">
     <div class="section-heading">
       <h2>You may also like</h2>
@@ -301,13 +321,7 @@
       {% endif %}
     </div>
     <div class="commerce-grid">
-      {% assign rendered_related_products = 0 %}
-      {% for related_product in related_collection.products limit: 8 %}
-        {% if related_product.id != product.id and related_product.available and rendered_related_products < 4 %}
-          {% render 'product-card-commerce', product: related_product, badge: related_collection.title %}
-          {% assign rendered_related_products = rendered_related_products | plus: 1 %}
-        {% endif %}
-      {% endfor %}
+      {{ related_cards }}
     </div>
   </section>
 {% endif %}

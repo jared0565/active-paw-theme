@@ -76,8 +76,8 @@ We are building a **signal-driven inventory populator** for a Shopify pet-care s
 ## 4. Active Paw theme - what to know
 
 - Single-file CSS (`assets/theme.css`) and JS (`assets/theme.js`), no framework/bundler. Sections in `sections/`, partials in `snippets/`, JSON templates in `templates/`.
-- **Supplier metafield contract (the core data boundary).** The theme reads supplier intelligence ONLY from Shopify metafields in the `supplier` namespace - never from live supplier calls. Variant-level keys drive availability + cart caps; product-level keys are fallbacks. Full spec: `docs/shopify-supplier-metafields.md`. Keys summarized in `CLAUDE.md`.
-- **Quantity-cap priority** (in `sections/main-product.liquid` and `sections/main-cart.liquid`): tracked Shopify inventory → `supplier.max_order_qty` → `supplier.available_qty` → hardcoded `20` fallback.
+- **Supplier metafield contract (the core data boundary).** The theme reads supplier intelligence ONLY from Shopify metafields in the `supplier` namespace - never from live supplier calls. The worker writes eight PRODUCT-level keys and nothing on variants (corrected 2026-09-20; the spec follows the writer). Full spec: `docs/shopify-supplier-metafields.md`. Keys summarized in `CLAUDE.md`.
+- **Quantity-cap priority** (decided once, in `snippets/supplier-availability.liquid`): tracked Shopify inventory, else the hardcoded `20` fallback. Supplier quantities never cap a variant (corrected 2026-09-20).
 - **Collections** (smart/rule-based): `pet-cleaning`, `pet-accessories`, `pet-health`, `pet-toys`. PDP related-products walks `product.collections` in that priority order. (`more-to-love` retired 2026-07-06.)
 - **Theme settings**: `demo_brand_name` (default "Active Paw"), `brand_logo`, `favicon`, `color_ink/accent/surface` (`config/settings_schema.json`).
 - **Copy rule:** always say **"Collections"**, never "Categories."

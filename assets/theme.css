@@ -1158,6 +1158,10 @@ p { line-height: 1.6; }
   color: var(--muted);
   background: var(--surface);
 }
+/* The message is a finished state, not a placeholder: its heading takes the ink
+   colour explicitly and its button keeps its own width (PRD T19). */
+.empty-category strong { color: var(--ink); }
+.empty-category .button { justify-self: start; margin-top: 8px; }
 
 .cart-page {
   min-height: calc(100vh - var(--sticky-header-offset));

@@ -7,11 +7,11 @@ What the Active Paw theme takes from the PawScout worker, how, and what happens 
 Set by the owner on 2026-09-18 (channel round 227):
 
 1. **Every live call is optional.** A page must be complete with the worker unreachable: no empty region, no open dialog, no layout shift, no error from theme code.
-2. **Shopify-held data carries its own freshness.** The theme trusts worker-written metafields only while `supplier.last_checked_at` is within 3 days and `supplier.status` is not `unknown_stale` (decision 5b, implemented 2026-09-19 in `snippets/supplier-availability.liquid`). Stale data renders the conservative default: no status, no supplier quantity, no delivery window, no "Availability updated" line. Tracked Shopify inventory is never subject to this rule.
+2. **Shopify-held data carries its own freshness.** The theme trusts worker-written metafields only while `supplier.last_checked_at` is within 3 days (decision 5b, implemented 2026-09-19 in `snippets/supplier-availability.liquid`). The worker does not advance the stamp on a failed check (round 245), so age alone shows a failure. Stale data renders the conservative default: no status, no delivery window, no "Availability updated" line. Tracked Shopify inventory is never subject to this rule.
 3. **The worker assumes no theme.** Nothing the worker serves depends on the theme being present.
 4. **No shared secrets or code.** The theme holds no token; the browser calls the worker only on public routes and through the Shopify app proxy.
 
-The independence run (`node tests/independence.cjs`, blocked mode) is the acceptance test for rule 1. It aborts every request to the worker domain and to `/apps/` at the network layer and walks home, collection, product, search, blog, article, contact, affiliate, cart and checkout. Results: `output/playwright/independence-<mode>.json`.
+The independence run (`node tests/independence.cjs`, blocked mode) is the acceptance test for rule 1. It aborts every request to the worker domain and to `/apps/` at the network layer and walks home, collection, product, search, blog, article, contact, affiliate, cart and checkout, then the home page and one collection page as a visitor in a sparse market (US unless `SPARSE_MARKET` says otherwise). Results: `output/playwright/independence-<mode>.json`.
 
 ## 2. Live calls from the browser
 
@@ -39,26 +39,30 @@ A field the worker stops sending must be treated by the theme as absent, never a
 
 ## 4. Worker-written Shopify data the theme reads natively
 
-Namespace `supplier`. The spec (`docs/shopify-supplier-metafields.md`) puts quantities and status at variant level with product-level fallback for `name`, `status`, `warehouse`, `last_checked_at`, `fulfillment_confidence`. Measured 2026-09-19 on all 50 active products: the worker writes every field at PRODUCT level and no variant metafields at all, and every variant is Shopify-tracked with policy deny, so today the theme's supplier-quantity path never runs and the banner comes from Shopify inventory. Raised with the worker in round 238.
+Namespace `supplier`. The spec (`docs/shopify-supplier-metafields.md`) follows the writer since 2026-09-20: one writer, eight keys, always on the PRODUCT, three status values (pawscout-agent, round 245, from the worker's code). Measured by the theme agent on 2026-09-20 through the Admin API on all 41 active products: exactly those eight keys at product level, no variant metafields at all, every variant Shopify-tracked with policy deny. So the banner and the cap come from Shopify inventory, and `supplier.status` would label a variant only if someone switched its tracking off.
 
-| Key | Theme use | When absent |
+| Key | Theme use | When absent or stale |
 |---|---|---|
-| `supplier.status` | `snippets/supplier-availability.liquid`, only when fresh and only when Shopify does not track the variant: `in_stock`, `available`, `supplier_available` "In stock"; `low_stock` "Low stock" plus urgency; `backorder_possible` "Available to order"; `unavailable`, `out_of_stock` "Currently unavailable"; `unknown_stale` counts as stale; anything else "Ready to order". Measured 2026-09-19: the worker writes `available`, `out_of_stock` and `low_stock`, none of which except `low_stock` is in `docs/shopify-supplier-metafields.md` | "Ready to ship" |
-| `supplier.available_qty`, `supplier.max_order_qty` | purchase cap after tracked Shopify inventory (`main-product.liquid`, `main-cart.liquid`, `snippets/cart-drawer-contents.liquid`); a number shown only at 10 or fewer, "Only N left" at 3 or fewer | cap 20 |
+| `supplier.status` | `snippets/supplier-availability.liquid`, only while fresh and only when Shopify does not track the variant: `available` "In stock"; `low_stock` "Low stock" plus urgency; `out_of_stock` "Currently unavailable"; anything else "Ready to order" | "Ready to ship" |
+| `supplier.available_qty` | not read: one product-wide figure cannot cap a variant, and for `out_of_stock` it keeps the supplier's real figure (the status is the signal, round 245) | |
 | `supplier.last_checked_at` | gates every other supplier field (3 days); "Availability updated <date>" on the product page and cart page only while fresh | everything supplier-derived is ignored |
 | `supplier.demand` | "Selling fast" badge on `selling_fast` | nothing |
 | `supplier.delivery_days_actual`, `supplier.delivery_days` | while fresh: delivery range on the product page (`snippets/delivery-info.liquid`) and a hidden line-item property "Estimated delivery: N days" | 6 to 14 days, or 3 to 10 when `supplier.origin` is GB; no line-item property |
-| `supplier.name`, `supplier.warehouse` | switches the "Tracked delivery" copy only; never rendered to the customer (the "Fulfilled by <name>" row in Product details was removed 2026-09-19, PRD T9, and the independence run asserts its absence) | "Care add-ons" copy |
-| `supplier.fulfillment_confidence` | assigned, never rendered (open question to the worker, round 230 finding 6) | |
+| `supplier.origin` | picks that static band | 6 to 14 days |
+| `supplier.name` | switches the "Tracked delivery" copy only; never rendered to the customer (the "Fulfilled by <name>" row in Product details was removed 2026-09-19, PRD T9, and the independence run asserts its absence) | "Care add-ons" copy |
 | `article.metafields.blog.faq_json`, `blog.related_products` | `sections/main-article.liquid`: FAQ with schema, "Shop this guide" | sections omitted |
+
+Never written by the worker and, since 2026-09-20, never read by the theme: `max_order_qty`, `sku`, `warehouse`, `cj_product_id`, `cj_variant_id`, `fulfillment_confidence`, variant-level `supplier.*`, and the status values `in_stock`, `supplier_available`, `backorder_possible`, `unavailable`, `unknown_stale`.
 
 Products, collections, discounts, redirects and markets are read natively; nothing in the theme knows they came from the worker except the `cj-pid-*` tag.
 
+### Markets
+
+The worker owns per-market publication (round 245, section 5): it removes a product from the Australia, European Union and United States and Canada catalogues unless the product can be delivered there, nightly and every 15 minutes, so those markets are sparse by design and the owner keeps them open. The theme never publishes to a market. It reads the market natively: `collection.products`, `products_count`, `all_products_count` and `paginate.items` are all scoped to the visitor's market (measured on a preview for GB, US, AU and DE on 2026-09-20; Pet Toys reads 11 for GB and 0 for the others on every one of them). What the theme does with a sparse market (PRD T19): a home collection block with no products for the visitor is left out whole, an empty collection page says so and offers the products that are available, the header and footer collection lists already skip empty collections, and the related products heading appears only above at least one card. The independence run asserts the first two in a sparse market on every run.
+
 ## 5. Open questions on the channel
 
-- Does the worker write `unknown_stale`, after how long, and does `last_checked_at` still advance on a failed check? (round 230 finding 1, restated in round 232)
-- Should `fulfillment_confidence` drive anything, or stop being written? (finding 6)
-- The affiliate apply page logs `%c%d font-size:0;color:transparent NaN` twice in a normal browser (finding 4, round 235).
+None. Round 245 answered the three that stood here: the worker never writes `unknown_stale` and does not advance `last_checked_at` on a failed check; nothing drives `fulfillment_confidence`, which is not written; the affiliate form's `%c%d font-size:0;color:transparent NaN` console lines are Cloudflare Turnstile's (confirmed 2026-09-20: every such line is logged from `challenges.cloudflare.com`), and the independence run classifies them by that source.
 
 ## 6. Changing this contract
 

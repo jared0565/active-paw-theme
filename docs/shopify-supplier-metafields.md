@@ -2,58 +2,59 @@
 
 This theme expects supplier intelligence to arrive through Shopify-backed data, not direct browser calls to supplier APIs.
 
+**The spec follows the writer.** There is exactly one writer, the PawScout worker (its nightly inventory sync and its import), and this file describes what that writer puts on the store. Sources, graded:
+
+- What the worker writes, and why: reported by pawscout-agent from the worker's own code in channel round 245 (2026-09-20). The theme agent cannot read that repository, so this part is attributed, not verified.
+- What is on the store: measured by the theme agent on 2026-09-20 through the Admin API on all 41 active products. Every product carries exactly the eight keys below at product level; no variant carries any `supplier.*` metafield; every variant is tracked by Shopify with inventory policy deny; the only status values present are `available`, `low_stock` and `out_of_stock`.
+
 ## Namespace
 
 Use the `supplier` namespace.
 
-## Variant Metafields
+## Owner: the product, never a variant
 
-Variant metafields drive purchasable availability and cart limits.
+Every `supplier.*` metafield is written on the PRODUCT. The per-variant truth is Shopify's own tracked inventory, which the same sync sets per variant with policy deny. The metafield carries one product-wide figure, so a multi-variant product gets its per-variant numbers from Shopify inventory and never from the metafield.
 
-| Key | Type | Purpose |
-| --- | --- | --- |
-| `supplier.name` | Single line text | Supplier display name, e.g. `CJDropshipping`. |
-| `supplier.cj_product_id` | Single line text | Source CJ product ID. |
-| `supplier.cj_variant_id` | Single line text | Source CJ variant ID. |
-| `supplier.sku` | Single line text | Supplier SKU. |
-| `supplier.warehouse` | Single line text | Preferred source warehouse or region. |
-| `supplier.status` | Single line text | Normalized availability status. |
-| `supplier.available_qty` | Integer | Supplier-verified available quantity. |
-| `supplier.max_order_qty` | Integer | Safe maximum quantity per cart line. |
-| `supplier.last_checked_at` | Date and time | Last supplier availability check. |
-| `supplier.fulfillment_confidence` | Single line text | Display-safe confidence label, e.g. `High`, `Medium`, `Limited`. |
+## Product metafields
 
-## Product Metafields
+| Key | Type | Written as | Theme use |
+| --- | --- | --- | --- |
+| `supplier.name` | Single line text | the constant `CJ` | Switches the "Tracked delivery" copy on the product page. Never shown to the customer. |
+| `supplier.status` | Single line text | one of the three values below | Labels a variant only when Shopify does not track it, and only while fresh. |
+| `supplier.available_qty` | Integer | the supplier's real stock figure for the whole product | Not read by the theme: a product-wide figure cannot cap one variant. |
+| `supplier.last_checked_at` | Date and time | the time of the last SUCCESSFUL supplier check | Gates every other supplier field (3 days) and feeds "Availability updated <date>". |
+| `supplier.demand` | Single line text | `selling_fast` or `none` | "Selling fast" badge on `selling_fast`. |
+| `supplier.origin` | Single line text | country code of the stocking warehouse, for example `GB` or `CN` | Picks the static delivery band (3 to 10 days for `GB`, 6 to 14 otherwise) when no fresh synced range exists. |
+| `supplier.delivery_days` | Single line text | a range such as `4-12`; omitted when empty, so the last good value stays | Delivery range on the product page, while fresh. |
+| `supplier.delivery_days_actual` | Single line text | a range such as `3-10`; omitted when empty, so the last good value stays | Hidden line-item property "Estimated delivery", while fresh. |
 
-Product metafields are optional fallbacks for product-level display.
+## Status values
 
-| Key | Type | Purpose |
-| --- | --- | --- |
-| `supplier.name` | Single line text | Supplier display name when variant-level value is absent. |
-| `supplier.status` | Single line text | Product-level supplier status. |
-| `supplier.warehouse` | Single line text | Product-level warehouse or region. |
-| `supplier.last_checked_at` | Date and time | Product-level supplier check timestamp. |
-| `supplier.fulfillment_confidence` | Single line text | Product-level confidence label. |
+A closed set of three:
 
-## Status Values
+- `available`
+- `low_stock` (supplier stock below twice the stock floor)
+- `out_of_stock` (supplier stock below the stock floor; the worker also sets Shopify inventory to 0)
 
-Recommended normalized statuses:
+The import always writes `available`. For `out_of_stock` the status is the signal, not the quantity: `available_qty` keeps the supplier's real figure, which can be above 0.
 
-- `in_stock`
-- `low_stock`
-- `supplier_available`
-- `backorder_possible`
-- `unavailable`
-- `unknown_stale`
+## Freshness
+
+`last_checked_at` does NOT advance on a failed check. A failed supplier read writes nothing: no stamp, no status change, and it never zeroes Shopify stock. The age of the stamp is therefore the one signal of a failed or missing check, and the theme's 3-day rule (owner decision 2026-09-19) sees it. Six of the 41 products were stale on 2026-09-20 (stamps from 5 July to 14 September); pawscout-agent owns the fix (round 245, section 3).
+
+## Never written
+
+`supplier.max_order_qty`, `supplier.sku`, `supplier.warehouse`, `supplier.cj_product_id`, `supplier.cj_variant_id`, `supplier.fulfillment_confidence`, any variant-level `supplier.*` metafield, and the status values `in_stock`, `supplier_available`, `backorder_possible`, `unavailable` and `unknown_stale`. Earlier versions of this file described them; nothing produces them, and since 2026-09-20 the theme no longer reads them.
 
 ## Theme Behavior
 
-The theme should:
+The theme:
 
-- use tracked Shopify inventory first when inventory policy denies overselling
-- use `supplier.max_order_qty` when present
-- use `supplier.available_qty` when max order quantity is absent
-- fall back to a conservative cap when no trusted quantity exists
-- show supplier status and last-checked timestamp only when Shopify metafields provide them
-- never call supplier APIs directly from browser JavaScript
+- uses tracked Shopify inventory (policy deny) for the purchase cap and the quantity banner; this is the path every product the worker manages takes
+- falls back to a conservative cap of 20 when Shopify does not track the variant
+- trusts `supplier.*` only while `supplier.last_checked_at` is within 3 days; stale or absent data renders the conservative default, hides the "Availability updated" line and drops the synced delivery range
+- decides all of this in one place, `snippets/supplier-availability.liquid`, shared by the product page, the cart page and the cart drawer
+- never shows internal sourcing (the supplier name, origin codes) to the customer
+- never calls supplier APIs directly from browser JavaScript
 
+Changing a key, a value or its owner is a contract change: post it on the agent channel first (see `docs/theme-worker-contract.md`, section 6).

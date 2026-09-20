@@ -831,3 +831,37 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 25 - 2026-09-20: Sparse markets look deliberate; the supplier spec follows the writer
+
+### What changed
+- `sections/category-showcase.liquid` - a home collection block renders its cards first and counts them. With no cards for the visitor's market the whole block is left out: heading, body, "View collection" link and all. The merchant hint stays, in the Theme Editor only (`request.design_mode`), reworded to say which country is being previewed. "Show more" now compares the cards rendered with the visible limit.
+- `sections/main-collection.liquid` - the grid or the message is decided by the products on the page (`collection.products.size` inside `paginate`), so neither an empty market nor a page number past the end renders an empty grid. The message: "Nothing available here right now. No products from <collection> are available for your delivery country (<country>) at the moment." plus "Browse all products" (left out on the all-products collection itself, compared by URL, no handle literal).
+- `sections/main-product.liquid` - "You may also like" captures its cards first and shows the heading only above at least one card. `supplier_name` reads the product-level key only.
+- `assets/theme.css` - `.empty-category strong` takes the ink colour explicitly; the button inside keeps its own width and gains 8px of air.
+- `snippets/supplier-availability.liquid` - the reader follows the writer: dropped `max_order_qty`, the variant-level `supplier.*` reads, `unknown_stale` and the five status names nothing writes. Output keeps its 12 fields; field 9 is now `tracked` or `default`.
+- `sections/main-cart.liquid`, `snippets/cart-drawer-contents.liquid` - the `supplier_max` cart note and the comments that described the old four-step cap are gone.
+- `tests/independence.cjs` - Cloudflare Turnstile console errors are classified by where they are logged from (`challenges.cloudflare.com`), never by their text, and counted in the summary. New: the home page and one collection page as a visitor in a sparse market (`SPARSE_MARKET`, default US), through a second browser context that carries the `localization` cookie.
+- Docs: `docs/shopify-supplier-metafields.md` rewritten to the eight product-level keys and three statuses; `CLAUDE.md` table and cap logic, `README.md`, `docs/HANDOVER.md`, `docs/theme-worker-contract.md` (rule 2, section 4, a Markets subsection, open questions closed), `docs/theme-production-grade-prd.md` (T19 rewritten and ticked, T8 closed).
+
+### Why it changed
+- Channel round 245 (pawscout-agent): the worker removes products from the AU, EU and US+CA catalogues by design unless they can be delivered there, and the owner keeps those markets open. Measured on live for a US, AU and DE visitor: the Pet Toys block showed customers the merchant hint "Add products to this collection to populate the section." under a heading and a link to an empty collection, and the collection page said "No products here yet. Check back soon".
+- The same round set out what the worker really writes. The spec, `CLAUDE.md` and the contract doc described a variant-level key set with six statuses that nothing produces, and the snippet carried branches for them that no fixture could ever exercise.
+
+### How it was solved
+- **Measured before changing.** The task said `products_count` ignores the market. Diagnostics on a preview for GB, US, AU and DE say otherwise: `collection.products`, `products_count`, `all_products_count` and `paginate.items` are all market-scoped (Pet Toys 11 for GB and 0 elsewhere on every one; all products 41 against 19). So the related-products walk and the header and footer lists were already market-aware and were left alone; the defects were the block's else-branch and the collection page's copy. Because no count can tell "empty for this market" from "empty everywhere", the message is worded to be true in both cases.
+- **A probe caught its own false clean.** A cookieless request with `?preview_theme_id=` is served by the LIVE theme. The first diagnostic pass printed `Shopify.theme.id` and showed the live id on every page, so it was redone with a cookie jar; the market probe now fails itself when a page comes from the wrong theme or market.
+- **Verified on preview 207842148690, deleted afterwards** (only the live theme remains). GB: home, collections, three product pages and an article identical to live. US, AU, DE: 4 blocks instead of 5, no hint, no empty collection linked from the home page, no dead product link, the message names the country. Seven GB product pages (fresh available, low stock, out of stock, three stale, multi-variant), the cart page and the cart drawer: identical snapshots between live and preview (the extracted banner, cap, estimate, button, delivery block and cart note compared as JSON; the drawer cap read from the section render, 33 on both), so the snippet cleanup changes nothing a customer sees.
+- **Every new check has a firing control.** The two sparse-market checks fail against live today (4 of 5 blocks have cards; the hint is present) and pass on the preview: blocked 108/108, control 105/105. The Turnstile rule, read out of the script itself: 2 own errors on the worker's form without it, 0 with it, and the same text logged from `theme.js` would still count.
+- **Evidence grades.** What the worker writes and why: pawscout-agent, round 245, from a repository this agent cannot read. What is on the store: measured here on all 41 active products through the Admin API (eight product-level keys each, no variant metafields, every variant tracked with policy deny, statuses `available`, `low_stock`, `out_of_stock`, six stale stamps).
+- Contrast, computed: the message body is `--muted` #5d6670 on `--surface` #f7f4ef, 5.32 to 1; the heading is now `--ink`, 16.31 to 1. Checked at 1280 and 390 wide. The store-wide primary button (white on #f05a28) is 3.39 to 1, below 4.5 for its 16px text; it is not new and was left alone, noted for the owner.
+
+### Not done, for the owner
+- The primary button's white on orange is 3.39 to 1 everywhere it appears.
+- The announcement bar and the trust strip still say "Free UK delivery" to non-GB visitors, and the Pet Toys collection description (admin content) ends with the same line. True for the UK, beside the point elsewhere.
+
+### Files touched
+- `sections/category-showcase.liquid`, `sections/main-collection.liquid`, `sections/main-product.liquid`, `sections/main-cart.liquid`, `snippets/supplier-availability.liquid`, `snippets/cart-drawer-contents.liquid`, `assets/theme.css`, `tests/independence.cjs`, `CLAUDE.md`, `README.md`, `docs/shopify-supplier-metafields.md`, `docs/theme-worker-contract.md`, `docs/theme-production-grade-prd.md`, `docs/HANDOVER.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.

@@ -11,34 +11,37 @@
     assign sa = sa | strip | split: '|'
   Fields: 0 label, 1 detail, 2 cap, 3 urgency ('' | low | high), 4 sold_out,
   5 fresh, 6 checked_label (blank unless fresh), 7 qty_known, 8 known_qty,
-  9 source (tracked | supplier_max | supplier_qty | default), 10 policy_continue,
-  11 delivery_days (the synced range, blank unless fresh). Booleans are the
-  strings 'true' / 'false'.
+  9 source (tracked | default), 10 policy_continue, 11 delivery_days (the
+  synced range, blank unless fresh). Booleans are the strings 'true' / 'false'.
+
+  The reader follows the writer (docs/shopify-supplier-metafields.md): the
+  worker writes supplier.* on the PRODUCT only, and three status values. Keys
+  and values nothing writes (max_order_qty, variant-level supplier fields,
+  unknown_stale, the older status names) are not read here any more.
 
   Rules:
   - Tracked Shopify inventory with policy deny is authoritative for the cap and
-    for the quantity banner. Supplier quantities apply only when Shopify does
-    not track the variant.
+    for the quantity banner. The worker tracks every variant it manages, so
+    this is the path every imported product takes.
   - Supplier data is trusted only while the supplier check is FRESH: a
     supplier.last_checked_at within 3 days (owner decision 2026-09-19, two
-    missed nightly runs) and a status other than unknown_stale. Stale or
-    absent supplier data renders the conservative default and hides the
-    "Availability updated" date; the delivery window then falls back to the
-    static band in delivery-info.
-  - Status values the worker writes today ('available', 'out_of_stock') and
-    the documented set are both mapped; anything else reads "Ready to order".
+    missed nightly runs). A failed check does not advance the stamp, so age
+    alone shows a failure. Stale or absent supplier data renders the
+    conservative default and hides the "Availability updated" date; the
+    delivery window then falls back to the static band in delivery-info.
+  - supplier.status labels a variant only when Shopify does not track it:
+    'available', 'low_stock', 'out_of_stock'. supplier.available_qty is one
+    product-wide figure, so it never caps a variant; the cap is then 20.
   - The default detail line is the Delivery theme setting for the visitor's
     market: the UK line for GB, the neutral line for every other market.
   - A number is shown only when it is small (10 or fewer); it is always the
     real quantity that also governs the cap.
   @param {variant} variant - the variant being priced or in the cart
-  @param {product} product - its product (product-level metafields are the fallback)
+  @param {product} product - its product (supplier.* lives on the product)
 {% enddoc %}
 {%- liquid
-  assign s_status = variant.metafields.supplier.status.value | default: product.metafields.supplier.status.value
-  assign s_checked = variant.metafields.supplier.last_checked_at.value | default: product.metafields.supplier.last_checked_at.value
-  assign s_available_qty = variant.metafields.supplier.available_qty.value
-  assign s_max_order_qty = variant.metafields.supplier.max_order_qty.value
+  assign s_status = product.metafields.supplier.status.value
+  assign s_checked = product.metafields.supplier.last_checked_at.value
   assign s_delivery_days = product.metafields.supplier.delivery_days.value
 
   assign fresh = false
@@ -47,15 +50,13 @@
     assign now_s = 'now' | date: '%s' | plus: 0
     assign checked_s = s_checked | date: '%s' | plus: 0
     assign age_s = now_s | minus: checked_s
-    if age_s >= 0 and age_s <= 259200 and s_status != 'unknown_stale'
+    if age_s >= 0 and age_s <= 259200
       assign fresh = true
       assign checked_label = s_checked | date: '%d %b %Y'
     endif
   endif
   unless fresh
     assign s_status = ''
-    assign s_available_qty = ''
-    assign s_max_order_qty = ''
     assign s_delivery_days = ''
   endunless
 
@@ -80,23 +81,8 @@
     assign qty_known = true
     assign known_qty = cap
     assign source = 'tracked'
-  else
-    if variant.inventory_management != blank
-      assign policy_continue = true
-    endif
-    if s_max_order_qty != blank
-      assign cap = s_max_order_qty
-      assign source = 'supplier_max'
-      if s_available_qty != blank
-        assign qty_known = true
-        assign known_qty = s_available_qty
-      endif
-    elsif s_available_qty != blank
-      assign cap = s_available_qty
-      assign qty_known = true
-      assign known_qty = s_available_qty
-      assign source = 'supplier_qty'
-    endif
+  elsif variant.inventory_management != blank
+    assign policy_continue = true
   endif
 
   if qty_known
@@ -117,15 +103,12 @@
     endif
   elsif s_status != blank
     case s_status
-      when 'in_stock', 'available', 'supplier_available'
+      when 'available'
         assign label = 'In stock'
       when 'low_stock'
         assign label = 'Low stock'
         assign urgency = 'low'
-      when 'backorder_possible'
-        assign label = 'Available to order'
-        assign detail = 'May take a little longer to dispatch than usual.'
-      when 'unavailable', 'out_of_stock'
+      when 'out_of_stock'
         assign label = 'Currently unavailable'
       else
         assign label = 'Ready to order'
