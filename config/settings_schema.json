@@ -14,7 +14,7 @@
       { "type": "image_picker", "id": "brand_logo", "label": "Brand logo" },
       { "type": "image_picker", "id": "favicon", "label": "Favicon" },
       { "type": "color", "id": "color_ink", "label": "Ink", "default": "#101820" },
-      { "type": "color", "id": "color_accent", "label": "Accent", "default": "#F05A28" },
+      { "type": "color", "id": "color_accent", "label": "Accent", "default": "#D24000", "info": "White text sits on this colour on every button, so keep white on it at 4.5 to 1 or better. The default gives 4.69 to 1." },
       { "type": "color", "id": "color_surface", "label": "Surface", "default": "#F7F4EF" }
     ]
   },
@@ -31,7 +31,13 @@
     "settings": [
       { "type": "paragraph", "content": "The product page availability banner and the delivery block show the UK line only to visitors whose market country is the United Kingdom; every other market sees the neutral line. Keep both true: nothing here is verified against the carrier." },
       { "type": "text", "id": "delivery_detail_uk", "label": "Delivery line for UK visitors", "default": "Free UK delivery on every order. Tracking details are sent after dispatch." },
-      { "type": "text", "id": "delivery_detail_other", "label": "Delivery line for other markets", "default": "Delivery options and times are shown at checkout." }
+      { "type": "text", "id": "delivery_detail_other", "label": "Delivery line for other markets", "default": "Delivery options and times are shown at checkout." },
+      { "type": "header", "content": "Announcement bar and trust strip" },
+      { "type": "paragraph", "content": "One short delivery promise, shown in both places. UK visitors see the UK pair; visitors in every other market see the other pair. Write [country] where the visitor's country name should appear. Keep each line short: the announcement bar shows it on one line beside two other items." },
+      { "type": "text", "id": "delivery_promise_title_uk", "label": "Promise title for UK visitors", "default": "Free UK delivery" },
+      { "type": "text", "id": "delivery_promise_text_uk", "label": "Promise line for UK visitors", "default": "On every order, no minimum" },
+      { "type": "text", "id": "delivery_promise_title_other", "label": "Promise title for other markets", "default": "Delivery to [country]" },
+      { "type": "text", "id": "delivery_promise_text_other", "label": "Promise line for other markets", "default": "Rates and times at checkout" }
     ]
   },
   {

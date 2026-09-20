@@ -60,6 +60,18 @@ const mainHeight = (page) => page.evaluate(() => {
 const count = (page, sel) => page.locator(sel).count();
 const text = (page, sel) => page.locator(sel).first().innerText().catch(() => '');
 
+// The delivery promise is one snippet rendered by the announcement bar and the trust strip
+// (PRD R8, R11): every copy on the page must read the same, and only a GB visitor may be
+// told about UK delivery. textContent, because the marquee duplicates are not all on screen.
+const deliveryPromise = async (page, rec) => {
+  const promises = await page.locator('[data-delivery-promise]').evaluateAll((els) => els.map((e) => `${e.textContent.trim()} / ${(e.nextElementSibling ? e.nextElementSibling.textContent : '').trim()}`));
+  const country = await page.evaluate(() => (window.Shopify && window.Shopify.country) || null).catch(() => null);
+  const distinct = [...new Set(promises)];
+  check(rec, 'announcement bar and trust strip give one delivery promise', promises.length >= 2 && distinct.length === 1, `${promises.length} copies: ${distinct.join(' | ') || 'none'}`);
+  if (country === 'GB') check(rec, 'a GB visitor gets the UK delivery promise', /\bUK\b/.test(distinct[0] || ''), distinct[0] || 'none');
+  else check(rec, `a ${country} visitor is never told about UK delivery`, distinct.length > 0 && !distinct.some((t) => /\bUK\b|United Kingdom/i.test(t)), distinct.join(' | ') || 'none');
+};
+
 async function visit(context, name, url, specific, generic = true) {
   const page = await context.newPage();
   const rec = { name, url, checks: [], consoleErrors: [], codeErrors: [], blocked: [], turnstileErrorLines: 0 };
@@ -173,6 +185,7 @@ async function openContext(browser, country) {
     check(rec, 'no announcement event item', (await count(page, '.announcement-event')) === 0);
     check(rec, 'collection showcase cards', (await count(page, '.category-showcase .commerce-grid > *')) > 0);
     check(rec, 'product cards on the home page', (await count(page, '.commerce-grid .commerce-card')) > 0);
+    await deliveryPromise(page, rec);
   });
 
   // Collection, and the first product in it.
@@ -285,6 +298,7 @@ async function openContext(browser, country) {
     const filled = await count(page, '.category-block:has(.commerce-card)');
     check(rec, 'every collection block on show has products', blocks > 0 && blocks === filled, `${filled} of ${blocks} blocks have cards`);
     check(rec, 'no merchant hint on the storefront', (await count(page, '.category-showcase .empty-category')) === 0);
+    await deliveryPromise(page, rec);
   });
   await visit(sparse, `collection-${cc}`, `${BASE}/collections/pet-toys`, async (page, rec) => {
     const cards = await count(page, '.commerce-grid .commerce-card');

@@ -13,8 +13,9 @@
           <circle cx="17.5" cy="17" r="1.8"/>
         </svg>
       </span>
-      <strong>{{ section.settings.shipping_title }}</strong>
-      <span>{{ section.settings.shipping_text }}</span>
+      {%- comment -%} Market-aware: the UK promise for a GB visitor, a neutral line
+          naming their country for everyone else. One place: the snippet. {%- endcomment -%}
+      {% render 'delivery-promise' %}
     </p>
     <p>
       <span class="announcement-icon" aria-hidden="true">
@@ -46,8 +47,7 @@
 {
   "name": "Announcement bar",
   "settings": [
-    { "type": "text", "id": "shipping_title", "label": "Shipping title", "default": "Free UK delivery" },
-    { "type": "text", "id": "shipping_text", "label": "Shipping text", "default": "On every order, no minimum" },
+    { "type": "paragraph", "content": "The delivery item changes with the visitor's country, so its wording is in Theme settings > Delivery." },
     { "type": "text", "id": "returns_title", "label": "Returns title", "default": "Easy returns" },
     { "type": "text", "id": "returns_text", "label": "Returns text", "default": "14-day returns, contact us first" },
     { "type": "text", "id": "support_title", "label": "Support title", "default": "Pet-care support" },

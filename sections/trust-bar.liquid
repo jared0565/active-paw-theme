@@ -28,8 +28,9 @@
         <circle cx="17.5" cy="17" r="1.8"/>
       </svg>
     </span>
-    <strong>Free UK delivery</strong>
-    <span>On every order, no minimum spend</span>
+    {%- comment -%} Market-aware, and the same words as the announcement bar: one snippet
+        decides both (PRD R8, R11). A visitor outside the UK never sees the UK promise. {%- endcomment -%}
+    {% render 'delivery-promise' %}
   </div>
   <div class="trust-card">
     <span class="trust-icon" aria-hidden="true">
