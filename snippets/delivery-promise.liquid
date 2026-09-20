@@ -1,32 +1,88 @@
 {% doc %}
-  The short delivery promise for the VISITOR'S market, in one place (PRD R8, R11,
-  decision 5f): the announcement bar and the trust strip both render it, so the
-  two can never disagree and neither can tell a visitor abroad about UK delivery.
+  Every delivery sentence that depends on the VISITOR'S market, in one place
+  (PRD R8, R11, decision 5f). Each surface asks for the shape it needs, so no
+  section tests the country itself and none can tell a visitor abroad about UK
+  delivery.
 
   - GB market: the UK promise ("Free UK delivery", true for every UK order).
   - Every other market: a neutral line that names the visitor's country and
     points at checkout, where the rate and the time for their address are shown.
-    Nothing is promised that the theme cannot know.
+    Nothing is promised that the theme cannot know. The duties sentence is the
+    FAQ's own ("Do you deliver outside the UK?").
 
   The country is Shopify's market country (localization.country), the same one
   that decides the catalogue, the prices and the checkout. The store has no
-  market web presences, so it changes only when the visitor changes country.
-  The wording lives in Theme settings > Delivery; "[country]" in a setting is
-  replaced by the country's name.
+  market web presences, so it changes only when the visitor changes country
+  (snippets/country-selector.liquid, in the footer).
+  The title and line of the pair live in Theme settings > Delivery; "[country]"
+  in a setting is replaced by the country's name as it reads in a sentence
+  ("the United States", "the Netherlands", "Germany").
 
-  Renders a <strong> title followed by a <span> line, the markup both callers
-  already use.
+  Shapes (format):
+    pair           <strong>title</strong> <span>line</span>   announcement bar, trust strip
+    title          the title as text                           footer chip
+    stat           <strong>KEY</strong> rest                   home "what every order includes"
+    checkout_note  a sentence about delivery cost              home "No surprises at checkout"
+    drawer_nudge   the cart drawer's add-on prompt
+    drawer_note    the cart drawer's delivery and tax line
+  @param {string} [format] - one of the shapes above; pair when omitted
+  @param {boolean} [link] - pair only: the title links to the country selector
 {% enddoc %}
 {%- liquid
+  assign shape = format | default: 'pair'
+  # Names that take "the" in a sentence, by ISO code. A new market whose name needs
+  # the article is added here; every other name is used as Shopify gives it.
+  assign article_codes = 'GB,US,NL,AE,PH' | split: ','
+  assign country_name = localization.country.name
+  if article_codes contains localization.country.iso_code
+    assign country_name = 'the ' | append: country_name
+  endif
+  assign uk = false
   if localization.country.iso_code == 'GB'
+    assign uk = true
+  endif
+  if uk
     assign promise_title = settings.delivery_promise_title_uk | default: 'Free UK delivery'
     assign promise_text = settings.delivery_promise_text_uk | default: 'On every order, no minimum'
   else
     assign promise_title = settings.delivery_promise_title_other | default: 'Delivery to [country]'
     assign promise_text = settings.delivery_promise_text_other | default: 'Rates and times at checkout'
   endif
-  assign promise_title = promise_title | replace: '[country]', localization.country.name
-  assign promise_text = promise_text | replace: '[country]', localization.country.name
+  assign promise_title = promise_title | replace: '[country]', country_name
+  assign promise_text = promise_text | replace: '[country]', country_name
 -%}
-<strong data-delivery-promise>{{ promise_title | escape }}</strong>
-<span data-delivery-promise-line>{{ promise_text | escape }}</span>
+{%- case shape -%}
+  {%- when 'title' -%}
+    {{- promise_title | escape -}}
+  {%- when 'stat' -%}
+    {%- if uk -%}
+      <strong>FREE</strong> UK delivery on every order
+    {%- else -%}
+      <strong>Delivery</strong> to {{ country_name | escape }}, priced at checkout
+    {%- endif -%}
+  {%- when 'checkout_note' -%}
+    {%- if uk -%}
+      UK delivery is free on every order with no minimum. Shipping and taxes are shown at checkout before you pay.
+    {%- else -%}
+      The delivery rate for {{ country_name | escape }} is shown at checkout before you pay. Local import duties or taxes set by the destination country may apply and are not included in our prices.
+    {%- endif -%}
+  {%- when 'drawer_nudge' -%}
+    {%- if uk -%}
+      UK delivery is <strong>FREE</strong> - complete the kit:
+    {%- else -%}
+      Complete the kit:
+    {%- endif -%}
+  {%- when 'drawer_note' -%}
+    {%- if uk -%}
+      Free UK delivery &middot; taxes calculated at checkout.
+    {%- else -%}
+      Delivery to {{ country_name | escape }} and taxes calculated at checkout.
+    {%- endif -%}
+  {%- else -%}
+    {%- if link -%}
+      <strong data-delivery-promise><a href="#CountrySelector" data-country-jump title="Change delivery country">{{ promise_title | escape }}</a></strong>
+    {%- else -%}
+      <strong data-delivery-promise>{{ promise_title | escape }}</strong>
+    {%- endif %}
+    <span data-delivery-promise-line>{{ promise_text | escape }}</span>
+{%- endcase -%}

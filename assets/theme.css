@@ -72,7 +72,7 @@ img { max-width: 100%; display: block; }
 .announcement-set {
   display: grid;
   /* Each column first takes what its own line needs and the rest is shared, so a long
-     delivery promise ("Delivery to United States") gets room from its neighbours' slack
+     delivery promise ("Delivery to the United States") gets room from its neighbours' slack
      before anything wraps. With equal thirds it wrapped while they sat half empty. */
   grid-template-columns: repeat(3, minmax(0, auto));
   flex: 1 1 100%;
@@ -92,7 +92,9 @@ img { max-width: 100%; display: block; }
   min-height: 48px;
   margin: 0;
   border-right: 1px solid rgba(255,255,255,0.14);
-  padding: 8px clamp(12px, 2vw, 28px);
+  /* 1.2vw, not 2vw: the longest delivery title ("Delivery to the United States") then
+     stays on one line from 1220px up, which covers a 1280px window with a scrollbar. */
+  padding: 8px clamp(12px, 1.2vw, 28px);
   color: #eef8ef;
   font-size: 13px;
 }
@@ -105,6 +107,17 @@ img { max-width: 100%; display: block; }
 .announcement span:not(.announcement-icon) {
   color: rgba(255,255,255,0.86);
 }
+/* The delivery title jumps to the country selector. It keeps the title's colour; the
+   underline is the affordance. */
+.announcement strong a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(184,255,159,0.55);
+}
+.announcement strong a:hover { text-decoration-color: currentColor; }
+.announcement strong a:focus-visible { outline: 2px solid #b8ff9f; outline-offset: 3px; border-radius: 3px; }
 .announcement-icon {
   display: inline-grid;
   place-items: center;
@@ -710,6 +723,9 @@ h2 { margin: 0; font-size: clamp(26px, 3vw, 42px); line-height: 1.08; }
 h3 { margin: 0; font-size: 18px; line-height: 1.25; }
 p { line-height: 1.6; }
 .section-heading p, .conversion p, .landing p { color: var(--muted); }
+/* The merchant's collection description: spaced and coloured like the paragraph it replaces,
+   whether it arrives as plain text or as its own paragraphs. */
+.collection-description { margin: 1em 0; color: var(--muted); line-height: 1.6; }
 
 .product-grid {
   display: grid;
@@ -2310,7 +2326,8 @@ summary { cursor: pointer; font-weight: 800; }
   gap: 9px;
 }
 .footer-nav h3,
-.footer-newsletter label {
+.footer-newsletter label,
+.country-selector label {
   margin: 0;
   color: #b8ff9f;
   font-size: 13px;
@@ -2342,6 +2359,55 @@ summary { cursor: pointer; font-weight: 800; }
 .footer-newsletter input {
   background: white;
 }
+/* Delivery country (snippets/country-selector.liquid): the one way a visitor changes
+   market. A white field like the newsletter's, 16px so phones do not zoom on focus,
+   and the platform's own picker behind it. The caret is drawn because appearance is
+   reset; the focus ring uses the footer's green, which passes 3 to 1 on this ground. */
+.country-selector {
+  display: grid;
+  gap: 8px;
+  max-width: 340px;
+  margin-top: 8px;
+}
+.country-selector__row {
+  display: flex;
+  gap: 8px;
+  scroll-margin-top: calc(var(--sticky-header-offset) + 24px);
+}
+.country-selector select {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 46px;
+  border: 1px solid rgba(255,255,255,0.28);
+  border-radius: 8px;
+  padding: 10px 40px 10px 12px;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23101820' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center / 16px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  appearance: none;
+  cursor: pointer;
+}
+.country-selector select:hover { border-color: #b8ff9f; }
+.country-selector select:focus-visible {
+  outline: 3px solid #b8ff9f;
+  outline-offset: 2px;
+}
+.country-selector.is-switching select { opacity: 0.6; cursor: progress; }
+.country-selector__update {
+  flex: 0 0 auto;
+  min-height: 46px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 16px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.country-selector p { font-size: 13px; }
 .footer-bottom {
   display: flex;
   flex-wrap: wrap;
@@ -2366,6 +2432,8 @@ summary { cursor: pointer; font-weight: 800; }
   }
   .announcement-set { display: flex; flex: 0 0 auto; }
   .announcement-dup { display: flex; }
+  /* In the marquee the title moves, so it is text again; the footer selector is the route. */
+  .announcement strong a { pointer-events: none; text-decoration: none; }
   .announcement p {
     justify-content: flex-start;
     flex-wrap: nowrap; /* marquee items are always one line */

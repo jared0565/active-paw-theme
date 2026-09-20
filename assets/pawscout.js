@@ -184,7 +184,11 @@
       content.appendChild(list);
     }
     if (p.descriptionText) content.appendChild(el('p', 'pawscout-desc', p.descriptionText.slice(0, 400)));
-    content.appendChild(el('p', 'pawscout-ship', 'Ships from our supplier network · estimated 7-12 days to the UK.'));
+    // The note is rendered by main-search.liquid for the visitor's market: the 7-12 day
+    // estimate is the lane to the UK, so a visitor elsewhere gets the checkout line instead.
+    const searchHost = document.querySelector('[data-pawscout-search]');
+    const shipNote = (searchHost && searchHost.getAttribute('data-ship-note')) || 'Ships from our supplier network.';
+    content.appendChild(el('p', 'pawscout-ship', shipNote));
 
     const action = el('div', 'pawscout-action');
     const btn = el('button', 'commerce-add-button pawscout-cta', 'Preparing product…');

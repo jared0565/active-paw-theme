@@ -517,6 +517,30 @@ document.addEventListener('click', (event) => {
   }
 });
 
+// Delivery country (snippets/country-selector.liquid). Choosing a country submits
+// Shopify's localization form at once and brings the visitor back to the page and
+// query they were on; without JavaScript the form's Update button does the same.
+document.addEventListener('change', (event) => {
+  const select = event.target.closest('[data-country-select]');
+  if (!select || !select.form) return;
+  const back = select.form.querySelector('[name="return_to"]');
+  if (back) back.value = window.location.pathname + window.location.search;
+  select.form.classList.add('is-switching');
+  select.form.submit();
+});
+
+// The announcement bar's delivery title jumps to that selector and puts focus in it.
+document.addEventListener('click', (event) => {
+  const jump = event.target.closest('[data-country-jump]');
+  if (!jump) return;
+  const select = document.querySelector('[data-country-select]');
+  if (!select) return;
+  event.preventDefault();
+  const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  select.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'center' });
+  select.focus({ preventScroll: true });
+});
+
 // Manual quantity typing inside the drawer.
 document.addEventListener('change', (event) => {
   const lineInput = event.target.closest('[data-line-qty]');

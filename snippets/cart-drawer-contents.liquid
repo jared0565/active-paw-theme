@@ -66,10 +66,10 @@
         gone; the slot now cross-sells the hidden filler products on every cart
         render. pawscout.js fills [data-addon-cards]. {%- endcomment -%}
     <div class="cart-addons" data-pawscout-cart-addons>
-      <p class="cart-addons__msg">UK delivery is <strong>FREE</strong> - complete the kit:</p>
+      <p class="cart-addons__msg">{% render 'delivery-promise', format: 'drawer_nudge' %}</p>
       <div class="cart-addons__cards" data-addon-cards></div>
     </div>
-    <p class="cart-drawer__tax">Free UK delivery &middot; taxes calculated at checkout.</p>
+    <p class="cart-drawer__tax">{% render 'delivery-promise', format: 'drawer_note' %}</p>
     {%- if cart_has_quantity_issue -%}
       <div class="cart-drawer__alert" role="alert">One or more quantities exceed current limits. Update in your cart before checkout.</div>
     {%- endif -%}

@@ -1,0 +1,38 @@
+{% doc %}
+  The visitor's delivery country, and the way to change it. Shopify's localization
+  form: choosing a country moves the visitor to that country's market, which sets
+  the catalogue, the prices, the currency and what checkout offers.
+
+  Why it exists: the store has no market web presences, so nothing moves a visitor
+  into a market by itself. Without this form a shopper abroad stays in the UK market,
+  is told about UK delivery, and has no way to say where they are.
+
+  A native select on purpose: it is the control every platform already makes
+  usable (search by typing, the phone's own picker, screen readers), for a list
+  of about thirty countries. theme.js submits on change and keeps the visitor on
+  the page they were reading; without JavaScript the Update button does the same.
+
+  Only the countries of active markets are listed (localization.available_countries),
+  so every option is a country the store sells to. With a single country the form
+  is pointless and is left out.
+  @param {string} [id_prefix] - makes the ids unique if the form is ever rendered twice; Footer when omitted
+{% enddoc %}
+{%- if localization.available_countries.size > 1 -%}
+  {%- assign prefix = id_prefix | default: 'Footer' -%}
+  {%- assign form_id = prefix | append: 'CountryForm' -%}
+  {% form 'localization', id: form_id, class: 'country-selector' %}
+    <label for="{{ prefix }}CountrySelect">Delivery country</label>
+    <div class="country-selector__row" id="CountrySelector">
+      <select id="{{ prefix }}CountrySelect" name="country_code" autocomplete="off" data-country-select>
+        {%- for country in localization.available_countries -%}
+          <option value="{{ country.iso_code }}"{% if country.iso_code == localization.country.iso_code %} selected{% endif %}>
+            {{- country.name | escape }} ({{ country.currency.iso_code }} {{ country.currency.symbol }})
+          </option>
+        {%- endfor -%}
+      </select>
+      <noscript><button type="submit" class="country-selector__update">Update</button></noscript>
+    </div>
+    <input type="hidden" name="return_to" value="{{ request.path }}">
+    <p>Products, prices and delivery follow the country you choose.</p>
+  {% endform %}
+{%- endif -%}

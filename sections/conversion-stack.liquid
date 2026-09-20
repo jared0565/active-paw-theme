@@ -22,7 +22,7 @@
     <h2>Useful pet care finds, bundled for everyday routines</h2>
     <p>Popular picks are grouped around the jobs shoppers already need done: cleaner paws, easier walks, healthier teeth, calmer grooming, and better travel days.</p>
     <div class="proof-stats" aria-label="What every order includes">
-      <span><strong>FREE</strong> UK delivery on every order</span>
+      <span>{% render 'delivery-promise', format: 'stat' %}</span>
       <span><strong>14-day</strong> returns, contact us first</span>
       <span><strong>Tracked</strong> delivery on every dispatch</span>
     </div>
@@ -38,7 +38,7 @@
     </div>
     <div class="service-card">
       <strong>No surprises at checkout</strong>
-      <p>UK delivery is free on every order with no minimum. Shipping and taxes are shown at checkout before you pay.</p>
+      <p>{% render 'delivery-promise', format: 'checkout_note' %}</p>
     </div>
   </div>
 </section>
