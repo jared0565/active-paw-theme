@@ -24,9 +24,9 @@ permissions:
   contents: read
   issues: write
 
-concurrency:
-  group: independence-daily
-  cancel-in-progress: false
+# No concurrency group: the runs are read-only against live, and a group made GitHub cancel
+# the post-deploy runs when several merges landed within minutes (2026-09-19, runs
+# 35457494996 and 35457554796).
 
 jobs:
   live:

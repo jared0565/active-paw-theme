@@ -809,3 +809,25 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 24 - 2026-09-19: Phases 1 to 4 deployed; post-deploy run fixed
+
+### What changed
+- Live store: PRs #1, #2, #10 (replacing #3), #4, #5, #6, #7 and #9 merged into `shopify-deploy` by the owner's merge script, tags release-2026-09-19-2 to -9. Live pulled and found identical to the branch; independence against live 80/80 in blocked mode; theme copies 203969134930 and 207749579090 deleted.
+- `.github/workflows/independence-daily.yml` - concurrency group removed: it cancelled both post-deploy `workflow_run` runs when the merges landed minutes apart. The runs are read-only, so overlap is harmless.
+- `docs/RUNBOOK-THEME-DEPLOY.md` - the stacked pull request gotcha (API branch deletion closes the pull request stacked on it; retarget first).
+- `docs/theme-production-grade-prd.md` - T7 and the T10 owner step ticked, deploy record on T2, T17 note.
+
+### Why it changed
+- The owner asked for the outstanding owner steps to be processed; merging is refused to the agent, so the owner ran the prepared script. The first run stopped at #3 (closed by the branch deletion after #2), which is now handled in the script and documented.
+
+### How it was solved
+- Verified on live after the last merge: footer links to `/pages/affiliates`; the page renders the Apply card hidden server-side with the email route; "Fulfilled by" absent from a product page; run 35457784390 (dispatched from shopify-deploy after the last merge): blocked 80/80 and control 77/77, 0 hard failures; the affiliates page is now the Shopify page, so the worker form's console error no longer appears in the run.
+
+- T4 closed the same evening: with the owner's Theme Access password in `SHOPIFY_CLI_THEME_TOKEN`, the preview job's first real run (35458099218, attempt 2) pushed preview theme 207796928850, passed blocked 89/89 and control 86/86, and deleted the preview. R3 is met in full.
+
+### Files touched
+- `.github/workflows/independence-daily.yml`, `docs/RUNBOOK-THEME-DEPLOY.md`, `docs/theme-production-grade-prd.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
