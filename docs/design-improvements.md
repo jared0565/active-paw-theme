@@ -961,3 +961,50 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 29 - 2026-09-21: No page scrolls sideways; every layout between a tablet and a small laptop is a designed one; icon buttons keep their names
+
+### What changed
+- **Header, 901 to 1260px.** The three-column header row gives up width in steps and keeps all four actions at every step: at 1260px and under the second line under each label goes, at 1200px and under Share and Contact become icon buttons (as they already are on phones) while Collections keeps its word, at 1040px and under the search field may shrink to 220px.
+- **Footer, 901 to 1320px.** Two rows instead of three columns: the brand block (with the country selector) beside the newsletter, the three link columns across the full width underneath.
+- **Product page, 901 to 1240px.** Two columns instead of three: the gallery on the left; title, price and the buy box stacked on the right. The two inner scroll panes go in that band, as they do on phones. Where the window is at least 720px high the gallery follows the scroll, so the picture stays beside the buy box instead of leaving a blank half page under it.
+- **"Useful pet care finds" section on the home page.** The three service cards stack where three do not fit: beside the copy from 901 to 1199px, under it at 700px and below. In the first band the figure in the stat boxes scales with the window, and it may wrap, so a long word never runs through its box.
+- **Phones: the Share and Contact buttons have a name again.** Their labels were removed with `display: none`, which left two icon buttons with no name at all for a screen reader (the icon is `aria-hidden`). The labels are now clipped with the visually hidden pattern, and both buttons carry a `title` for hover and long press.
+- **Product page breadcrumb.** The links were 15px tall, under the 24px minimum target (measured 34x15 on a phone). Padding grows the hit area to 31px and a negative margin keeps the row where it was (row height still 15px, measured).
+- **A standing layout check in `tests/independence.cjs`** (`layout-home`, `layout-pdp`): no sideways scroll, no container spilling into its own padding, every visible button, link and field named, at 25 widths from 1400 to 360px, in a browser that keeps its scrollbar.
+- **Store content, through the owner's Shopify connector (not the theme, not the scripts app):** the trailing sentence "Free UK delivery on every order." was removed from the on-page description of four collections. See below.
+
+### Why it changed
+- The owner asked for every customer-facing issue to be fixed first. A sweep of seven page types at four widths (overflow, names, images, contrast, target size) found no contrast or image defects, and found these:
+  - Between 901px and about 1300px EVERY page scrolled sideways: 1197px of header and 1142px of footer on a 1024px window, and on the product page the buy box ran 225px past a 901px window. That band is every tablet in landscape and most small laptops.
+  - On phones the service cards were 109px wide and their text wrapped one word per line; from 901 to 1020px the figure "Tracked" (85px wide at 22px) ran through its 77px box.
+  - Two header buttons with no accessible name on phones, and one 15px tall link.
+- Entry 27 and the notes on pull request 13 named only the header. **That diagnosis was incomplete, and it was mine:** the first probe listed offenders in document order and cut the list at eight, so it showed header elements only. The footer was a second cause all along and the product columns a third. Each only became visible once the one above it was fixed, which is why the fix was verified with a probe that lists every unclipped offender, not the first few.
+
+### How it was solved
+- **Thresholds come from arithmetic, then measurement, and they carry a scrollbar.** Each band ends at the width the full layout needs: minimum column widths, plus gaps and padding that are a share of the window, plus 15 to 17px for a desktop scrollbar. A media query sees the whole window; the layout gets the window minus the scrollbar. Playwright hides scrollbars by default, so my first thresholds (1240, 1150, 1000), measured that way, read "fits" and were wrong for a real browser: 2px of sideways scroll at 1181 and 6 to 14px from 1001 to 1010. Found before anything shipped, by relaunching Chromium without `--hide-scrollbars`; every row of every probe since proves the bar is there (`innerWidth` greater than `clientWidth`).
+- **"Fits" was not enough.** A grid whose columns are wider than its content box overflows into its own right-hand padding before it makes the page scroll. The footer did that from about 1236 to 1314px and the product page from 1141 to about 1218px: no scrollbar, but the last column touching the window edge. The probe therefore reports a second thing, "squeezed": a grid or flex container whose children reach past its content box. That detector is what found the service cards and the stat figure, neither of which I was looking for.
+- **Rethought, not scaled** (impeccable, adapt reference): each band is a two-column or two-row layout in its own right, not the desktop one squeezed. An icon button keeps its name: labels are clipped, never `display: none`.
+- **Verification on an unpublished preview (created for this, deleted afterwards), GB visitor:**
+  - Probe with a real scrollbar, seven page types (home, collection, product, search, cart, blog, contact) at 38 widths from 1400 to 360px: 266 rows, every one served by the preview theme, 0 sideways scroll. "Squeezed": 0 on six pages; 9 rows on the home page, all the service cards and the stat figure, 0 after that fix (home and product re-probed, 76 rows).
+  - **Control, the same probe against live (unfixed), product page, 27 widths:** 11 widths scroll sideways and 16 are squeezed, including the footer eating 25px of its padding at 1280px, which the arithmetic had predicted.
+  - **The new standing check against live (unfixed): all six of its assertions FAIL**, on exactly the defects above (130 of 137 checks passed, 6 hard failures, plus the informational line). Against the preview: blocked 152/153, control 149/149, 0 hard failures. A check that cannot fail on the broken theme would prove nothing on the fixed one.
+  - Looked at, not only measured: header and footer at 1024px, product page at 1024px at the top and scrolled (the gallery sits 16px under the compact header), the home section at 1024 and 390px, the breadcrumb target 34x31 with the row still 15px high. On a window 650px high the gallery is `static` again, as intended.
+- The layout check runs in a second browser launched with `ignoreDefaultArgs: ['--hide-scrollbars']`. If a runner ever has no scrollbar the informational line "measured with a real scrollbar" says so; the three assertions still run, with 15px more room than a shopper has.
+
+### Store content changed (Shopify admin data, not in this repository)
+- Read first-hand through the Admin API on 2026-09-21: nine collections; four (`pet-cleaning`, `pet-accessories`, `pet-health`, `pet-toys`) ended their on-page description with "Free UK delivery on every order." The theme prints the delivery promise for the visitor's own country on that page (Entry 27), so the sentence was wrong for every visitor outside the UK and a duplicate for every visitor inside it.
+- One `collectionUpdate` per collection, `descriptionHtml` only: the same HTML minus that sentence. Titles, rules, sort order, images and SEO fields untouched. No user errors. Rollback is to put the sentence back at the end of the second paragraph of each.
+- Verified on the storefront afterwards: the independence run's informational line for a US visitor on `/collections/pet-toys` is gone (control run, 149/149).
+- **Left as it is, for the owner:** the four SEO meta descriptions also end "Free UK delivery." A meta description is one text for every market and is shown in search results, not on the page; it is true of UK orders and it sells the click to the store's main market, so it was not removed.
+
+### Found, not fixed here
+- **Checkout says "Ships next business day".** Read first-hand: `deliveryPromiseSettings` is `deliveryDatesEnabled: true`, `processingTime: P1D`. That is a dispatch promise on stock a supplier ships from abroad, and nothing in this repository grounds it (the product page says "Estimated 5-14 days to your door" from the worker's data). The Admin API exposes the setting as read-only (`deliverySettingUpdate` takes `legacyModeProfiles` only), so it is an owner action in Shopify admin under Settings, Shipping and delivery. The grounded choices are to turn delivery dates off or to set a processing time the supplier actually meets. It changes what checkout shows, so not during the owner's supervised test orders.
+- **"Origin US" delivery profile (Entry 28 said its one variant cannot be delivered to the UK):** its only product, the folding grooming table, is ARCHIVED with no storefront URL, so no shopper can reach it. Not customer-facing; nothing to do.
+- "More payment options" under the buy button is 20px tall. It is Shopify's own element inside the dynamic checkout button, not theme markup.
+
+### Files touched
+- `assets/theme.css`, `sections/site-header.liquid`, `tests/independence.cjs`, `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
