@@ -7,7 +7,8 @@
  *                                                   (one visit with ?preview_theme_id= sets
  *                                                   Shopify's preview cookie for the context;
  *                                                   every page then asserts Shopify.theme.id)
- *   SPARSE_MARKET=AU node tests/independence.cjs     the market for the sparse-market pages (default US)
+ *   SPARSE_MARKET=AU node tests/independence.cjs     the market for the sparse-market pages and the
+ *                                                   country switch (default US)
  *
  * Pass (blocked mode) = every page complete, no errors from the theme's own code,
  * no empty region, server-rendered defaults kept, checkout reachable. The affiliate
@@ -30,6 +31,12 @@ const WORKER_RE = /pawscout\.activepaw\.co\.uk|\/apps\//;
 // from Cloudflare's own script (channel round 245; measured 2026-09-20), so they are
 // classified by where they were logged from, never by their text.
 const TURNSTILE_RE = /^https:\/\/challenges\.cloudflare\.com\//;
+// Shopify's own storefront scripts (analytics, the event reporter) are served under
+// /cdn/shopifycloud/; the theme's files are under /cdn/shop/t/. When a test navigates away, a
+// beacon of theirs that is still in flight logs "TypeError: Failed to fetch" with nothing in the
+// text to tell it from theme code (CI run 35568115045, 2026-09-21), so these too are classified
+// by where they were logged from.
+const SHOPIFY_PLATFORM_SRC_RE = /\/cdn\/shopifycloud\//;
 // A market the worker keeps sparse on purpose (PRD T19): the home page must still look deliberate there.
 const SPARSE_MARKET = process.env.SPARSE_MARKET || 'US';
 const SETTLE_MS = 4500; // past the theme's 3 s feed cap
@@ -72,12 +79,43 @@ const deliveryPromise = async (page, rec) => {
   else check(rec, `a ${country} visitor is never told about UK delivery`, distinct.length > 0 && !distinct.some((t) => /\bUK\b|United Kingdom/i.test(t)), distinct.join(' | ') || 'none');
 };
 
+// The footer's country selector is the one way a visitor leaves the GB market (the store has
+// no market web presences), so it must be there and must show the market the page was rendered for.
+const countrySelector = async (page, rec) => {
+  const state = await page.evaluate(() => {
+    const selects = [...document.querySelectorAll('[data-country-select]')];
+    return { n: selects.length, value: selects[0] ? selects[0].value : null, options: selects[0] ? selects[0].options.length : 0, country: (window.Shopify && window.Shopify.country) || null };
+  }).catch(() => ({ n: 0, value: null, options: 0, country: null }));
+  check(rec, 'country selector shows the market the page was rendered for', state.n === 1 && state.options > 1 && state.value === state.country, `${state.n} selector(s), ${state.options} countries, selected ${state.value}, Shopify.country ${state.country}`);
+};
+
+// Outside the GB market no sentence of the THEME'S may be about UK delivery. The FAQ is left
+// out: it answers "Do you deliver outside the UK?" for everyone. So are the selector's own
+// options. The collection description is the merchant's text in the store admin, which the
+// theme prints as written, so it is reported on its own line and does not fail the theme.
+const noUkDeliveryClaim = async (page, rec) => {
+  const found = await page.evaluate(() => {
+    const sentences = (root) => (root.textContent.match(/[^.\n]*\bUK\b[^.\n]*/g) || [])
+      .map((s) => s.replace(/\s+/g, ' ').trim())
+      .filter((s) => /deliver|dispatch|shipping|ships|days/i.test(s))
+      .slice(0, 4);
+    const body = document.body.cloneNode(true);
+    const description = body.querySelector('[data-collection-description]');
+    const merchant = description ? sentences(description) : [];
+    body.querySelectorAll('.faq, select, script, style, noscript, template, [data-collection-description]').forEach((n) => n.remove());
+    return { theme: sentences(body), merchant };
+  }).catch(() => ({ theme: ['page not readable'], merchant: [] }));
+  check(rec, 'no UK delivery sentence outside the GB market', found.theme.length === 0, found.theme.join(' | ') || 'none');
+  if (found.merchant.length) check(rec, 'collection description (store content) makes no UK delivery claim (informational)', false, found.merchant.join(' | '), false);
+};
+
 async function visit(context, name, url, specific, generic = true) {
   const page = await context.newPage();
-  const rec = { name, url, checks: [], consoleErrors: [], codeErrors: [], blocked: [], turnstileErrorLines: 0 };
+  const rec = { name, url, checks: [], consoleErrors: [], codeErrors: [], blocked: [], turnstileErrorLines: 0, platformSourceErrorLines: 0 };
   page.on('console', (m) => {
     if (m.type() !== 'error') return;
     if (TURNSTILE_RE.test(m.location().url || '')) { rec.turnstileErrorLines += 1; return; }
+    if (SHOPIFY_PLATFORM_SRC_RE.test(m.location().url || '') || SHOPIFY_PLATFORM_SRC_RE.test(m.text())) { rec.platformSourceErrorLines += 1; return; }
     rec.consoleErrors.push(m.text().slice(0, 200));
   });
   page.on('pageerror', (e) => rec.codeErrors.push(String(e).slice(0, 200)));
@@ -186,6 +224,7 @@ async function openContext(browser, country) {
     check(rec, 'collection showcase cards', (await count(page, '.category-showcase .commerce-grid > *')) > 0);
     check(rec, 'product cards on the home page', (await count(page, '.commerce-grid .commerce-card')) > 0);
     await deliveryPromise(page, rec);
+    await countrySelector(page, rec);
   });
 
   // Collection, and the first product in it.
@@ -299,6 +338,8 @@ async function openContext(browser, country) {
     check(rec, 'every collection block on show has products', blocks > 0 && blocks === filled, `${filled} of ${blocks} blocks have cards`);
     check(rec, 'no merchant hint on the storefront', (await count(page, '.category-showcase .empty-category')) === 0);
     await deliveryPromise(page, rec);
+    await countrySelector(page, rec);
+    await noUkDeliveryClaim(page, rec);
   });
   await visit(sparse, `collection-${cc}`, `${BASE}/collections/pet-toys`, async (page, rec) => {
     const cards = await count(page, '.commerce-grid .commerce-card');
@@ -306,8 +347,45 @@ async function openContext(browser, country) {
     rec.cards = cards;
     check(rec, 'a grid of products or the empty message, never neither', cards > 0 || message.length > 0, cards > 0 ? `${cards} cards` : message.slice(0, 120));
     if (cards === 0) check(rec, 'empty message offers the products that are available', (await count(page, '.empty-category a[href]')) === 1);
+    await noUkDeliveryClaim(page, rec);
   });
   await sparse.close();
+
+  // The country switch, end to end, as a visitor with no cookie does it: choose a country in
+  // the footer, land back on the same page and query in that market, then choose the UK again.
+  const switcher = await openContext(browser, null);
+  const startPath = '/collections/all?sort_by=price-ascending';
+  await visit(switcher, 'switch', `${BASE}${startPath}`, async (page, rec) => {
+    const state = () => page.evaluate(() => {
+      const select = document.querySelector('[data-country-select]');
+      const promise = document.querySelector('[data-delivery-promise]');
+      return {
+        country: (window.Shopify && window.Shopify.country) || null,
+        where: window.location.pathname + window.location.search,
+        promise: promise ? promise.textContent.trim() : '',
+        selected: select ? select.value : null,
+        name: select && select.selectedOptions[0] ? select.selectedOptions[0].textContent.trim().replace(/\s*\(.*$/, '') : '',
+      };
+    });
+    const choose = async (code) => {
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'load', timeout: 45000 }),
+        page.selectOption('[data-country-select]', code, { timeout: 8000 }),
+      ]);
+      return state();
+    };
+    const before = await state();
+    check(rec, 'a visitor with no cookie starts in the GB market', before.country === 'GB' && before.selected === 'GB', `Shopify.country ${before.country}, selected ${before.selected}`);
+    let after = null;
+    try { after = await choose(SPARSE_MARKET); } catch (e) { rec.switchError = String(e).slice(0, 160); }
+    check(rec, `choosing ${SPARSE_MARKET} moves the visitor to that market`, after && after.country === SPARSE_MARKET && after.selected === SPARSE_MARKET, after ? `Shopify.country ${after.country}, selected ${after.selected}` : rec.switchError);
+    check(rec, 'the visitor stays on the page and query they were on', after && after.where === startPath, after ? after.where : 'no navigation');
+    check(rec, 'the delivery promise names the chosen country', after && after.name.length > 0 && after.promise.includes(after.name) && !/\bUK\b/.test(after.promise), after ? `${after.promise} (chosen: ${after.name})` : 'no navigation');
+    let back = null;
+    try { back = await choose('GB'); } catch (e) { rec.switchBackError = String(e).slice(0, 160); }
+    check(rec, 'choosing the United Kingdom brings the UK promise back', back && back.country === 'GB' && /\bUK\b/.test(back.promise), back ? `Shopify.country ${back.country}, ${back.promise}` : rec.switchBackError);
+  });
+  await switcher.close();
 
   await browser.close();
 
@@ -325,6 +403,7 @@ async function openContext(browser, country) {
     if (p.blocked.length) console.log(`     ${p.name.padEnd(10)} blocked requests: ${p.blocked.length}`);
     if (p.resourceErrorLines) console.log(`     ${p.name.padEnd(10)} browser resource-load error lines: ${p.resourceErrorLines}`);
     if (p.platformErrorLines) console.log(`     ${p.name.padEnd(10)} Shopify platform console errors (not theme code): ${p.platformErrorLines}`);
+    if (p.platformSourceErrorLines) console.log(`     ${p.name.padEnd(10)} console errors logged by Shopify's own scripts (not theme code): ${p.platformSourceErrorLines}`);
     if (p.turnstileErrorLines) console.log(`     ${p.name.padEnd(10)} Cloudflare Turnstile console errors (not theme code): ${p.turnstileErrorLines}`);
     if (p.name === 'search') console.log(`     ${p.name.padEnd(10)} term=${p.searchTerm} native=${p.nativeCount} ghost=${p.ghostCount}`);
   }

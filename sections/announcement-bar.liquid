@@ -15,7 +15,7 @@
       </span>
       {%- comment -%} Market-aware: the UK promise for a GB visitor, a neutral line
           naming their country for everyone else. One place: the snippet. {%- endcomment -%}
-      {% render 'delivery-promise' %}
+      {% render 'delivery-promise', link: forloop.first %}
     </p>
     <p>
       <span class="announcement-icon" aria-hidden="true">

@@ -2,7 +2,15 @@
   <div class="section-heading">
     <p class="eyebrow">Collection</p>
     <h1>{{ collection.title | default: 'Our products' }}</h1>
-    <p>{{ collection.description | default: 'Browse the full range of everyday pet-care picks.' }}</p>
+    {%- comment -%} A div, not a p: the description is the merchant's HTML from the store admin
+        and brings its own paragraphs, which a p cannot contain (the browser closed the p
+        early and left two empty ones). The hook lets the independence run tell the
+        merchant's words from the theme's. {%- endcomment -%}
+    {% if collection.description != blank %}
+      <div class="collection-description" data-collection-description>{{ collection.description }}</div>
+    {% else %}
+      <p>Browse the full range of everyday pet-care picks.</p>
+    {% endif %}
   </div>
   {% paginate collection.products by 12 %}
     {%- comment -%}
