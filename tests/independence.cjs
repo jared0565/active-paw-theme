@@ -31,6 +31,12 @@ const WORKER_RE = /pawscout\.activepaw\.co\.uk|\/apps\//;
 // from Cloudflare's own script (channel round 245; measured 2026-09-20), so they are
 // classified by where they were logged from, never by their text.
 const TURNSTILE_RE = /^https:\/\/challenges\.cloudflare\.com\//;
+// Shopify's own storefront scripts (analytics, the event reporter) are served under
+// /cdn/shopifycloud/; the theme's files are under /cdn/shop/t/. When a test navigates away, a
+// beacon of theirs that is still in flight logs "TypeError: Failed to fetch" with nothing in the
+// text to tell it from theme code (CI run 35568115045, 2026-09-21), so these too are classified
+// by where they were logged from.
+const SHOPIFY_PLATFORM_SRC_RE = /\/cdn\/shopifycloud\//;
 // A market the worker keeps sparse on purpose (PRD T19): the home page must still look deliberate there.
 const SPARSE_MARKET = process.env.SPARSE_MARKET || 'US';
 const SETTLE_MS = 4500; // past the theme's 3 s feed cap
@@ -106,10 +112,11 @@ const noUkDeliveryClaim = async (page, rec) => {
 async function visit(context, name, url, specific, generic = true, before = null) {
   const page = await context.newPage();
   if (before) await before(page);
-  const rec = { name, url, checks: [], consoleErrors: [], codeErrors: [], blocked: [], turnstileErrorLines: 0 };
+  const rec = { name, url, checks: [], consoleErrors: [], codeErrors: [], blocked: [], turnstileErrorLines: 0, platformSourceErrorLines: 0 };
   page.on('console', (m) => {
     if (m.type() !== 'error') return;
     if (TURNSTILE_RE.test(m.location().url || '')) { rec.turnstileErrorLines += 1; return; }
+    if (SHOPIFY_PLATFORM_SRC_RE.test(m.location().url || '') || SHOPIFY_PLATFORM_SRC_RE.test(m.text())) { rec.platformSourceErrorLines += 1; return; }
     rec.consoleErrors.push(m.text().slice(0, 200));
   });
   page.on('pageerror', (e) => rec.codeErrors.push(String(e).slice(0, 200)));
@@ -431,6 +438,7 @@ async function openContext(browser, country) {
     if (p.blocked.length) console.log(`     ${p.name.padEnd(10)} blocked requests: ${p.blocked.length}`);
     if (p.resourceErrorLines) console.log(`     ${p.name.padEnd(10)} browser resource-load error lines: ${p.resourceErrorLines}`);
     if (p.platformErrorLines) console.log(`     ${p.name.padEnd(10)} Shopify platform console errors (not theme code): ${p.platformErrorLines}`);
+    if (p.platformSourceErrorLines) console.log(`     ${p.name.padEnd(10)} console errors logged by Shopify's own scripts (not theme code): ${p.platformSourceErrorLines}`);
     if (p.turnstileErrorLines) console.log(`     ${p.name.padEnd(10)} Cloudflare Turnstile console errors (not theme code): ${p.turnstileErrorLines}`);
     if (p.name === 'search') console.log(`     ${p.name.padEnd(10)} term=${p.searchTerm} native=${p.nativeCount} ghost=${p.ghostCount}`);
   }
