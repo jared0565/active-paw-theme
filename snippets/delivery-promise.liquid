@@ -1,0 +1,32 @@
+{% doc %}
+  The short delivery promise for the VISITOR'S market, in one place (PRD R8, R11,
+  decision 5f): the announcement bar and the trust strip both render it, so the
+  two can never disagree and neither can tell a visitor abroad about UK delivery.
+
+  - GB market: the UK promise ("Free UK delivery", true for every UK order).
+  - Every other market: a neutral line that names the visitor's country and
+    points at checkout, where the rate and the time for their address are shown.
+    Nothing is promised that the theme cannot know.
+
+  The country is Shopify's market country (localization.country), the same one
+  that decides the catalogue, the prices and the checkout. The store has no
+  market web presences, so it changes only when the visitor changes country.
+  The wording lives in Theme settings > Delivery; "[country]" in a setting is
+  replaced by the country's name.
+
+  Renders a <strong> title followed by a <span> line, the markup both callers
+  already use.
+{% enddoc %}
+{%- liquid
+  if localization.country.iso_code == 'GB'
+    assign promise_title = settings.delivery_promise_title_uk | default: 'Free UK delivery'
+    assign promise_text = settings.delivery_promise_text_uk | default: 'On every order, no minimum'
+  else
+    assign promise_title = settings.delivery_promise_title_other | default: 'Delivery to [country]'
+    assign promise_text = settings.delivery_promise_text_other | default: 'Rates and times at checkout'
+  endif
+  assign promise_title = promise_title | replace: '[country]', localization.country.name
+  assign promise_text = promise_text | replace: '[country]', localization.country.name
+-%}
+<strong data-delivery-promise>{{ promise_title | escape }}</strong>
+<span data-delivery-promise-line>{{ promise_text | escape }}</span>

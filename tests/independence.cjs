@@ -7,6 +7,7 @@
  *                                                   (one visit with ?preview_theme_id= sets
  *                                                   Shopify's preview cookie for the context;
  *                                                   every page then asserts Shopify.theme.id)
+ *   SPARSE_MARKET=AU node tests/independence.cjs     the market for the sparse-market pages (default US)
  *
  * Pass (blocked mode) = every page complete, no errors from the theme's own code,
  * no empty region, server-rendered defaults kept, checkout reachable. The affiliate
@@ -24,6 +25,13 @@ const MODE = BLOCK ? 'blocked' : 'control';
 const PREVIEW = process.env.PREVIEW_THEME_ID || '';
 const OUT = path.join(__dirname, '..', 'output', 'playwright');
 const WORKER_RE = /pawscout\.activepaw\.co\.uk|\/apps\//;
+// Cloudflare Turnstile, the bot guard on the worker's affiliate form, probes every console
+// method with "%c%d font-size:0;color:transparent NaN" (twice as an error). The lines come
+// from Cloudflare's own script (channel round 245; measured 2026-09-20), so they are
+// classified by where they were logged from, never by their text.
+const TURNSTILE_RE = /^https:\/\/challenges\.cloudflare\.com\//;
+// A market the worker keeps sparse on purpose (PRD T19): the home page must still look deliberate there.
+const SPARSE_MARKET = process.env.SPARSE_MARKET || 'US';
 const SETTLE_MS = 4500; // past the theme's 3 s feed cap
 const THIN_TERMS = ['launcher', 'sisal', 'orthopedic', 'fountain', 'harness', 'scratcher'];
 
@@ -52,10 +60,26 @@ const mainHeight = (page) => page.evaluate(() => {
 const count = (page, sel) => page.locator(sel).count();
 const text = (page, sel) => page.locator(sel).first().innerText().catch(() => '');
 
+// The delivery promise is one snippet rendered by the announcement bar and the trust strip
+// (PRD R8, R11): every copy on the page must read the same, and only a GB visitor may be
+// told about UK delivery. textContent, because the marquee duplicates are not all on screen.
+const deliveryPromise = async (page, rec) => {
+  const promises = await page.locator('[data-delivery-promise]').evaluateAll((els) => els.map((e) => `${e.textContent.trim()} / ${(e.nextElementSibling ? e.nextElementSibling.textContent : '').trim()}`));
+  const country = await page.evaluate(() => (window.Shopify && window.Shopify.country) || null).catch(() => null);
+  const distinct = [...new Set(promises)];
+  check(rec, 'announcement bar and trust strip give one delivery promise', promises.length >= 2 && distinct.length === 1, `${promises.length} copies: ${distinct.join(' | ') || 'none'}`);
+  if (country === 'GB') check(rec, 'a GB visitor gets the UK delivery promise', /\bUK\b/.test(distinct[0] || ''), distinct[0] || 'none');
+  else check(rec, `a ${country} visitor is never told about UK delivery`, distinct.length > 0 && !distinct.some((t) => /\bUK\b|United Kingdom/i.test(t)), distinct.join(' | ') || 'none');
+};
+
 async function visit(context, name, url, specific, generic = true) {
   const page = await context.newPage();
-  const rec = { name, url, checks: [], consoleErrors: [], codeErrors: [], blocked: [] };
-  page.on('console', (m) => { if (m.type() === 'error') rec.consoleErrors.push(m.text().slice(0, 200)); });
+  const rec = { name, url, checks: [], consoleErrors: [], codeErrors: [], blocked: [], turnstileErrorLines: 0 };
+  page.on('console', (m) => {
+    if (m.type() !== 'error') return;
+    if (TURNSTILE_RE.test(m.location().url || '')) { rec.turnstileErrorLines += 1; return; }
+    rec.consoleErrors.push(m.text().slice(0, 200));
+  });
   page.on('pageerror', (e) => rec.codeErrors.push(String(e).slice(0, 200)));
   page.on('requestfailed', (r) => { if (WORKER_RE.test(r.url())) rec.blocked.push(r.url().slice(0, 120)); });
 
@@ -124,9 +148,11 @@ async function pickThinSearchTerm(context) {
   return { term: 'dog', have: null };
 }
 
-(async () => {
-  const browser = await chromium.launch();
+// One browser context per visitor. `country` sets Shopify's localization cookie: the store has
+// no market web presences, so that cookie is the only thing that moves a visitor off the GB market.
+async function openContext(browser, country) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  if (country) await context.addCookies([{ name: 'localization', value: country, url: `${BASE}/` }]);
   await context.addInitScript(() => {
     window.__cls = 0;
     try {
@@ -143,6 +169,12 @@ async function pickThinSearchTerm(context) {
   if (BLOCK) {
     await context.route(WORKER_RE, (route) => route.abort('failed'));
   }
+  return context;
+}
+
+(async () => {
+  const browser = await chromium.launch();
+  const context = await openContext(browser, null);
 
   // Home: the hero badge must keep its server-rendered copy when the feed is unreachable.
   await visit(context, 'home', `${BASE}/`, async (page, rec) => {
@@ -153,6 +185,7 @@ async function pickThinSearchTerm(context) {
     check(rec, 'no announcement event item', (await count(page, '.announcement-event')) === 0);
     check(rec, 'collection showcase cards', (await count(page, '.category-showcase .commerce-grid > *')) > 0);
     check(rec, 'product cards on the home page', (await count(page, '.commerce-grid .commerce-card')) > 0);
+    await deliveryPromise(page, rec);
   });
 
   // Collection, and the first product in it.
@@ -252,6 +285,30 @@ async function pickThinSearchTerm(context) {
     await context.request.post(`${BASE}/cart/clear.js`).catch(() => {});
   }
 
+  // A sparse market (PRD T19). The worker keeps products out of a market's catalogue unless
+  // they can be delivered there, so a collection can be empty for that visitor. Both checks
+  // hold however full the market is: a block either shows products or is left out, and a
+  // collection page shows either a grid or the message, never an empty grid.
+  const sparse = await openContext(browser, SPARSE_MARKET);
+  const cc = SPARSE_MARKET.toLowerCase();
+  await visit(sparse, `home-${cc}`, `${BASE}/`, async (page, rec) => {
+    rec.country = await page.evaluate(() => (window.Shopify && window.Shopify.country) || null).catch(() => null);
+    check(rec, `visitor is in the ${SPARSE_MARKET} market (informational)`, rec.country === SPARSE_MARKET, `Shopify.country ${rec.country}`, false);
+    const blocks = await count(page, '.category-block');
+    const filled = await count(page, '.category-block:has(.commerce-card)');
+    check(rec, 'every collection block on show has products', blocks > 0 && blocks === filled, `${filled} of ${blocks} blocks have cards`);
+    check(rec, 'no merchant hint on the storefront', (await count(page, '.category-showcase .empty-category')) === 0);
+    await deliveryPromise(page, rec);
+  });
+  await visit(sparse, `collection-${cc}`, `${BASE}/collections/pet-toys`, async (page, rec) => {
+    const cards = await count(page, '.commerce-grid .commerce-card');
+    const message = (await text(page, '.empty-category')).replace(/\s+/g, ' ').trim();
+    rec.cards = cards;
+    check(rec, 'a grid of products or the empty message, never neither', cards > 0 || message.length > 0, cards > 0 ? `${cards} cards` : message.slice(0, 120));
+    if (cards === 0) check(rec, 'empty message offers the products that are available', (await count(page, '.empty-category a[href]')) === 1);
+  });
+  await sparse.close();
+
   await browser.close();
 
   const file = path.join(OUT, `independence-${MODE}.json`);
@@ -268,6 +325,7 @@ async function pickThinSearchTerm(context) {
     if (p.blocked.length) console.log(`     ${p.name.padEnd(10)} blocked requests: ${p.blocked.length}`);
     if (p.resourceErrorLines) console.log(`     ${p.name.padEnd(10)} browser resource-load error lines: ${p.resourceErrorLines}`);
     if (p.platformErrorLines) console.log(`     ${p.name.padEnd(10)} Shopify platform console errors (not theme code): ${p.platformErrorLines}`);
+    if (p.turnstileErrorLines) console.log(`     ${p.name.padEnd(10)} Cloudflare Turnstile console errors (not theme code): ${p.turnstileErrorLines}`);
     if (p.name === 'search') console.log(`     ${p.name.padEnd(10)} term=${p.searchTerm} native=${p.nativeCount} ghost=${p.ghostCount}`);
   }
   console.log(`\n${MODE}: ${passed}/${total} checks passed, ${hardFailures} hard failure(s); details in ${file}`);

@@ -58,7 +58,7 @@ The "Shop this guide" block **composes itself at render time** (2026-07-19): the
 
 ### Supplier-aware PDP and cart
 
-Product and cart templates read the `supplier.*` metafields (availability status, quantity caps, fulfilment confidence) and enforce a shared quantity-cap priority: tracked Shopify inventory first, then `max_order_qty`, then `available_qty`, then a conservative fallback. Availability display never calls supplier APIs from the browser - everything comes Shopify-side from metafields.
+Product and cart templates read the product-level `supplier.*` metafields the PawScout worker writes (status, last check, demand, origin, delivery ranges; spec in `docs/shopify-supplier-metafields.md`) through one snippet, `snippets/supplier-availability.liquid`, which also sets the quantity cap: tracked Shopify inventory first, then a conservative fallback of 20. Supplier data counts only while its last check is within 3 days. Availability display never calls supplier APIs from the browser - everything comes Shopify-side from metafields.
 
 ### Affiliate sign-up surface
 

@@ -16,8 +16,6 @@
       "announcement-bar": {
         "type": "announcement-bar",
         "settings": {
-          "shipping_title": "Free UK delivery",
-          "shipping_text": "On every order, no minimum",
           "returns_title": "Easy returns",
           "returns_text": "14-day returns, contact us first",
           "support_title": "Pet-care support",

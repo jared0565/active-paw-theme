@@ -5,7 +5,14 @@
     <p>{{ collection.description | default: 'Browse the full range of everyday pet-care picks.' }}</p>
   </div>
   {% paginate collection.products by 12 %}
-    {% if collection.products_count > 0 %}
+    {%- comment -%}
+      Decided by the products on this page, so neither a collection that is
+      empty for the visitor's market (PRD T19) nor a page number past the end
+      renders an empty grid. Every count Liquid offers is scoped to the market
+      (measured 2026-09-20), so "empty here" and "empty everywhere" cannot be
+      told apart; the message is worded to be true in both cases.
+    {%- endcomment -%}
+    {% if collection.products.size > 0 %}
       <div class="commerce-grid">
         {% for product in collection.products %}
           {% render 'product-card-commerce', product: product, badge: collection.title %}
@@ -24,9 +31,13 @@
       {% endif %}
     {% else %}
       <div class="empty-category">
-        <strong>No products here yet</strong>
-        <span>Check back soon, or browse the rest of the store.</span>
-        <a class="button button-primary" href="{{ routes.all_products_collection_url }}">Browse all products</a>
+        <strong>Nothing available here right now</strong>
+        {% if collection.url == routes.all_products_collection_url %}
+          <span>No products are available for your delivery country ({{ localization.country.name }}) at the moment.</span>
+        {% else %}
+          <span>No products from {{ collection.title }} are available for your delivery country ({{ localization.country.name }}) at the moment.</span>
+          <a class="button button-primary" href="{{ routes.all_products_collection_url }}">Browse all products</a>
+        {% endif %}
       </div>
     {% endif %}
   {% endpaginate %}

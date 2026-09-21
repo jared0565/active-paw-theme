@@ -48,9 +48,16 @@
       {{ heading_font | font_face: font_display: 'swap' }}
       :root {
         --ink: {{ settings.color_ink | default: '#101820' }};
-        --accent: {{ settings.color_accent | default: '#f05a28' }};
-        --accent-dark: {{ settings.color_accent | default: '#f05a28' | color_darken: 16 }};
-        --accent-soft: {{ settings.color_accent | default: '#f05a28' | color_lighten: 28 }};
+        {%- comment -%}
+          Accent family. White text sits on --accent everywhere (buttons, cart count),
+          so the Accent setting must give white at least 4.5 to 1: the default #d24000
+          gives 4.69. The two steps are tuned to that default: darken 6 is the hover
+          fill and the orange for text on light surfaces (#b33700), lighten 50 is the
+          tint that text passes on (#ffe0d2).
+        {%- endcomment -%}
+        --accent: {{ settings.color_accent | default: '#d24000' }};
+        --accent-dark: {{ settings.color_accent | default: '#d24000' | color_darken: 6 }};
+        --accent-soft: {{ settings.color_accent | default: '#d24000' | color_lighten: 50 }};
         --surface: {{ settings.color_surface | default: '#f7f4ef' }};
         --font-body: {{ body_font.family }}, {{ body_font.fallback_families }};
         --font-heading: {{ heading_font.family }}, {{ heading_font.fallback_families }};

@@ -13,39 +13,51 @@
         assign anchor = title_handle | remove_first: 'pet-'
         assign collection = collections[collection_handle]
         assign visible_limit = section.settings.visible_limit
-        assign total_products = collection.products_count | default: collection.all_products_count | default: collection.products.size
+        # The cards are rendered first and counted, so the block is decided by
+        # what this visitor can actually see. A market's catalogue can hold none
+        # of a collection's products (PRD T19): the whole block is then left out,
+        # heading and link included, so a sparse market reads as a shorter page
+        # and never as a broken one. The merchant still gets the hint below, in
+        # the Theme Editor only.
+        assign rendered_products = 0
       %}
-      <section class="category-block" id="category-{{ anchor }}" {{ block.shopify_attributes }}>
-        <div class="category-heading">
-          <div>
-            <h2>{{ block.settings.title }}</h2>
-            <p>{{ block.settings.body }}</p>
+      {% capture block_cards %}
+        {% for product in collection.products limit: section.settings.max_products %}
+          <div class="{% if forloop.index > visible_limit %}is-extra-product{% endif %}">
+            {% render 'product-card-commerce', product: product, badge: block.settings.badge %}
           </div>
-          {% if collection.url != blank %}
-            <a class="category-view-link" href="{{ collection.url }}">View collection</a>
+          {% assign rendered_products = rendered_products | plus: 1 %}
+        {% endfor %}
+      {% endcapture %}
+      {% if rendered_products > 0 or request.design_mode %}
+        <section class="category-block" id="category-{{ anchor }}" {{ block.shopify_attributes }}>
+          <div class="category-heading">
+            <div>
+              <h2>{{ block.settings.title }}</h2>
+              <p>{{ block.settings.body }}</p>
+            </div>
+            {% if collection.url != blank and rendered_products > 0 %}
+              <a class="category-view-link" href="{{ collection.url }}">View collection</a>
+            {% endif %}
+          </div>
+          {% if rendered_products > 0 %}
+            <div class="commerce-grid" data-collapsible-grid>
+              {{ block_cards }}
+            </div>
+            {% if rendered_products > visible_limit %}
+              <button class="show-more-products" type="button" data-show-more aria-expanded="false">
+                <span>Show more {{ block.settings.title }}</span>
+                <span aria-hidden="true">+</span>
+              </button>
+            {% endif %}
+          {% else %}
+            <div class="empty-category">
+              <strong>{{ block.settings.title }}</strong>
+              <span>This collection has no products for the country being previewed ({{ localization.country.name }}), so visitors there do not see this block. Add products to the collection to fill it.</span>
+            </div>
           {% endif %}
-        </div>
-        {% if collection != blank and total_products > 0 %}
-          <div class="commerce-grid" data-collapsible-grid>
-            {% for product in collection.products limit: section.settings.max_products %}
-              <div class="{% if forloop.index > visible_limit %}is-extra-product{% endif %}">
-                {% render 'product-card-commerce', product: product, badge: block.settings.badge %}
-              </div>
-            {% endfor %}
-          </div>
-          {% if total_products > visible_limit %}
-            <button class="show-more-products" type="button" data-show-more aria-expanded="false">
-              <span>Show more {{ block.settings.title }}</span>
-              <span aria-hidden="true">+</span>
-            </button>
-          {% endif %}
-        {% else %}
-          <div class="empty-category">
-            <strong>{{ block.settings.title }}</strong>
-            <span>Add products to this collection to populate the section.</span>
-          </div>
-        {% endif %}
-      </section>
+        </section>
+      {% endif %}
     {% endfor %}
   </div>
 </section>

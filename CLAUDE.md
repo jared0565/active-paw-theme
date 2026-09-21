@@ -41,30 +41,30 @@ The theme reads supplier intelligence exclusively from Shopify-backed metafields
 
 **Namespace:** `supplier`
 
-Variant-level metafields drive availability display and cart limits:
+The spec follows the writer. The PawScout worker is the only writer, and it writes eight keys on the PRODUCT, never on a variant (pawscout-agent, channel round 245; confirmed on all 41 active products on 2026-09-20):
 
 | Key | Type |
 |---|---|
-| `supplier.name` | Single line text |
-| `supplier.cj_product_id` / `supplier.cj_variant_id` | Single line text |
-| `supplier.sku` / `supplier.warehouse` | Single line text |
-| `supplier.status` | Single line text (`in_stock`, `low_stock`, `supplier_available`, `backorder_possible`, `unavailable`, `unknown_stale`) |
-| `supplier.available_qty` / `supplier.max_order_qty` | Integer |
-| `supplier.last_checked_at` | Date and time |
-| `supplier.fulfillment_confidence` | Single line text (`High`, `Medium`, `Limited`) |
+| `supplier.name` | Single line text (the constant `CJ`; never shown to customers) |
+| `supplier.status` | Single line text (`available`, `low_stock`, `out_of_stock`) |
+| `supplier.available_qty` | Integer (one product-wide figure; the theme does not read it) |
+| `supplier.last_checked_at` | Date and time (advances only on a successful check) |
+| `supplier.demand` | Single line text (`selling_fast`, `none`) |
+| `supplier.origin` | Single line text (country code, for example `GB`, `CN`) |
+| `supplier.delivery_days` / `supplier.delivery_days_actual` | Single line text (a range such as `4-12`) |
 
-Product-level metafields are fallbacks for `name`, `status`, `warehouse`, `last_checked_at`, and `fulfillment_confidence`.
+Never written, and no longer read by the theme: `max_order_qty`, `sku`, `warehouse`, `cj_product_id`, `cj_variant_id`, `fulfillment_confidence`, any variant-level `supplier.*`, and the status `unknown_stale`. A failed supplier check does not advance `last_checked_at`, so the theme's 3-day freshness rule is the staleness signal.
 
 Full spec: `docs/shopify-supplier-metafields.md`.
 
 ## Quantity cap logic (implemented in theme)
 
-Both `sections/main-product.liquid` (PDP) and `sections/main-cart.liquid` follow the same priority order:
+One snippet decides it, `snippets/supplier-availability.liquid`, rendered by `sections/main-product.liquid` (PDP), `sections/main-cart.liquid` and `snippets/cart-drawer-contents.liquid`:
 
-1. **Tracked Shopify inventory** when `inventory_management` is set and `inventory_policy == 'deny'`
-2. **`supplier.max_order_qty`** when present
-3. **`supplier.available_qty`** when max order qty is absent
-4. **Conservative fallback cap** (hardcoded `20`) when no trusted data exists
+1. **Tracked Shopify inventory** when `inventory_management` is set and `inventory_policy == 'deny'` (every variant the worker manages)
+2. **Conservative fallback cap** (hardcoded `20`) otherwise
+
+Supplier quantities never cap a variant: `supplier.available_qty` is product-wide, and nothing writes `supplier.max_order_qty`.
 
 ## Python scripts
 

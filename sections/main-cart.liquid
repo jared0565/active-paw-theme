@@ -22,9 +22,9 @@
                 Cart line availability note. Same display rule as the PDP banner: a
                 NUMBER appears only when the real synced quantity is 10 or fewer
                 (genuine scarcity); larger stock reads as a plain "In stock". The cap
-                priority (tracked -> supplier max order -> supplier qty -> 20) is
-                unchanged. Never expose internal sourcing (supplier names, system
-                terms) to the customer.
+                is tracked Shopify inventory, else a conservative 20 (decided in
+                the snippet). Never expose internal sourcing (supplier names,
+                system terms) to the customer.
               endcomment
 
               capture sa
@@ -36,9 +36,6 @@
               assign inventory_note = 'In stock. Quantity is capped per order.'
               if sa[10] == 'true'
                 assign inventory_note = 'Available to order. Quantity is capped per order.'
-              endif
-              if sa[9] == 'supplier_max'
-                assign inventory_note = 'In stock. Capped at ' | append: sa[2] | append: ' per order.'
               endif
               if sa[7] == 'true'
                 assign line_known_qty = sa[8] | plus: 0
