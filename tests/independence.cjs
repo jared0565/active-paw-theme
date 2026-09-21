@@ -219,6 +219,113 @@ async function supplierPrices(context, name) {
   }, false, standIn);
 }
 
+// Layout: no page may scroll sideways, no container may spill into its own padding, and every
+// visible control needs a name. All three were found by hand on 2026-09-21 (header, footer,
+// product columns and service cards between 901 and about 1300px; two icon buttons with no
+// name on phones), so they are a standing check now. It runs in a browser of its own that
+// KEEPS its scrollbar: Playwright hides scrollbars, and a media query sees the whole window
+// while the layout gets about 15px less, so a row that "fits" in the default browser scrolls
+// sideways in a shopper's. One load per page, then resized, so the store sees two requests.
+const LAYOUT_WIDTHS = [1400, 1321, 1320, 1280, 1261, 1260, 1241, 1240, 1201, 1200, 1160, 1100, 1041, 1040, 1024, 960, 901, 900, 768, 701, 700, 621, 620, 390, 360];
+const measureLayout = () => {
+  const de = document.documentElement;
+  const client = de.clientWidth;
+  const css = (e) => window.getComputedStyle(e);
+  const label = (e) => `${e.tagName.toLowerCase()}${typeof e.className === 'string' && e.className.trim() ? `.${e.className.trim().split(/\s+/).slice(0, 2).join('.')}` : ''}`;
+  const clippedAbove = (e) => {
+    for (let n = e.parentElement; n && n !== de; n = n.parentElement) {
+      const s = css(n);
+      if (s.overflowX !== 'visible' || s.position === 'fixed') return true;
+    }
+    return false;
+  };
+  const out = { inner: window.innerWidth, client, scroll: de.scrollWidth, spill: [], squeezed: [], unnamed: [] };
+  for (const e of document.querySelectorAll('body *')) {
+    const s = css(e);
+    if (s.display === 'none' || s.position === 'fixed') continue;
+    const box = e.getBoundingClientRect();
+    if (box.width === 0 || clippedAbove(e)) continue;
+    if (box.right > client + 1 && out.spill.length < 3) out.spill.push(`${label(e)} to ${Math.round(box.right)}`);
+    if (!/grid|flex/.test(s.display) || s.overflowX !== 'visible') continue;
+    const limit = box.right - (parseFloat(s.paddingRight) || 0) - (parseFloat(s.borderRightWidth) || 0);
+    let reach = 0;
+    for (const c of e.children) {
+      const k = css(c);
+      if (k.display === 'none' || k.visibility === 'hidden' || k.position === 'absolute' || k.position === 'fixed') continue;
+      const q = c.getBoundingClientRect();
+      if (q.width > 0) reach = Math.max(reach, q.right);
+    }
+    if (reach > limit + 1.5 && out.squeezed.length < 3) out.squeezed.push(`${label(e)} by ${Math.round(reach - limit)}px`);
+  }
+  // A name a screen reader gets: clipped text counts, display:none and aria-hidden text do not.
+  const shown = (e) => {
+    const box = e.getBoundingClientRect();
+    if (box.width === 0 || box.height === 0) return false;
+    for (let n = e; n && n !== de; n = n.parentElement) {
+      const s = css(n);
+      if (s.display === 'none' || s.visibility === 'hidden' || n.hasAttribute('hidden') || n.getAttribute('aria-hidden') === 'true') return false;
+    }
+    return true;
+  };
+  const named = (e) => {
+    if ((e.getAttribute('aria-label') || '').trim() || (e.getAttribute('title') || '').trim()) return true;
+    const by = (e.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
+    if (by.some((id) => { const n = document.getElementById(id); return n && n.textContent.trim(); })) return true;
+    if ([...e.querySelectorAll('img[alt]')].some((i) => i.alt.trim())) return true;
+    const walker = document.createTreeWalker(e, window.NodeFilter.SHOW_TEXT);
+    for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+      if (!t.textContent.trim()) continue;
+      let silent = false;
+      for (let n = t.parentElement; n && n !== e.parentElement; n = n.parentElement) {
+        const s = css(n);
+        if (s.display === 'none' || s.visibility === 'hidden' || n.getAttribute('aria-hidden') === 'true') { silent = true; break; }
+      }
+      if (!silent) return true;
+    }
+    if (e.tagName === 'INPUT' || e.tagName === 'SELECT') {
+      const l = (e.id && document.querySelector(`label[for="${e.id}"]`)) || e.closest('label');
+      return Boolean((l && l.textContent.trim()) || e.getAttribute('placeholder') || e.value);
+    }
+    return false;
+  };
+  for (const e of document.querySelectorAll('a[href], button, [role="button"], select, input:not([type="hidden"])')) {
+    if (shown(e) && !named(e) && out.unnamed.length < 5) out.unnamed.push(label(e));
+  }
+  return out;
+};
+async function layoutFits(browser, name, url) {
+  const context = await openContext(browser, null);
+  await visit(context, name, url, async (page, rec) => {
+    // Resizing moves the page on purpose, so the generic no-growth rule does not apply here;
+    // the two generic checks that do are repeated.
+    if (PREVIEW) {
+      const themeId = await page.evaluate(() => String((window.Shopify && window.Shopify.theme && window.Shopify.theme.id) || '')).catch(() => '');
+      check(rec, 'served by the preview theme', themeId === PREVIEW, `Shopify.theme.id ${themeId || 'unknown'}`);
+    }
+    check(rec, 'http 200', rec.status === 200, `status ${rec.status}`);
+    const scrolls = [];
+    const squeezed = [];
+    const unnamed = [];
+    let withBar = 0;
+    for (const w of LAYOUT_WIDTHS) {
+      await page.setViewportSize({ width: w, height: 900 });
+      await page.waitForTimeout(200);
+      const m = await page.evaluate(measureLayout);
+      if (m.inner > m.client) withBar += 1;
+      if (m.scroll > m.client + 1) scrolls.push(`${w}px: ${m.scroll - m.client}px past the window (${m.spill.join('; ') || 'no element named'})`);
+      if (m.squeezed.length) squeezed.push(`${w}px: ${m.squeezed.join('; ')}`);
+      if (m.unnamed.length) unnamed.push(`${w}px: ${m.unnamed.join('; ')}`);
+    }
+    rec.layoutWidths = LAYOUT_WIDTHS.length;
+    // Without a scrollbar the layout has 15px more room than a shopper's, so a pass proves less.
+    check(rec, 'measured with a real scrollbar (informational)', withBar === LAYOUT_WIDTHS.length, `${withBar} of ${LAYOUT_WIDTHS.length} widths had one`, false);
+    check(rec, `no sideways scroll at ${LAYOUT_WIDTHS.length} widths from 1400 to 360px`, scrolls.length === 0, scrolls.slice(0, 4).join(' | ') || 'none');
+    check(rec, 'no container spills into its own padding', squeezed.length === 0, squeezed.slice(0, 4).join(' | ') || 'none');
+    check(rec, 'every visible button, link and field has a name', unnamed.length === 0, unnamed.slice(0, 4).join(' | ') || 'none');
+  }, false);
+  await context.close();
+}
+
 // One browser context per visitor. `country` sets Shopify's localization cookie: the store has
 // no market web presences, so that cookie is the only thing that moves a visitor off the GB market.
 async function openContext(browser, country) {
@@ -423,6 +530,12 @@ async function openContext(browser, country) {
   await switcher.close();
 
   await browser.close();
+
+  // Layout, in a browser that keeps its scrollbar (see layoutFits).
+  const barBrowser = await chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
+  await layoutFits(barBrowser, 'layout-home', `${BASE}/`);
+  await layoutFits(barBrowser, 'layout-pdp', `${BASE}${productUrl || '/products/automatic-ball-launcher-for-dogs'}`);
+  await barBrowser.close();
 
   const file = path.join(OUT, `independence-${MODE}.json`);
   fs.writeFileSync(file, JSON.stringify(results, null, 2));

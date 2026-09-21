@@ -1446,6 +1446,7 @@ p { line-height: 1.6; }
 .proof-stats strong {
   color: #b8ff9f;
   font-size: 22px;
+  overflow-wrap: anywhere; /* the figure is merchant text: a long word wraps, never pokes out */
 }
 .testimonial-grid {
   display: grid;
@@ -1501,6 +1502,19 @@ p { line-height: 1.6; }
   margin: 0;
   color: rgba(255,255,255,0.9);
   line-height: 1.55;
+}
+/* Three service cards side by side need about 190px each to hold a sentence. The grid never
+   left three columns, so on a phone each card was 109px wide and its text wrapped one word
+   per line, and from 901 to 1020px the longest figure ("Tracked", 85px wide at 22px) ran
+   through its 77px box (both measured 2026-09-21). The cards stack where three do not fit:
+   beside the copy from 901 to 1199px, under it at 700px and below. In the first band the
+   figure scales with the window and is back to 22px by 1158px. */
+@media (min-width: 901px) and (max-width: 1199px), (max-width: 700px) {
+  .service-grid { grid-template-columns: minmax(0, 1fr); }
+  .service-card { min-height: 0; }
+}
+@media (min-width: 901px) and (max-width: 1199px) {
+  .proof-stats strong { font-size: clamp(18px, 1.9vw, 22px); }
 }
 .landing {
   background: var(--surface);
@@ -1793,6 +1807,39 @@ summary { cursor: pointer; font-weight: 800; }
   scrollbar-width: thin;
   scrollbar-color: rgba(16,24,32,0.24) transparent;
 }
+/* The three product columns need about 1218px of window (420 + 310 + 300, two gaps, the
+   section padding, a scrollbar). From 901px up to there the buy box ran past the window:
+   225px of sideways scroll at 901, measured 2026-09-21 with a real scrollbar, and above 1140
+   it fitted only by eating the section's right-hand padding. In that band the page is two
+   columns: the gallery on the left; title, price and the buy box stacked on the right. The
+   two inner scroll panes go, as they do on phones: a pane inside a column that already
+   scrolls with the page traps the wheel. */
+@media (min-width: 901px) and (max-width: 1240px) {
+  .product-detail {
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+    grid-template-rows: auto 1fr;
+  }
+  .product-gallery { grid-column: 1; grid-row: 1 / span 2; }
+  .product-summary,
+  .product-buybox {
+    grid-column: 2;
+    max-height: none;
+    overflow: visible;
+  }
+  .product-summary { grid-row: 1; padding-right: 0; padding-bottom: 0; }
+  .product-buybox { grid-row: 2; position: static; }
+}
+/* The right-hand column is now about twice the gallery's height, which left a blank half
+   page under the picture. The gallery follows the scroll instead, so the product stays in
+   view beside the buy box. Only where it fits under the sticky header: the picture is at
+   least 460px tall, so a window under 720px high would hide the gallery's last row. */
+@media (min-width: 901px) and (max-width: 1240px) and (min-height: 720px) {
+  .product-gallery {
+    position: sticky;
+    top: calc(var(--sticky-header-offset) + 16px);
+    align-self: start;
+  }
+}
 .pdp-breadcrumbs {
   display: flex;
   flex-wrap: wrap;
@@ -1802,6 +1849,10 @@ summary { cursor: pointer; font-weight: 800; }
   font-size: 12px;
 }
 .pdp-breadcrumbs a {
+  /* 15px of text is under the 24px minimum target (measured 34x15 on a phone). The padding
+     grows the hit area to 31px; the negative margin keeps the row exactly where it was. */
+  padding: 8px 0;
+  margin: -8px 0;
   color: #314454;
 }
 .pdp-breadcrumbs a:hover {
@@ -2289,6 +2340,16 @@ summary { cursor: pointer; font-weight: 800; }
   grid-template-columns: minmax(280px, 0.95fr) minmax(480px, 1.35fr) minmax(300px, 0.8fr);
   gap: clamp(24px, 4vw, 54px);
   align-items: start;
+}
+/* Those three columns need about 1314px of window: 280 + 480 + 300, two gaps of 4vw, the
+   section padding of 5vw each side, a scrollbar. Under about 1236px the footer was wider than
+   the window and, with the header, made every page scroll sideways (1142px of footer on a
+   1024px window, measured 2026-09-21); from there to 1314 it fitted only by eating its own
+   right-hand padding. In the whole band it is two rows: brand beside the newsletter, the link
+   columns across the full width underneath. */
+@media (min-width: 901px) and (max-width: 1320px) {
+  .footer-shell { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .footer-nav { grid-column: 1 / -1; grid-row: 2; }
 }
 .footer-brand,
 .footer-newsletter {
@@ -3036,6 +3097,43 @@ body.contact-modal-open { overflow: hidden; }
 .social-share__qr-img { width: auto; max-width: 100%; height: auto; display: block; background: #fff; border-radius: 6px; }
 .social-share__qr-hint { margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); text-align: center; }
 
+/* The three-column header row needs about 1222px: brand 210 + search 340 + actions 510 + gaps
+   and padding. From 901 to 1221px it was wider than the window and the whole page scrolled
+   sideways (1197px of header on a 1024px window, measured on live 2026-09-21). It now gives
+   up width in the order a shopper misses least, and every step keeps all four actions:
+     1260px and under: the second line under each label goes (actions 510 -> 459, measured)
+     1200px and under: Share and Contact become icon buttons, as they already are on phones
+                       (actions 316); Collections keeps its word, it is the way into the
+                       catalogue
+     1040px and under: the search field may shrink to 220px
+   Each threshold is the width the row needs PLUS a scrollbar: a media query sees the whole
+   window, the layout gets 15 to 17px less on a desktop browser. The first thresholds (1240,
+   1150, 1000) were measured without a scrollbar and scrolled sideways by 2 to 14px at 1181
+   and from 1001 to 1010.
+   An icon button keeps its name for a screen reader: the label is clipped, never removed. */
+@media (min-width: 901px) and (max-width: 1260px) {
+  .header-collections-trigger small,
+  .header-contact-trigger small,
+  .header-share-trigger small { display: none; }
+}
+@media (min-width: 901px) and (max-width: 1200px) {
+  .header-contact-trigger > span:not(.header-action-icon),
+  .header-share-trigger > span:not(.header-action-icon) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .header-share-trigger .header-collections-caret { display: none; }
+}
+@media (min-width: 901px) and (max-width: 1040px) {
+  .header-main { grid-template-columns: minmax(210px, auto) minmax(220px, 1fr) auto; }
+}
 @media (max-width: 900px) {
   .header-collections-trigger small,
   .header-contact-trigger small,
@@ -3043,8 +3141,20 @@ body.contact-modal-open { overflow: hidden; }
 }
 @media (max-width: 620px) {
   .header-collections { display: none; }
-  .header-contact-trigger span:not(.header-action-icon),
-  .header-share-trigger > span:not(.header-action-icon),
+  /* Clipped, not display:none: with the label removed these two buttons had no name at all
+     for a screen reader (the icon is aria-hidden). */
+  .header-contact-trigger > span:not(.header-action-icon),
+  .header-share-trigger > span:not(.header-action-icon) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
   .header-share-trigger .header-collections-caret { display: none; }
   /* Center the share dropdown in the viewport on mobile - the right-anchored
      desktop position clipped it off the left edge (trigger sits mid-right). */
