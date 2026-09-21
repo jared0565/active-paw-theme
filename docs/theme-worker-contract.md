@@ -29,8 +29,9 @@ One worker URL in the theme (`layout/theme.liquid`), one proxy prefix (`assets/p
 ## 3. Payload fields the theme reads
 
 - `/public/event`: `active`, `name`, `code`, `pctOff`, `endsAt`, `endsLabel`, `headline`, `subline`, `chips`, `next{key,name,startsAt,endsAt,startsLabel,endsLabel}`.
-- `/apps/pawscout/search`: `ok`, `products[{pid,title,image,price,url}]`.
-- `/apps/pawscout/product`: `ok`, `product{pid,title,images,priceFrom,variants[{name}],descriptionText,url}`.
+- `/apps/pawscout/search`: `ok`, `products[{pid,title,image,price,url,currency?}]`.
+- `/apps/pawscout/product`: `ok`, `product{pid,title,images,priceFrom,variants[{name}],descriptionText,url,currency?}`.
+- **Prices (round 257, owner ruling 2026-09-21):** every price the worker returns is GBP; `country` on `/search` only picks which supplier warehouses count as local and never converts. `currency` is an OPTIONAL ISO 4217 code the worker has proposed and not built; the theme treats absent as `GBP`. `assets/pawscout.js` prints a worker price as the storefront prints money when `currency` is the visitor's currency (`Shopify.currency.active`), and otherwise as the code in words, for example "GBP 12.99". The theme never converts: Shopify applies the market's rounding to the product page, which the browser cannot reproduce. Prices from Shopify's own `/products/{handle}.js` (add-on cards) are already in the visitor's currency and are printed from `data-money-sample` on `<body>`.
 - `/apps/pawscout/import-status`: `ok`, `state`, `url`.
 - `/apps/pawscout/addons`: `ok`, `addons[handle]`.
 - `/apps/pawscout/event` request body: `{pid,event}`.

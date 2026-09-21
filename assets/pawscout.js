@@ -23,7 +23,42 @@
   const POLL_MS = 1500;
   const POLL_MAX = 20;
 
-  const money = (n) => '£' + Number(n).toFixed(2);
+  // The visitor's storefront currency: Shopify's own global, GBP when it is missing.
+  const shopCurrency = () => String((window.Shopify && window.Shopify.currency && window.Shopify.currency.active) || 'GBP').toUpperCase();
+
+  // How this storefront prints money in that currency, read from a sample Liquid renders on
+  // <body> (1234567 minor units through the money filter: "£12,345.67", "€12.345,67"), so a
+  // price built here reads exactly like the ones Liquid prints beside it. A sample that does
+  // not parse (a currency without decimals, say) falls back to Intl.
+  const moneyPattern = (() => {
+    const sample = (document.body && document.body.getAttribute('data-money-sample')) || '';
+    const m = sample.trim().match(/^(\D*)12(\D?)345(\D)67(\D*)$/);
+    return m ? { before: m[1], group: m[2], point: m[3], after: m[4] } : null;
+  })();
+
+  // A price that is already in the visitor's currency: Shopify's own product JSON.
+  const shopMoney = (amount) => {
+    if (!moneyPattern) {
+      try {
+        return new Intl.NumberFormat(document.documentElement.lang || undefined, { style: 'currency', currency: shopCurrency(), currencyDisplay: 'narrowSymbol' }).format(amount);
+      } catch {
+        return shopCurrency() + ' ' + Number(amount).toFixed(2);
+      }
+    }
+    const parts = Number(amount).toFixed(2).split('.');
+    return moneyPattern.before + parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, moneyPattern.group) + moneyPattern.point + parts[1] + moneyPattern.after;
+  };
+
+  // A price from the worker. Every worker price is GBP (pawscout-agent, channel round 257);
+  // `currency` is an optional ISO code on a card or a preview, and absent means GBP. When it is
+  // not the visitor's currency the amount is labelled with the code in words ("GBP 12.99",
+  // owner ruling 2026-09-21) and never converted here: Shopify applies the market's own
+  // rounding to the product page, which the browser cannot reproduce, and a card that
+  // disagrees with its page by a few pence is worse than a plainly labelled amount.
+  const supplierMoney = (amount, currency) => {
+    const code = String(currency || 'GBP').toUpperCase();
+    return code === shopCurrency() ? shopMoney(amount) : code + ' ' + Number(amount).toFixed(2);
+  };
 
   const proxyGet = (path, params) => {
     const qs = new URLSearchParams(params).toString();
@@ -65,7 +100,7 @@
     const priceRow = document.createElement('div');
     priceRow.className = 'commerce-price-row';
     const price = document.createElement('strong');
-    price.textContent = money(p.price);
+    price.textContent = supplierMoney(p.price, p.currency);
     priceRow.appendChild(price);
     const action = document.createElement('div');
     action.className = 'commerce-card-action';
@@ -178,7 +213,7 @@
       content.appendChild(img);
     }
     content.appendChild(el('h2', 'pawscout-title', p.title));
-    content.appendChild(el('p', 'pawscout-price', p.variants && p.variants.length > 1 ? 'From ' + money(p.priceFrom) : money(p.priceFrom)));
+    content.appendChild(el('p', 'pawscout-price', p.variants && p.variants.length > 1 ? 'From ' + supplierMoney(p.priceFrom, p.currency) : supplierMoney(p.priceFrom, p.currency)));
     if (p.variants && p.variants.length > 1) {
       const list = el('p', 'pawscout-variants', p.variants.length + ' options: ' + p.variants.slice(0, 6).map((v) => v.name).join(', ') + (p.variants.length > 6 ? '…' : ''));
       content.appendChild(list);
@@ -302,7 +337,7 @@
     title.href = product.url;
     title.textContent = product.title;
     const price = document.createElement('span');
-    price.textContent = money((v.price) / 100);
+    price.textContent = shopMoney(v.price / 100); // Shopify's product JSON: already the visitor's currency
     info.appendChild(title);
     info.appendChild(price);
     const btn = document.createElement('button');

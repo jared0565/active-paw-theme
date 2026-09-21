@@ -173,6 +173,18 @@ document.addEventListener('focusin', (event) => {
   if (thumb) setProductMedia(thumb);
 });
 
+/* Print minor units the way Liquid's money filter does for the visitor's currency. The layout
+   renders 1234567 through that filter into data-money-sample ("£12,345.67", "€12.345,67"), so
+   a total built here reads like the prices printed beside it (Intl alone gave "US$37.99" and
+   "€42.95" next to Liquid's "$37.99" and "€42,95"). Intl is the fallback for a sample that
+   does not parse. pawscout.js reads the same sample. */
+const formatShopMoney = (minor, currency) => {
+  const m = ((document.body && document.body.getAttribute('data-money-sample')) || '').trim().match(/^(\D*)12(\D?)345(\D)67(\D*)$/);
+  if (!m) return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(minor / 100);
+  const parts = (minor / 100).toFixed(2).split('.');
+  return m[1] + parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, m[2]) + m[3] + parts[1] + m[4];
+};
+
 /* Buybox "Value": cash total of what Add to cart will put in the basket. */
 const updateBuyboxValue = () => {
   const valueEl = document.querySelector('[data-buybox-value]');
@@ -185,7 +197,7 @@ const updateBuyboxValue = () => {
   }
   const quantity = Math.max(1, Number(document.getElementById('ProductQuantity')?.value) || 1);
   const currency = valueEl.dataset.currency || 'GBP';
-  valueEl.textContent = new Intl.NumberFormat(undefined, { style: 'currency', currency }).format((unitPrice * quantity) / 100);
+  valueEl.textContent = formatShopMoney(unitPrice * quantity, currency);
 };
 
 const normalizeCartQuantity = (input) => {
