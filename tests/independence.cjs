@@ -103,8 +103,9 @@ const noUkDeliveryClaim = async (page, rec) => {
   if (found.merchant.length) check(rec, 'collection description (store content) makes no UK delivery claim (informational)', false, found.merchant.join(' | '), false);
 };
 
-async function visit(context, name, url, specific, generic = true) {
+async function visit(context, name, url, specific, generic = true, before = null) {
   const page = await context.newPage();
+  if (before) await before(page);
   const rec = { name, url, checks: [], consoleErrors: [], codeErrors: [], blocked: [], turnstileErrorLines: 0 };
   page.on('console', (m) => {
     if (m.type() !== 'error') return;
@@ -177,6 +178,38 @@ async function pickThinSearchTerm(context) {
     if (have >= 1 && have <= 3) return { term, have };
   }
   return { term: 'dog', have: null };
+}
+
+// Supplier prices, with a stand-in for the worker. Every worker price is GBP (channel round 257)
+// and `currency` is optional, absent meaning GBP. A visitor whose currency it is sees it printed
+// as the storefront prints money; anyone else sees the code in words, never a converted amount.
+// The oracle is Liquid's own money filter: every stand-in card costs 12345.67, the amount the
+// layout renders into data-money-sample, so an own-currency card must read exactly that string.
+// The answer is fulfilled here, so the rule is exercised whether or not the worker has stock
+// for the market, and in blocked mode too (a page route outranks the context's abort).
+const PIXEL = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+const STUB_CARDS = [undefined, 'GBP', 'USD', 'EUR'].map((currency) => ({ pid: `stand-in-${currency || 'none'}`, title: `Stand-in supplier match (${currency || 'no currency field'})`, image: PIXEL, price: 12345.67, currency }));
+async function supplierPrices(context, name) {
+  const thin = await pickThinSearchTerm(context);
+  const standIn = (page) => page.route(/\/apps\/pawscout\/search/, (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, products: STUB_CARDS }) }));
+  await visit(context, name, `${BASE}/search?q=${encodeURIComponent(thin.term)}&type=product`, async (page, rec) => {
+    const seen = await page.evaluate(() => ({
+      currency: (window.Shopify && window.Shopify.currency && window.Shopify.currency.active) || null,
+      sample: (document.body.getAttribute('data-money-sample') || '').trim(),
+      prices: [...document.querySelectorAll('.pawscout-ghost .commerce-price-row strong')].map((e) => e.textContent.trim()),
+    }));
+    rec.searchTerm = thin.term;
+    // The cards arrive after load on purpose, so the generic no-growth rule does not apply here;
+    // the two generic checks that do are repeated.
+    if (PREVIEW) {
+      const themeId = await page.evaluate(() => String((window.Shopify && window.Shopify.theme && window.Shopify.theme.id) || '')).catch(() => '');
+      check(rec, 'served by the preview theme', themeId === PREVIEW, `Shopify.theme.id ${themeId || 'unknown'}`);
+    }
+    check(rec, 'http 200', rec.status === 200, `status ${rec.status}`);
+    const expected = STUB_CARDS.map((c) => ((c.currency || 'GBP') === seen.currency ? seen.sample : `${c.currency || 'GBP'} 12345.67`));
+    check(rec, 'the layout says how the storefront prints money', /12\D?345\D67/.test(seen.sample), `data-money-sample "${seen.sample}"`);
+    check(rec, `supplier prices for a ${seen.currency} visitor: own currency as the store prints it, any other as its code in words`, seen.prices.length === STUB_CARDS.length && seen.prices.every((p, i) => p === expected[i]), `shown ${seen.prices.join(' | ') || 'none'} :: expected ${expected.join(' | ')}`);
+  }, false, standIn);
 }
 
 // One browser context per visitor. `country` sets Shopify's localization cookie: the store has
@@ -262,6 +295,7 @@ async function openContext(browser, country) {
     if (BLOCK) check(rec, 'no supplier ghost cards', ghosts === 0, `${ghosts} ghost cards`);
     check(rec, 'no empty-state message', (await count(page, '.search-empty')) === 0);
   });
+  await supplierPrices(context, 'prices');
 
   let articleUrl = null;
   await visit(context, 'blog', `${BASE}/blogs/guides`, async (page, rec) => {
@@ -342,6 +376,7 @@ async function openContext(browser, country) {
     if (cards === 0) check(rec, 'empty message offers the products that are available', (await count(page, '.empty-category a[href]')) === 1);
     await noUkDeliveryClaim(page, rec);
   });
+  await supplierPrices(sparse, `prices-${cc}`);
   await sparse.close();
 
   // The country switch, end to end, as a visitor with no cookie does it: choose a country in

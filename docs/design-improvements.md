@@ -928,3 +928,34 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 28 - 2026-09-21: Prices built in JavaScript follow the visitor's currency; a supplier price in another currency says so in words
+
+### What changed
+- **`assets/pawscout.js`**: the one-line helper that put a pound sign in front of every number is gone. Two helpers replace it. `supplierMoney(amount, currency)` is for prices from the worker: `currency` is an optional ISO code on a search card or a preview, absent meaning GBP; when it is the visitor's currency the amount is printed as the storefront prints money, otherwise it is labelled with the code in words ("GBP 12.99") and never converted. `shopMoney(amount)` is for prices that come from Shopify's own product JSON (the add-on cards), which are already in the visitor's currency.
+- **`layout/theme.liquid`**: `<body>` carries `data-money-sample`, the number 1234567 through Liquid's `money` filter ("£12,345.67", "$12,345.67", "€12.345,67"). Both scripts read the symbol, its side, the thousands separator and the decimal mark from it, so a price built in JavaScript reads exactly like the ones Liquid prints beside it. A sample that does not parse falls back to `Intl.NumberFormat`.
+- **`assets/theme.js`**: the product page's "Value" total uses the same sample (`formatShopMoney`).
+- **`tests/independence.cjs`**: two visits with a stand-in for the worker (`prices`, `prices-<market>`). The search answer is fulfilled by the test with four cards at 12345.67 (no currency field, GBP, USD, EUR); an own-currency card must read exactly the `data-money-sample` string, which is Liquid's own output and so an oracle the script did not write; any other must read "<CODE> 12345.67". `visit()` gained a hook that runs before the navigation, for the page route.
+
+### Why it changed
+- Owner ruling 2026-09-21 on channel round 257: outside the UK a supplier price is labelled as GBP in words. pawscout-agent confirmed first-hand in the worker's source that every price it returns is GBP and that `country` never converts (it only picks which warehouses count as local), proposed the optional `currency` field (not built), and warned against converting in the browser: Shopify applies the market's rounding to a product that does not exist yet, so a converted card and the later product page can disagree by a few pence.
+- The country selector (Entry 27) makes this reachable: before it, practically every visitor was in the GB market.
+- **Found while reading the helper, measured on live:** the add-on cards print `variants[0].price` from `/products/{handle}.js`, and that JSON is already in the visitor's currency (the same product reads 2999 for GB, 3799 for US, 6400 for AU, 4295 for DE). The old helper therefore showed a US visitor "£37.99" for a $37.99 product: a wrong symbol on a real price. And the product page's "Value" total, formatted by `Intl` with the browser's locale, read "US$37.99" and "€42.95" beside Liquid's "$37.99" and "€42,95".
+
+### How it was solved
+- **Verified on preview 207873868114, deleted afterwards** (only the live theme remains), with a stand-in worker so the result does not depend on supplier stock. GB: "£12,345.67 | £12,345.67 | USD 12345.67 | EUR 12345.67", preview "From £12,345.67". US: "GBP 12345.67 | GBP 12345.67 | $12,345.67 | EUR 12345.67", preview "From GBP 12345.67". DE: "GBP 12345.67 | GBP 12345.67 | USD 12345.67 | €12.345,67". Add-on card against Liquid's printed price for the same product: £29.99, $37.99, €42,95, identical in all three; the "US$" and "€42.95" variants are gone from the product page. No page errors.
+- **Control, same probe against live:** a US visitor gets "£12345.67" on all four cards, "£37.99" on the add-on card for a $37.99 product, and no `data-money-sample`. Under the new checks that is a failure, as it should be until this deploys.
+- **Independence on the preview:** blocked 138/139, control 135/136, 0 hard failures (the one line is the informational collection description from Entry 27). In blocked mode the stand-in still renders: a page route outranks the context's abort.
+- The stand-in visits skip the generic "no growth after load" rule on purpose (cards arriving after load is what they test) and repeat the theme-id and status checks themselves.
+
+### "Free UK delivery on every order": the evidence (asked by pawscout-agent, round 257)
+- **Shipping configuration, read through the Admin API 2026-09-21:** five delivery profiles. General (default), GB Local, Origin CN and Origin CN,US each have a UK zone with ONE rate, "Standard", GBP 0.00, no conditions. Origin US (one variant) has no UK zone at all, so that variant cannot be delivered to the UK; it is not a paid rate. Every rate is a flat rate definition; no carrier or app rate provider.
+- **Walked on the live checkout 2026-09-21, no email, nothing submitted, no payment:** one China-origin item in the Origin CN profile at £8.99, the store's own trading address (E6 2JA). Shipping method "Standard, FREE"; summary Subtotal £8.99, Shipping FREE, Total GBP £8.99. So the sentence holds for the hardest single case: not British stock, under any minimum.
+- **Not measured:** a basket mixing three profiles. The storefront answered 429 to every cart call on that attempt (my own traffic from the runs above), so nothing was read. Shopify adds the rates of the profiles in a basket and each is 0.00, so the configuration predicts FREE; that is inference, not a reading.
+- **Seen on the way, not the theme's:** the checkout's shipping method line says "Ships next business day" for that China-origin item. It is a Shopify shipping setting (processing time), not theme copy, so whether it is true for stock a supplier ships from China is with the owner.
+
+### Files touched
+- `assets/pawscout.js`, `assets/theme.js`, `layout/theme.liquid`, `tests/independence.cjs`, `docs/theme-worker-contract.md`, `docs/theme-production-grade-prd.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
