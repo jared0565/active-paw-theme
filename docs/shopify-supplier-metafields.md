@@ -25,8 +25,8 @@ Every `supplier.*` metafield is written on the PRODUCT. The per-variant truth is
 | `supplier.last_checked_at` | Date and time | the time of the last SUCCESSFUL supplier check | Gates every other supplier field (3 days) and feeds "Availability updated <date>". |
 | `supplier.demand` | Single line text | `selling_fast` or `none` | "Selling fast" badge on `selling_fast`. |
 | `supplier.origin` | Single line text | country code of the stocking warehouse, for example `GB` or `CN` | Picks the static delivery band (3 to 10 days for `GB`, 6 to 14 otherwise) when no fresh synced range exists. |
-| `supplier.delivery_days` | Single line text | a range such as `4-12`; omitted when empty, so the last good value stays | Delivery range on the product page, while fresh. |
-| `supplier.delivery_days_actual` | Single line text | a range such as `3-10`; omitted when empty, so the last good value stays | Hidden line-item property "Estimated delivery", while fresh. |
+| `supplier.delivery_days` | Single line text | a range such as `4-12`, the origin's representative channel (the same figure on every product from that origin); omitted when empty, so the last good value stays | Delivery range on the product page and the hidden line-item property "Estimated delivery", while fresh, only when `delivery_days_actual` is absent. |
+| `supplier.delivery_days_actual` | Single line text | a range such as `3-10`, this product's own cheapest channel, the one an order rides; omitted when empty, so the last good value stays | Delivery range on the product page and the hidden line-item property "Estimated delivery", while fresh (owner ruling 2026-09-22, channel round 263). |
 
 ## Status values
 

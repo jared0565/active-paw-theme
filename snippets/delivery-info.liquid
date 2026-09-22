@@ -5,11 +5,14 @@
   profiles (the item's freight is baked into the sticker by PawScout's pricing
   rule), so there is no threshold and no standard rate to disclose.
 
-  Delivery estimate: PawScout writes a per-product order->door range (calendar
-  days, e.g. "6-21") into supplier.delivery_days from the synced CJ logistics
-  matrix. When present it's shown verbatim; when blank (stale / not yet synced)
-  a conservative static window is shown. Rule: only surface what is real and
-  defensible - the synced figure when we have it, a conservative window otherwise.
+  Delivery estimate: PawScout writes two order->door ranges (calendar days) on the
+  product: supplier.delivery_days_actual, this product's own cheapest channel (the
+  one an order rides), and supplier.delivery_days, the origin's representative
+  channel from the synced CJ logistics matrix. The caller passes the product's own
+  figure where it has one, else the origin's (owner ruling 2026-09-22). When present
+  it's shown verbatim; when blank (stale / not yet synced) a conservative static
+  window is shown. Rule: only surface what is real and defensible - the synced
+  figure when we have it, a conservative window otherwise.
   Market rule (PRD R11, decision 5f): the free-delivery row and the estimate are
   UK facts (the estimate is the CJ-to-UK lane), so both render only for a GB
   market visitor; other markets get the neutral Delivery setting line.

@@ -48,7 +48,7 @@ Namespace `supplier`. The spec (`docs/shopify-supplier-metafields.md`) follows t
 | `supplier.available_qty` | not read: one product-wide figure cannot cap a variant, and for `out_of_stock` it keeps the supplier's real figure (the status is the signal, round 245) | |
 | `supplier.last_checked_at` | gates every other supplier field (3 days); "Availability updated <date>" on the product page and cart page only while fresh | everything supplier-derived is ignored |
 | `supplier.demand` | "Selling fast" badge on `selling_fast` | nothing |
-| `supplier.delivery_days_actual`, `supplier.delivery_days` | while fresh: delivery range on the product page (`snippets/delivery-info.liquid`) and a hidden line-item property "Estimated delivery: N days" | 6 to 14 days, or 3 to 10 when `supplier.origin` is GB; no line-item property |
+| `supplier.delivery_days_actual`, `supplier.delivery_days` | while fresh: delivery range on the product page (`snippets/delivery-info.liquid`) and a hidden line-item property "Estimated delivery: N days", both from `delivery_days_actual` (the product's own channel) where present, else `delivery_days` (the origin's); owner ruling 2026-09-22 | 6 to 14 days, or 3 to 10 when `supplier.origin` is GB; no line-item property |
 | `supplier.origin` | picks that static band | 6 to 14 days |
 | `supplier.name` | switches the "Tracked delivery" copy only; never rendered to the customer (the "Fulfilled by <name>" row in Product details was removed 2026-09-19, PRD T9, and the independence run asserts its absence) | "Care add-ons" copy |
 | `article.metafields.blog.faq_json`, `blog.related_products` | `sections/main-article.liquid`: FAQ with schema, "Shop this guide" | sections omitted |

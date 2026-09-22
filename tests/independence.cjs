@@ -395,6 +395,18 @@ async function openContext(browser, country) {
     const detailsText = await page.locator('[data-details-modal]').first().evaluate((el) => el.textContent || '').catch(() => '');
     check(rec, 'product details never name the supplier', !/Fulfilled by/i.test(detailsText), detailsText.replace(/\s+/g, ' ').trim().slice(0, 100));
     rec.pawscoutPid = await page.locator('meta[name="pawscout-pid"]').getAttribute('content').catch(() => null);
+    // The delivery estimate a GB shopper reads is the one the order carries (owner ruling
+    // 2026-09-22: the product's own figure where it has one). Before the ruling the page
+    // showed the origin's figure and the order the product's, so they disagreed on five
+    // products; this holds for whichever product the grid offered.
+    const estimate = await page.evaluate(() => {
+      const li = [...document.querySelectorAll('.delivery-info li')].map((e) => e.textContent.replace(/\s+/g, ' ').trim());
+      const shown = (li.find((t) => /days to your door/.test(t)) || '').match(/Estimated (\S+) days/);
+      const prop = document.querySelector('input[name="properties[Estimated delivery]"]');
+      return { shown: shown ? shown[1] : null, order: prop ? prop.value.replace(/ days$/, '') : null };
+    });
+    rec.deliveryEstimate = estimate;
+    if (estimate.order !== null) check(rec, 'the delivery estimate on the page is the one the order carries', estimate.shown === estimate.order, `page ${estimate.shown}, order ${estimate.order}`);
   });
 
   // Search: a thin native grid is exactly where the proxy would add ghost cards.
