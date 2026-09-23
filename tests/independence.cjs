@@ -164,7 +164,10 @@ async function visit(context, name, url, specific, generic = true, before = null
   // Errors raised by the theme's own code are failures; the browser's own
   // "Failed to load resource" lines for the blocked hosts are the block itself.
   const isResource = (t) => /Failed to load resource|net::ERR_/.test(t);
-  const isPlatform = (t) => /Content Security Policy|shop\.app|Monorail/.test(t); // Shopify's own Shop embed and Trekkie analytics, not theme code
+  // Shopify's own Shop embed and Trekkie analytics, and the browser's complaint about a response
+  // header ("Invalid 'X-Frame-Options' header ... 'ALLOW-FROM ...' is not a recognized directive",
+  // once, daily run 35601692288 on 2026-09-21; live sends DENY): a theme cannot set a header.
+  const isPlatform = (t) => /Content Security Policy|shop\.app|Monorail|Invalid 'X-Frame-Options' header/.test(t);
   const ownErrors = rec.consoleErrors.filter((t) => !isResource(t) && !isPlatform(t));
   check(rec, 'no console errors from page code', ownErrors.length === 0 && rec.codeErrors.length === 0, [...ownErrors, ...rec.codeErrors].join(' | ') || 'none');
   rec.resourceErrorLines = rec.consoleErrors.filter(isResource).length;
