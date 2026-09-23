@@ -1008,3 +1008,40 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 30 - 2026-09-23: The product page shows the product's own delivery figure; the page and the order carry the same one
+
+### What changed
+- `snippets/supplier-availability.liquid` field 11 is now `supplier.delivery_days_actual` where the product carries it, else `supplier.delivery_days` (one `default:` filter). Everything downstream is unchanged: blank unless the supplier check is fresh, and the static band in `delivery-info` when blank.
+- `sections/main-product.liquid`: the hidden line-item property "Estimated delivery" is that same field, instead of its own read of `delivery_days_actual`. The page and the order now carry one figure by construction. The section's `supplier_fresh` flag lost its only reader with that (the field is already blank unless fresh) and is gone; the theme check flagged it as unused.
+- `tests/independence.cjs`: the product visit checks that the figure on the page is the figure on the order, whichever product the grid offered.
+- Docs follow the reader: `docs/shopify-supplier-metafields.md`, `docs/theme-worker-contract.md`, and the doc comments in both snippets.
+
+### Why it changed
+- The worker writes two ranges on every managed product (channel rounds 262 to 264, read first-hand): `delivery_days` is the ORIGIN's representative channel, the same figure on every product from that origin (every China-origin product read 5-14); `delivery_days_actual` is THIS product's own cheapest channel, the one the order pipeline books. The page showed the origin's figure and the order carried the product's, so on five products a shopper read "Estimated 5-14 days" and their order said 11-30 (the grooming scissors set, both tooth cleaning powders, the tooth cleaning pen, the disposable gloves), and on three more 5-14 against 10-15.
+- **Owner ruling 2026-09-22, relayed in round 263, verbatim: "the per-product figure is fine."** Asked in round 261; not changed on a guess.
+
+### How it was solved
+- Verified on an unpublished preview (created for this, deleted afterwards), GB visitor, five products chosen for their metafields (read through the Admin API the same hour):
+
+  | product | keys (days / actual) | live page / order | preview page / order |
+  |---|---|---|---|
+  | pet-tooth-cleaning-pen | 5-14 / 11-30, fresh | 5-14 / 11-30 | **11-30 / 11-30** |
+  | pet-ear-cleaning-drops-60ml | 5-14 / 10-15, fresh | 5-14 / 10-15 | 10-15 / 10-15 |
+  | professional-cordless-led-pet-hair-grooming-clippers | 3-10 / 5-15, **stale since 2026-07-05** | 3-10 (static band) / none | 3-10 (static band) / none |
+  | 4-litre-automatic-pet-feeder-with-timer | 3-10 / 3-8, fresh | 3-10 / 3-8 | 3-8 / 3-8 |
+  | multifunctional-pet-home-sofa-hair-removal-brush-614700 | 5-14 / 5-14, fresh | 5-14 / 5-14 | 5-14 / 5-14 |
+
+  The stale row is the freshness rule still holding: a figure 80 days old is not shown, whichever key it came from. Every row asserted `Shopify.theme.id`.
+- **The new check fails on live and passes on the preview.** Live: "page 3-10, order 4-12" on the product the grid offered, the one hard failure of 137. Preview: blocked 153/153, control 150/150, 0 hard failures.
+- eslint, `shopify theme check --fail-level warning`, 37 unit tests, aramid: green.
+
+### Not changed
+- What a non-GB visitor sees (the neutral Delivery setting line) and the static fallback bands (3 to 10 for GB origin, 6 to 14 otherwise): untouched.
+- The checkout's "Ships next business day" (Shopify's fulfilment time, `P1D`) is still the owner's admin action; the worker confirmed in round 262 it never writes that setting and holds no measured processing time (its configured envelope is 1 to 3 days).
+
+### Files touched
+- `snippets/supplier-availability.liquid`, `sections/main-product.liquid`, `snippets/delivery-info.liquid`, `tests/independence.cjs`, `docs/shopify-supplier-metafields.md`, `docs/theme-worker-contract.md`, `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.

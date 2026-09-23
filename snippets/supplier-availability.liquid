@@ -12,7 +12,9 @@
   Fields: 0 label, 1 detail, 2 cap, 3 urgency ('' | low | high), 4 sold_out,
   5 fresh, 6 checked_label (blank unless fresh), 7 qty_known, 8 known_qty,
   9 source (tracked | default), 10 policy_continue, 11 delivery_days (the
-  synced range, blank unless fresh). Booleans are the strings 'true' / 'false'.
+  synced range: the product's own channel where the worker quoted one,
+  otherwise the origin's; blank unless fresh). Booleans are the strings
+  'true' / 'false'.
 
   The reader follows the writer (docs/shopify-supplier-metafields.md): the
   worker writes supplier.* on the PRODUCT only, and three status values. Keys
@@ -42,7 +44,11 @@
 {%- liquid
   assign s_status = product.metafields.supplier.status.value
   assign s_checked = product.metafields.supplier.last_checked_at.value
-  assign s_delivery_days = product.metafields.supplier.delivery_days.value
+  # delivery_days_actual is THIS product's cheapest channel, the one an order rides;
+  # delivery_days is the origin's representative channel, present on every managed
+  # product. Owner ruling 2026-09-22 (channel round 263): show the product's own
+  # figure where it has one. Five products read 5-14 here with their own record at 11-30.
+  assign s_delivery_days = product.metafields.supplier.delivery_days_actual.value | default: product.metafields.supplier.delivery_days.value
 
   assign fresh = false
   assign checked_label = ''

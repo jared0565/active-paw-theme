@@ -164,7 +164,10 @@ async function visit(context, name, url, specific, generic = true, before = null
   // Errors raised by the theme's own code are failures; the browser's own
   // "Failed to load resource" lines for the blocked hosts are the block itself.
   const isResource = (t) => /Failed to load resource|net::ERR_/.test(t);
-  const isPlatform = (t) => /Content Security Policy|shop\.app|Monorail/.test(t); // Shopify's own Shop embed and Trekkie analytics, not theme code
+  // Shopify's own Shop embed and Trekkie analytics, and the browser's complaint about a response
+  // header ("Invalid 'X-Frame-Options' header ... 'ALLOW-FROM ...' is not a recognized directive",
+  // once, daily run 35601692288 on 2026-09-21; live sends DENY): a theme cannot set a header.
+  const isPlatform = (t) => /Content Security Policy|shop\.app|Monorail|Invalid 'X-Frame-Options' header/.test(t);
   const ownErrors = rec.consoleErrors.filter((t) => !isResource(t) && !isPlatform(t));
   check(rec, 'no console errors from page code', ownErrors.length === 0 && rec.codeErrors.length === 0, [...ownErrors, ...rec.codeErrors].join(' | ') || 'none');
   rec.resourceErrorLines = rec.consoleErrors.filter(isResource).length;
@@ -395,6 +398,18 @@ async function openContext(browser, country) {
     const detailsText = await page.locator('[data-details-modal]').first().evaluate((el) => el.textContent || '').catch(() => '');
     check(rec, 'product details never name the supplier', !/Fulfilled by/i.test(detailsText), detailsText.replace(/\s+/g, ' ').trim().slice(0, 100));
     rec.pawscoutPid = await page.locator('meta[name="pawscout-pid"]').getAttribute('content').catch(() => null);
+    // The delivery estimate a GB shopper reads is the one the order carries (owner ruling
+    // 2026-09-22: the product's own figure where it has one). Before the ruling the page
+    // showed the origin's figure and the order the product's, so they disagreed on five
+    // products; this holds for whichever product the grid offered.
+    const estimate = await page.evaluate(() => {
+      const li = [...document.querySelectorAll('.delivery-info li')].map((e) => e.textContent.replace(/\s+/g, ' ').trim());
+      const shown = (li.find((t) => /days to your door/.test(t)) || '').match(/Estimated (\S+) days/);
+      const prop = document.querySelector('input[name="properties[Estimated delivery]"]');
+      return { shown: shown ? shown[1] : null, order: prop ? prop.value.replace(/ days$/, '') : null };
+    });
+    rec.deliveryEstimate = estimate;
+    if (estimate.order !== null) check(rec, 'the delivery estimate on the page is the one the order carries', estimate.shown === estimate.order, `page ${estimate.shown}, order ${estimate.order}`);
   });
 
   // Search: a thin native grid is exactly where the proxy would add ghost cards.

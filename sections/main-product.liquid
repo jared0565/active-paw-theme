@@ -21,10 +21,6 @@
   if sa[4] == 'true'
     assign pdp_sold_out = true
   endif
-  assign supplier_fresh = false
-  if sa[5] == 'true'
-    assign supplier_fresh = true
-  endif
   assign supplier_checked_label = sa[6]
   assign supplier_delivery_days = sa[11]
   assign product_title_length = product_title | size
@@ -230,16 +226,13 @@
     </div>
     {% form 'product', product %}
       {%- comment -%}
-        Surface the per-product ACTUAL delivery estimate at the commitment point: a
-        line-item property flows to the cart + checkout order summary. Browsing (the
-        PDP delivery block) keeps the friendlier representative figure; here we prefer
-        the product's own actual band, falling back to the representative if not yet
-        synced. Only a real value is attached (rule: real & defensible).
+        The delivery estimate at the commitment point: a line-item property that flows
+        to the cart and the checkout order summary. It is the figure the page shows
+        (supplier-availability field 11: the product's own band, else the origin's,
+        blank unless fresh), so the page and the order never disagree. Only a real
+        value is attached (rule: real & defensible).
       {%- endcomment -%}
-      {%- assign checkout_estimate = '' -%}
-      {%- if supplier_fresh -%}
-        {%- assign checkout_estimate = product.metafields.supplier.delivery_days_actual.value | default: supplier_delivery_days -%}
-      {%- endif -%}
+      {%- assign checkout_estimate = supplier_delivery_days -%}
       {%- if checkout_estimate != blank -%}
         <input type="hidden" name="properties[Estimated delivery]" value="{{ checkout_estimate }} days">
       {%- endif -%}
