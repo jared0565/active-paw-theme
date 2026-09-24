@@ -154,7 +154,7 @@ Every pull request below was merged by the owner into `shopify-deploy` (the merg
 | #15 | 2026-09-21 11:01 | `6714422` | `release-2026-09-21-4` | 35591915874 | No page scrolls sideways; icon buttons keep their names (Entry 29) |
 | #17 | 2026-09-23 00:53 | `8b0b0f3` | `release-2026-09-23-1` | 35804058594 | The product page shows the product's own delivery figure (Entry 30) |
 
-Number 16 is an issue, not a pull request: a daily run that failed on the browser's message about a Shopify response header, now classified as platform text; closed. Open: issue #18, the storefront answering 503 to one page load from the GitHub runner (three times on 2026-09-23, a different page each time). From 2026-09-24 the run asks for a 5xx page once more after 15 s and records the refusal with the headers that say who refused it (Entry 31, branch `fix/independence-retries-a-refused-request`); the issue stays open until those records explain the pattern.
+Number 16 is an issue, not a pull request: a daily run that failed on the browser's message about a Shopify response header, now classified as platform text; closed. Open: issue #18, the storefront answering 503 to one page load from the GitHub runner (three times on 2026-09-23, a different page each time). Once that branch is merged the run asks for a 5xx page once more after 15 s and records the refusal with the headers that say who refused it (Entry 31, branch `fix/independence-retries-a-refused-request`); the issue stays open until those records explain the pattern.
 
 ## 5. Decisions (owner, 2026-09-19)
 

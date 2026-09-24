@@ -42,7 +42,7 @@ const SPARSE_MARKET = process.env.SPARSE_MARKET || 'US';
 const SETTLE_MS = 4500; // past the theme's 3 s feed cap
 const THIN_TERMS = ['launcher', 'sisal', 'orthopedic', 'fountain', 'harness', 'scratcher'];
 // The storefront has refused a single page load from the GitHub runner with 503 (issue #18: the
-// cart on 2026-09-23 about 00:05Z, home at 11:42Z, /collections/all at 19:39Z), a different page
+// cart on 2026-09-23 at 00:08Z, home at 11:40Z, /collections/all at 19:39Z), a different page
 // each time while every other page passed, so one refusal failed six to nine checks at once. A
 // theme change cannot do that to one page in one run, so a 5xx is asked for once more after a
 // pause. The refusal is recorded with the headers that say who refused it, and a page that
