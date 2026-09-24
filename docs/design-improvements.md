@@ -1045,3 +1045,29 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 31 - 2026-09-24: One refused page load no longer counts as nine theme failures; the refusal is recorded
+
+### What changed
+- `tests/independence.cjs`: when a page load answers 5xx, `visit()` records the refusal (status, time, and the response headers that say who refused it: `server`, `cf-ray`, `cf-mitigated`, `cf-cache-status`, `retry-after`, `x-request-id`, `content-type`), throws away what the refusal page logged, waits 15 s and asks once more. Every check then runs on the second answer, so a page that answers 5xx twice fails exactly as before.
+- Each refusal goes into `retries` in the results JSON and is printed at the end of the log; on GitHub it is also a warning annotation, so a refusal on a green run is visible on the run's page.
+- Docs: `docs/theme-production-grade-prd.md` section 4 gains "Deployed after phase 4" (PRs #11 to #15 and #17, merge commit, tag and post-deploy run for each, read from GitHub on the day); `docs/HANDOVER.md` gets a dated pointer to it, since that brief still describes June.
+
+### Why it changed
+- Issue #18. Three times on 2026-09-23 the storefront answered 503 to a single page load from the GitHub runner: the cart in PR #17's preview job (run 35800195345 attempt 1, reported 00:08Z), home in the scheduled run (run 35855548604 attempt 1, reported 11:40Z), `/collections/all` on its rerun (attempt 2, 19:39Z; the issue first said about 11:55Z). All three read from the runs' own logs and artefacts on 2026-09-24. A different page each time, every other page passing, the control run straight after passing, and from the owner's machine the same pages answering 200 fast. One refusal failed six to nine checks on one page, and the scheduled run opened an issue for a theme that had not changed.
+- The run could not say who refused: the results kept the status and nothing else. The recorded headers are meant to answer that on the next refusal, by showing which layer in front of the store wrote the answer.
+
+### How it was solved
+- A stand-in storefront in the scratchpad refused the first load of `/` and every load of `/pages/contact` with 503. The run recorded both with their headers; home passed on the retry ("503, then 200 after 15 s"), contact still failed `http 200` ("503, then 503"). The first attempt at this caught a bug: the record was copied before the retry, so its outcome read `undefined`; the record is now one object shared by the page and the list.
+- Against live from this machine, 2026-09-24 about 01:00Z: blocked 137/137 and control 134/134, a minute apart, no refusal in either (so no retry, and the pass counts are unchanged). eslint, `shopify theme check --fail-level warning`, 37 unit tests and aramid: green.
+- Not covered: the preview-cookie load in `openContext()` and the `context.request` calls (search term, product JSON, `/pages/affiliates`, `cart/add.js`). None of the three refusals was there; if one ever is, it shows as its own failure.
+
+### Not changed
+- What counts as a pass. The pause adds 15 s to a run only when a page is refused.
+- Issue #18 stays open until the recorded refusals explain the pattern.
+
+### Files touched
+- `tests/independence.cjs`, `docs/theme-production-grade-prd.md`, `docs/HANDOVER.md`, `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.

@@ -4,6 +4,8 @@
 **Audience:** the next developer picking this up cold.
 **Read this first, then follow the document index (§13) into the specs.**
 
+> **Theme state, 2026-09-24.** This brief describes June. For the theme since 2026-09-18 read `docs/theme-production-grade-prd.md`: tasks T1 to T19 are done, and pull requests #11 to #15 and #17 are deployed (section 4, "Deployed after phase 4": last tag `release-2026-09-23-1`, merge `8b0b0f3`). `shopify-deploy` is the one live branch; a merged pull request is a deploy (`docs/RUNBOOK-THEME-DEPLOY.md`). Every theme change is recorded in `docs/design-improvements.md`.
+
 ---
 
 ## 1. TL;DR - where we are, what's next

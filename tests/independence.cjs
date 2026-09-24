@@ -41,10 +41,18 @@ const SHOPIFY_PLATFORM_SRC_RE = /\/cdn\/shopifycloud\//;
 const SPARSE_MARKET = process.env.SPARSE_MARKET || 'US';
 const SETTLE_MS = 4500; // past the theme's 3 s feed cap
 const THIN_TERMS = ['launcher', 'sisal', 'orthopedic', 'fountain', 'harness', 'scratcher'];
+// The storefront has refused a single page load from the GitHub runner with 503 (issue #18: the
+// cart on 2026-09-23 at 00:08Z, home at 11:40Z, /collections/all at 19:39Z), a different page
+// each time while every other page passed, so one refusal failed six to nine checks at once. A
+// theme change cannot do that to one page in one run, so a 5xx is asked for once more after a
+// pause. The refusal is recorded with the headers that say who refused it, and a page that
+// answers 5xx twice still fails every check as before.
+const RETRY_PAUSE_MS = 15000;
+const REFUSAL_HEADERS = ['server', 'cf-ray', 'cf-mitigated', 'cf-cache-status', 'retry-after', 'x-request-id', 'content-type'];
 
 fs.mkdirSync(OUT, { recursive: true });
 
-const results = { mode: MODE, base: BASE, preview: PREVIEW || null, at: new Date().toISOString(), pages: [] };
+const results = { mode: MODE, base: BASE, preview: PREVIEW || null, at: new Date().toISOString(), retries: [], pages: [] };
 let hardFailures = 0;
 
 const check = (rec, name, ok, detail, hard = true) => {
@@ -124,8 +132,26 @@ async function visit(context, name, url, specific, generic = true, before = null
 
   let status = null;
   try {
-    const resp = await page.goto(url, { waitUntil: 'load', timeout: 45000 });
+    let resp = await page.goto(url, { waitUntil: 'load', timeout: 45000 });
     status = resp ? resp.status() : null;
+    if (status >= 500) {
+      const h = resp.headers();
+      const refused = { page: name, url, status, at: new Date().toISOString(), pauseMs: RETRY_PAUSE_MS, headers: {} };
+      for (const k of REFUSAL_HEADERS) if (h[k]) refused.headers[k] = h[k].slice(0, 120);
+      rec.refused = refused;
+      results.retries.push(refused);
+      // What the refusal page logged is not the page under test.
+      rec.consoleErrors = [];
+      rec.codeErrors = [];
+      rec.blocked = [];
+      rec.turnstileErrorLines = 0;
+      rec.platformSourceErrorLines = 0;
+      refused.retryStatus = null;
+      await page.waitForTimeout(RETRY_PAUSE_MS);
+      resp = await page.goto(url, { waitUntil: 'load', timeout: 45000 });
+      status = resp ? resp.status() : null;
+      refused.retryStatus = status;
+    }
   } catch (e) {
     rec.navigationError = String(e).slice(0, 160);
   }
@@ -569,6 +595,13 @@ async function openContext(browser, country) {
     if (p.platformSourceErrorLines) console.log(`     ${p.name.padEnd(10)} console errors logged by Shopify's own scripts (not theme code): ${p.platformSourceErrorLines}`);
     if (p.turnstileErrorLines) console.log(`     ${p.name.padEnd(10)} Cloudflare Turnstile console errors (not theme code): ${p.turnstileErrorLines}`);
     if (p.name === 'search') console.log(`     ${p.name.padEnd(10)} term=${p.searchTerm} native=${p.nativeCount} ghost=${p.ghostCount}`);
+  }
+  // A retried refusal passes the run, so it is printed where a reader of a green run sees it:
+  // the log, and on GitHub a warning on the run's summary page.
+  for (const r of results.retries) {
+    const line = `${r.page} answered ${r.status} at ${r.at}, then ${r.retryStatus === null ? 'no response' : r.retryStatus} after ${r.pauseMs / 1000} s (${Object.entries(r.headers).map(([k, v]) => `${k}: ${v}`).join('; ') || 'no identifying headers'})`;
+    console.log(`     refused    ${line}`);
+    if (process.env.GITHUB_ACTIONS) console.log(`::warning title=Storefront refused a request (${MODE})::${line}`);
   }
   console.log(`\n${MODE}: ${passed}/${total} checks passed, ${hardFailures} hard failure(s); details in ${file}`);
   process.exit(BLOCK && hardFailures ? 1 : 0);
