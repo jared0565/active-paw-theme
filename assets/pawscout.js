@@ -235,8 +235,8 @@
       content.appendChild(list);
     }
     if (p.descriptionText) content.appendChild(el('p', 'pawscout-desc', p.descriptionText.slice(0, 400)));
-    // The note is rendered by main-search.liquid for the visitor's market: the 7-12 day
-    // estimate is the lane to the UK, so a visitor elsewhere gets the checkout line instead.
+    // The note is the visitor's market's Delivery setting line, rendered by main-search.liquid
+    // (snippets/delivery-promise.liquid, format ship_note); it names no time.
     const searchHost = document.querySelector('[data-pawscout-search]');
     const shipNote = (searchHost && searchHost.getAttribute('data-ship-note')) || 'Ships from our supplier network.';
     // An overseas item's note takes the place of that line, so the preview never states two

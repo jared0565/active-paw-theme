@@ -327,8 +327,8 @@ async function overseasNotes(context, name, term) {
 
     // The preview of the overseas card: the note replaces the market's supplier line.
     // No overseas card (no thin grid, say) fails the checks below; it must not end the whole run.
-    const preview = async () => {
-      const view = page.locator('.pawscout-ghost').nth(1).locator('.pawscout-view');
+    const preview = async (card = 1) => {
+      const view = page.locator('.pawscout-ghost').nth(card).locator('.pawscout-view');
       if (!(await view.count())) return [];
       await view.click({ timeout: 5000 }).catch(() => {});
       await page.locator('.pawscout-content .pawscout-ship').waitFor({ timeout: 8000 }).catch(() => {});
@@ -341,7 +341,12 @@ async function overseasNotes(context, name, term) {
     previewDelivery = null;
     const unconfirmed = await preview();
     check(rec, 'a preview whose route was not confirmed says overseas with no figure', unconfirmed.length === 1 && unconfirmed[0].overseas && unconfirmed[0].text === 'Ships from overseas', JSON.stringify(unconfirmed));
-    check(rec, 'the ghost click asks for the overseas preview', asked.product.length === 2 && asked.product.every((u) => new URL(u).searchParams.get('overseas') === '1'), asked.product.map((u) => new URL(u).search).join(' | ') || 'not asked');
+    // A local item's preview keeps the market's Delivery setting line and states no time: the line
+    // used to tell a GB visitor "estimated 7-12 days to the UK", the supplier lane of June 2026.
+    previewDelivery = { overseas: false, days: null };
+    const local = await preview(0);
+    check(rec, "a local item's preview keeps the market's delivery line and states no time", local.length === 1 && !local[0].overseas && local[0].text.startsWith('Ships from our supplier network.') && !/\bdays?\b/i.test(local[0].text), JSON.stringify(local));
+    check(rec, 'the ghost click asks for the overseas preview', asked.product.length === 3 && asked.product.every((u) => new URL(u).searchParams.get('overseas') === '1'), asked.product.map((u) => new URL(u).search).join(' | ') || 'not asked');
     const said = [...notes, ...confirmed.map((l) => l.text), ...unconfirmed.map((l) => l.text)].filter(Boolean).join(' ');
     check(rec, 'the overseas notes name no country', !/\b(UK|United Kingdom|Britain|China|CN|GB)\b/i.test(said), said);
   }, false, standIn);

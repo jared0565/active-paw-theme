@@ -1188,3 +1188,32 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 36 - 2026-10-01: A local ghost item's preview gives the market's delivery line, not a UK lead time with no source
+
+### What changed
+- `snippets/delivery-promise.liquid` gains a shape, `ship_note`: "Ships from our supplier network. " followed by the market's line from Theme settings > Delivery (`delivery_detail_uk` for a UK visitor, "Free UK delivery on every order. Tracking details are sent after dispatch."; `delivery_detail_other` elsewhere, "Delivery options and times are shown at checkout."). It is plain text, because the search section puts it in an attribute and escapes it there.
+- `sections/main-search.liquid` takes the ghost preview's note (`data-ship-note`) from that shape. The GB branch that said "Ships from our supplier network · estimated 7-12 days to the UK." is gone, and so is the section's own copy of the other-market line.
+- `assets/pawscout.js`: the comment only. An overseas item's note still replaces the line (Entry 34).
+- `tests/independence.cjs`: the overseas stand-in also opens a local item's preview and checks that it keeps the market's line and names no time ("day" or "days" nowhere in it).
+
+### Why it changed
+- The 7-12 figure came in with the ghost preview on 2026-06-11 (`ad3d732`), when every ghost item was a CJ item on the lane from China to the UK. Nothing in this repo or the worker measures it. Since rounds 288 and 290 the worker marks an overseas item and gives its own door-to-door band (Entry 34), and `country` on `/search` picks which warehouses count as local (`docs/theme-worker-contract.md`), so the items this line now covers are stocked in the visitor's market. The figure was neither grounded nor about them. Owner rule: nothing customer-facing that is not grounded in a source.
+- The Delivery setting line is the owner's own sentence, already shown in the product page's availability banner and delivery block, so the preview now says what those say. The setting's help text now names the search preview as a third place it shows. A ghost item has no measured lead time until it is imported; its product page then shows its own estimate.
+
+### How it was checked
+- Preview theme `preview/retry-uk-line-title-clamp` (208619897170), `Shopify.theme.id` asserted on every page:
+  - GB visitor, a stand-in local item: `data-ship-note` and the preview line both read "Ships from our supplier network. Free UK delivery on every order. Tracking details are sent after dispatch." (screenshot looked at: muted line under the description, nothing clipped).
+  - US visitor (localization cookie): `data-ship-note` reads "Ships from our supplier network. Delivery options and times are shown at checkout.", as before.
+- The new check fails on live (the line there says "estimated 7-12 days") and passes on the preview; independence runs on the preview in both modes are in the PR.
+- theme check, eslint and the unit tests clean.
+
+### Not changed
+- An overseas item's note (Entry 34) and the other-market line.
+- If the worker one day sends a measured `delivery.days` for a local item, the preview can print it as it does for an overseas one; nothing sends it now.
+
+### Files touched
+- `snippets/delivery-promise.liquid`, `sections/main-search.liquid`, `config/settings_schema.json`, `assets/pawscout.js`, `tests/independence.cjs`, `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
