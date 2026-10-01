@@ -1125,3 +1125,39 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 34 - 2026-10-01: An item stocked only overseas says so, on its card and in its preview
+
+### What changed
+- `assets/pawscout.js`:
+  - The search asks the worker for overseas items (`overseas=1` on `/apps/pawscout/search`), and a ghost click asks for the overseas preview (`overseas=1` on `/apps/pawscout/product`).
+  - `overseasNote(delivery)`: a card whose `delivery.overseas` is `true` gets one line under its price, "Ships from overseas · estimated N days to your door", N being the worker's `delivery.days`. A figure that is not a plain range or number is left out, giving "Ships from overseas". Local cards (`overseas: false`) get nothing.
+  - The preview of an overseas item shows that line in place of the market's supplier line (`data-ship-note`, which for a GB visitor reads "estimated 7-12 days to the UK"), so the preview never states two times. The preview's own `delivery` decides; a `null` one after an overseas card (the worker could not confirm the route) gives "Ships from overseas" with no figure.
+  - The comment in `initSearchBackfill` no longer says suggestions are local-warehouse-only.
+- `assets/theme.css`: `.pawscout-overseas`, 13px, weight 700, ink colour: the note must be noticed, so it is not muted. On a card the rule also undoes `.commerce-card p` (a two-line clamp and a 42px floor), which otherwise wins on specificity.
+- `tests/independence.cjs`: an `overseas` visit with a stand-in worker (page routes for `/search` and `/product`, which outrank blocked mode's abort, so it runs in both modes): three cards (local; overseas with "8-21"; overseas with a figure that is not a range) and two previews of the overseas card (confirmed, then `null`). It asserts `overseas=1` on both calls; the card notes exactly (none, the full line, "Ships from overseas"); the confirmed preview states one time, the overseas one; the unconfirmed preview says overseas with no figure; and no country is named.
+- `docs/theme-worker-contract.md`: both payloads gain `delivery`, and an "Overseas items" paragraph says what the theme sends and shows.
+
+### Why it changed
+- Owner rule of 2026-09-30, relayed by pawscout-agent in channel round 288: an item stocked only overseas is still offered, with the real supplier facts, and the customer is told; the goal is to always make the sale. Round 290: the worker side is live but switched off (`OVERSEAS_STOREFRONT`) until a theme release shows the note, and the preview's price now matches the card's.
+- The wording was approved by the owner on 2026-10-01. It follows the product page's sentence ("Estimated N days to your door") because the worker computes the figure with the product page's formula, so a card and the page after import read alike.
+- Standing rules kept: no country or supplier named, no claim of UK dispatch, and the figure only as the worker gives it.
+
+### How it was checked
+- On an unpublished preview theme (208604528978, pushed from this branch and deleted afterwards), every page asserting `Shopify.theme.id`:
+  - Blocked run at 09:55Z: all seven `overseas` checks passed on the thin term "sisal": `overseas=1` on the search and on both preview calls; the card notes exactly (none, the full line, "Ships from overseas"); the confirmed preview showing one line, the overseas one; the unconfirmed preview "Ships from overseas"; no country; no console errors.
+  - The control run straight after crashed in the `overseas` visit: the picker found no thin term, so no ghost card rendered, and the preview step waited 30 s for one and threw, which ended the whole run. Fixed: with no overseas card the checks fail and the run goes on. The final runs (10:04Z blocked, 10:07Z control) did exactly that: the picker again found no thin term (the storefront answering 429 to this machine's bursts of background requests, as in Entry 33), so five `overseas` checks failed with "not asked" and "shown []", and nothing crashed.
+  - CI's preview job on the pull request runs from GitHub's runner, which these 429s did not reach (Entry 33's PR: 154/154 and 151/151 there), and is the reading of record for this change.
+- A look at the cards and the preview (scratchpad `overseas-look.cjs`, the same stand-in worker, 1280 and 390 px wide) caught a defect the checks could not: on a card the note came out muted, 14px, with a 42px floor and a two-line clamp, because `.commerce-card p` is more specific. After the fix: ink on white, 17.89:1, 13px bold, two lines on a 243px desktop card and three on a 153px phone card, not clipped (the clamp would have cut the third). The preview shows one delivery line, the overseas one, 17.89:1 on the panel. Screenshots looked finished at both widths.
+- eslint, `shopify theme check --fail-level warning` (71 files, no offences), 37 unit tests, a dash scan of added lines with a planted control, and aramid: clean.
+
+### Not changed
+- What a customer sees today: the worker ignores `overseas=1` until its switch is on, so nothing changes until pawscout-agent turns it on with the owner's go after this release.
+- The "estimated 7-12 days to the UK" line that local ghost cards' previews show to GB visitors. Where that figure comes from was not checked in this change.
+- Seen in passing, not changed: on a phone a long card title clamps to two lines with a sliver of the third showing (the existing `.commerce-card h3` clamp).
+
+### Files touched
+- `assets/pawscout.js`, `assets/theme.css`, `tests/independence.cjs`, `docs/theme-worker-contract.md`, `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.

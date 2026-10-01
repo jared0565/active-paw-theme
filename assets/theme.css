@@ -3215,6 +3215,12 @@ body.contact-modal-open { overflow: hidden; }
 .pawscout-variants { margin: 0; color: var(--muted); font-size: 14px; }
 .pawscout-desc { margin: 0; color: var(--ink); font-size: 14px; line-height: 1.5; }
 .pawscout-ship { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+/* The overseas note (card and preview) is something the customer must notice, so it is ink, not
+   muted. On a card it also undoes .commerce-card p (a two-line clamp and a 42px floor), so a narrow
+   card never cuts the sentence short. */
+.pawscout-overseas,
+.commerce-card .pawscout-overseas { display: block; min-height: 0; margin: 0; overflow: visible; -webkit-line-clamp: none; color: var(--ink); font-size: 13px; font-weight: 700; line-height: 1.4; }
+.pawscout-ship.pawscout-overseas { margin-top: 4px; }
 .pawscout-action { margin-top: 8px; }
 .pawscout-cta { width: 100%; }
 body.pawscout-lock { overflow: hidden; }

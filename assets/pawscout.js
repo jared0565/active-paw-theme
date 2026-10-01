@@ -60,6 +60,19 @@
     return code === shopCurrency() ? shopMoney(amount) : code + ' ' + Number(amount).toFixed(2);
   };
 
+  // An item stocked only overseas (owner rule 2026-09-30, channel rounds 288 and 290: offer it
+  // with the real supplier facts and make the customer aware). The worker sends
+  // `delivery: { overseas, days }` on every card, and on a preview asked for with overseas=1.
+  // `days` is its door-to-door band, the formula the product page uses, so the note reads like
+  // the product page's "Estimated N days to your door". No country or supplier is ever named, and
+  // a figure that is not a plain range or number is left out rather than printed.
+  const OVERSEAS_DAYS_RE = /^\d{1,3}(-\d{1,3})?$/;
+  const overseasNote = (delivery) => {
+    if (!delivery || delivery.overseas !== true) return null;
+    const days = typeof delivery.days === 'string' ? delivery.days.trim() : '';
+    return OVERSEAS_DAYS_RE.test(days) ? `Ships from overseas · estimated ${days} days to your door` : 'Ships from overseas';
+  };
+
   const proxyGet = (path, params) => {
     const qs = new URLSearchParams(params).toString();
     return fetch(`${PROXY}${path}?${qs}`, { headers: { Accept: 'application/json' } })
@@ -111,6 +124,8 @@
     action.appendChild(btn);
     body.appendChild(h3);
     body.appendChild(priceRow);
+    const note = overseasNote(p.delivery);
+    if (note) body.appendChild(el('p', 'pawscout-overseas', note));
     body.appendChild(action);
 
     const link = document.createElement('div');
@@ -119,7 +134,7 @@
     link.appendChild(body);
     card.appendChild(link);
 
-    const open = () => (p.url ? (window.location.href = p.url) : openPreview(p.pid));
+    const open = () => (p.url ? (window.location.href = p.url) : openPreview(p.pid, p.delivery));
     btn.addEventListener('click', open);
     media.addEventListener('click', open);
     return card;
@@ -131,12 +146,13 @@
     const terms = host.getAttribute('data-terms') || '';
     const have = parseInt(host.getAttribute('data-have') || '0', 10) || 0;
     const exclude = host.getAttribute('data-shown-pids') || ''; // pids already on the page - never duplicate
-    // Buyer's storefront country: suggestions are local-warehouse-only, so the
-    // worker needs to know WHOSE local (GB buyer -> GB stock, US -> US, ...).
+    // Buyer's storefront country: the worker needs to know WHOSE local stock counts
+    // (GB buyer -> GB stock, US -> US, ...); an overseas-only item carries its own note.
     const country = host.getAttribute('data-country') || '';
     if (!terms || have >= SUPPLIER_THIN_MAX) return;
 
-    proxyGet('/search', { q: terms, have: String(have), limit: String(SUPPLIER_LIMIT), exclude: exclude, country: country })
+    // overseas=1: this theme shows the overseas note, so the worker may add overseas-only items.
+    proxyGet('/search', { q: terms, have: String(have), limit: String(SUPPLIER_LIMIT), exclude: exclude, country: country, overseas: '1' })
       .then((r) => {
         if (!r || !r.ok || !r.products || !r.products.length) return;
         const grid = host.querySelector('[data-pawscout-grid]');
@@ -170,7 +186,7 @@
     if (modal) { modal.remove(); modal = null; document.body.classList.remove('pawscout-lock'); }
   };
 
-  const openPreview = (pid) => {
+  const openPreview = (pid, cardDelivery) => {
     closePreview();
     modal = el('div', 'pawscout-modal');
     const overlay = el('div', 'pawscout-overlay');
@@ -190,10 +206,10 @@
     document.body.appendChild(modal);
     document.body.classList.add('pawscout-lock');
 
-    proxyGet('/product', { pid })
+    proxyGet('/product', { pid, overseas: '1' })
       .then((r) => {
         if (!r || !r.ok) { renderPreviewError(content); return; }
-        renderPreview(content, r.product);
+        renderPreview(content, r.product, cardDelivery);
       })
       .catch(() => renderPreviewError(content));
   };
@@ -203,7 +219,7 @@
     content.appendChild(el('p', 'pawscout-loading', 'This product is no longer available. Please try another match.'));
   };
 
-  const renderPreview = (content, p) => {
+  const renderPreview = (content, p, cardDelivery) => {
     content.textContent = '';
     if (p.images && p.images.length) {
       const img = document.createElement('img');
@@ -223,7 +239,12 @@
     // estimate is the lane to the UK, so a visitor elsewhere gets the checkout line instead.
     const searchHost = document.querySelector('[data-pawscout-search]');
     const shipNote = (searchHost && searchHost.getAttribute('data-ship-note')) || 'Ships from our supplier network.';
-    content.appendChild(el('p', 'pawscout-ship', shipNote));
+    // An overseas item's note takes the place of that line, so the preview never states two
+    // times. The preview's own `delivery` decides; a null one after an overseas card means the
+    // worker could not confirm the route just now, so the note keeps "overseas" and drops the figure.
+    let overseas = overseasNote(p.delivery);
+    if (!overseas && p.delivery === null && cardDelivery && cardDelivery.overseas === true) overseas = 'Ships from overseas';
+    content.appendChild(overseas ? el('p', 'pawscout-ship pawscout-overseas', overseas) : el('p', 'pawscout-ship', shipNote));
 
     const action = el('div', 'pawscout-action');
     const btn = el('button', 'commerce-add-button pawscout-cta', 'Preparing product…');
