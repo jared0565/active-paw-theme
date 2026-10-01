@@ -84,21 +84,16 @@
             merge into this same grid, gated to a thin native grid (< 4) and capped
             at 3 in the JS, with the same 'Suggested' separator as Stage 1.
           {%- endcomment -%}
-          {%- comment -%} The ghost preview's delivery note. The 7-12 day estimate is the
-              lane to the UK, so only a GB visitor is given it (PRD R11). {%- endcomment -%}
-          {%- liquid
-            if localization.country.iso_code == 'GB'
-              assign ship_note = 'Ships from our supplier network · estimated 7-12 days to the UK.'
-            else
-              assign ship_note_line = settings.delivery_detail_other | default: 'Delivery options and times are shown at checkout.'
-              assign ship_note = 'Ships from our supplier network. ' | append: ship_note_line
-            endif
-          -%}
+          {%- comment -%} The ghost preview's delivery note: the market's Delivery setting line, from
+              the one home of delivery sentences. It used to tell a GB visitor "estimated 7-12 days
+              to the UK", the supplier lane of June 2026 when every ghost item came from China;
+              a GB visitor's local ghost items are UK-stocked now, so no time is claimed here. {%- endcomment -%}
+          {%- capture ship_note -%}{%- render 'delivery-promise', format: 'ship_note' -%}{%- endcapture -%}
           <div data-pawscout-search
                data-terms="{{ search.terms | escape }}"
                data-have="{{ product_count }}"
                data-country="{{ localization.country.iso_code }}"
-               data-ship-note="{{ ship_note | escape }}"
+               data-ship-note="{{ ship_note | strip | escape }}"
                data-shown-pids="">
           <div class="commerce-grid search-results-grid" data-pawscout-grid>
             {% for item in search.results %}

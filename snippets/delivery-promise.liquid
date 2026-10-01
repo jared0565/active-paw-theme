@@ -25,6 +25,12 @@
     checkout_note  a sentence about delivery cost              home "No surprises at checkout"
     drawer_nudge   the cart drawer's add-on prompt
     drawer_note    the cart drawer's delivery and tax line
+    ship_note      the ghost preview's delivery note, PLAIN TEXT (the search
+                   section puts it in an attribute and escapes it): the market's
+                   Delivery setting line. It names no time: a supplier item has no
+                   measured figure until it is imported, and its product page then
+                   shows its own estimate. An overseas item's note replaces it
+                   (assets/pawscout.js).
   @param {string} [format] - one of the shapes above; pair when omitted
   @param {boolean} [link] - pair only: the title links to the country selector
 {% enddoc %}
@@ -78,6 +84,13 @@
     {%- else -%}
       Delivery to {{ country_name | escape }} and taxes calculated at checkout.
     {%- endif -%}
+  {%- when 'ship_note' -%}
+    {%- if uk -%}
+      {%- assign detail = settings.delivery_detail_uk | default: 'Free UK delivery on every order. Tracking details are sent after dispatch.' -%}
+    {%- else -%}
+      {%- assign detail = settings.delivery_detail_other | default: 'Delivery options and times are shown at checkout.' -%}
+    {%- endif -%}
+    Ships from our supplier network. {{ detail }}
   {%- else -%}
     {%- if link -%}
       <strong data-delivery-promise><a href="#CountrySelector" data-country-jump title="Change delivery country">{{ promise_title | escape }}</a></strong>

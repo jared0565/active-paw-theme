@@ -1161,3 +1161,83 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 35 - 2026-10-01: A refused background request is waited out and asked once more, and recorded
+
+### What changed
+- `tests/independence.cjs`: every background request (`context.request`: the thin-term picker's searches, the collection's product lookups, `/pages/affiliates`, the cart add and clear) goes through one helper, `backgroundRequest()`. On a 429 or a 5xx it records the refusal (status, time, and the headers `server`, `cf-ray`, `cf-mitigated`, `cf-cache-status`, `retry-after`, `x-request-id`, `content-type`) in `results.retries`, waits what `retry-after` asks (15 s when it is absent, at most 75 s), and asks once more. The refusal is printed and, on GitHub, raised as a warning, like a refused page load (Entry 31).
+- The waits share one budget of 150 s per run. Once a wait no longer fits, the refusal is recorded as "not retried" with what was left, so a bad day cannot run a job past its timeout (20 and 25 minutes).
+
+### Why it changed
+- On 2026-10-01 every local run failed four to nine checks that had nothing to do with the change under test. A burst diagnostic (scratchpad `burst-diag.cjs`, 12:25Z) found the cause: Shopify's own limiter answered every product lookup from the owner's machine with 429, body `local_rate_limited`, `retry-after: 60` and an `x-request-id`, with no `cf-mitigated`, from the first request, while searches in the same burst answered 200. A minute later every route answered 200 again, by curl, a page load and the background client alike. Entry 31 had said these requests were not covered; they now are.
+- What tripped the limiter is not known: nothing from this session had touched the store for two hours before that burst. The fix does not depend on it.
+
+### How it was checked
+- A stand-in storefront (scratchpad `refusing-server-2.cjs`) refuses the first search and the first product lookup once, and `/pages/affiliates` always, each with 429, `local_rate_limited` and a short `retry-after`.
+  - Before the change: no refusal recorded, "an available product exists in the grid" failed ("none of the first 8 are available"), and the picker passed over the refused "launcher" for "sisal".
+  - After: three refusals recorded with their headers; the product lookup waited 2 s and answered 200, so the collection check passed; the picker waited 1 s and kept "launcher"; the affiliate page answered 429 twice and the record says so.
+  - With the budget set to 1.5 s in a scratch copy: the 2 s wait did not fit and was recorded as not retried (1.5 s left), the 1 s search retry ran, and the next 1 s wait (0.5 s left) was recorded as not retried.
+- eslint clean.
+
+### Not changed
+- What counts as a pass: a request refused twice still fails the checks that depend on it.
+- Issue #18 stays open; these records are more evidence for it.
+
+### Files touched
+- `tests/independence.cjs`, `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 36 - 2026-10-01: A local ghost item's preview gives the market's delivery line, not a UK lead time with no source
+
+### What changed
+- `snippets/delivery-promise.liquid` gains a shape, `ship_note`: "Ships from our supplier network. " followed by the market's line from Theme settings > Delivery (`delivery_detail_uk` for a UK visitor, "Free UK delivery on every order. Tracking details are sent after dispatch."; `delivery_detail_other` elsewhere, "Delivery options and times are shown at checkout."). It is plain text, because the search section puts it in an attribute and escapes it there.
+- `sections/main-search.liquid` takes the ghost preview's note (`data-ship-note`) from that shape. The GB branch that said "Ships from our supplier network · estimated 7-12 days to the UK." is gone, and so is the section's own copy of the other-market line.
+- `assets/pawscout.js`: the comment only. An overseas item's note still replaces the line (Entry 34).
+- `tests/independence.cjs`: the overseas stand-in also opens a local item's preview and checks that it keeps the market's line and names no time ("day" or "days" nowhere in it).
+
+### Why it changed
+- The 7-12 figure came in with the ghost preview on 2026-06-11 (`ad3d732`), when every ghost item was a CJ item on the lane from China to the UK. Nothing in this repo or the worker measures it. Since rounds 288 and 290 the worker marks an overseas item and gives its own door-to-door band (Entry 34), and `country` on `/search` picks which warehouses count as local (`docs/theme-worker-contract.md`), so the items this line now covers are stocked in the visitor's market. The figure was neither grounded nor about them. Owner rule: nothing customer-facing that is not grounded in a source.
+- The Delivery setting line is the owner's own sentence, already shown in the product page's availability banner and delivery block, so the preview now says what those say. The setting's help text now names the search preview as a third place it shows. A ghost item has no measured lead time until it is imported; its product page then shows its own estimate.
+
+### How it was checked
+- Preview theme `preview/retry-uk-line-title-clamp` (208619897170), `Shopify.theme.id` asserted on every page:
+  - GB visitor, a stand-in local item: `data-ship-note` and the preview line both read "Ships from our supplier network. Free UK delivery on every order. Tracking details are sent after dispatch." (screenshot looked at: muted line under the description, nothing clipped).
+  - US visitor (localization cookie): `data-ship-note` reads "Ships from our supplier network. Delivery options and times are shown at checkout.", as before.
+- The new check fails on live (the line there says "estimated 7-12 days") and passes on the preview; independence runs on the preview in both modes are in the PR.
+- theme check, eslint and the unit tests clean.
+
+### Not changed
+- An overseas item's note (Entry 34) and the other-market line.
+- If the worker one day sends a measured `delivery.days` for a local item, the preview can print it as it does for an overseas one; nothing sends it now.
+
+### Files touched
+- `snippets/delivery-promise.liquid`, `sections/main-search.liquid`, `config/settings_schema.json`, `assets/pawscout.js`, `tests/independence.cjs`, `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 37 - 2026-10-01: A card title is exactly two lines tall, so nothing of a third line shows
+
+### What changed
+- `assets/theme.css`: `.commerce-card h3` is `2.5em` tall at least and at most, with `line-height: 1.25` and `align-self: start`, so the clamped box is exactly two lines. The phone rule's own `min-height: 42px` is gone; the em height follows its 15px size.
+- A focused title link is underlined (2px, `text-underline-offset: 2px`) in the accent's dark shade instead of outlined. The title's `overflow: hidden` cut the top and left off the outline, and the theme's nav and footer links already swap their outline for another mark.
+- `tests/independence.cjs`: the layout check measures every visible card title at each width and fails when a clamped title's box is taller than two of its lines ("no card title shows part of a third line").
+
+### Why it changed
+- On every phone card with a long title the top of the third line showed under the clamp: a 42px box over 37.5px of two lines, and 46px over 45px on wider screens, with the box stretched further by its grid row. `-webkit-line-clamp` hides lines past the second only when the box ends at the second.
+
+### How it was checked
+- A measuring probe (scratchpad `title-sliver.cjs`) on `/collections/all`: live showed 3, 0 and 12 titles with a sliver at 1280, 768 and 390px; the preview theme 208619897170 showed 0 at all three.
+- Screenshots looked at on a 390px phone: two-line titles end with an ellipsis and nothing under them; a title focused from the keyboard (`:focus-visible` true) is underlined in rgb(179, 55, 0) with no broken outline.
+- theme check, eslint and the unit tests clean; the new layout check fails on live and passes on the preview.
+
+### Not changed
+- How many lines a title gets (two), its size, and the card layout around it.
+
+### Files touched
+- `assets/theme.css`, `tests/independence.cjs`, `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
