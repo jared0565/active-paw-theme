@@ -1161,3 +1161,30 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 35 - 2026-10-01: A refused background request is waited out and asked once more, and recorded
+
+### What changed
+- `tests/independence.cjs`: every background request (`context.request`: the thin-term picker's searches, the collection's product lookups, `/pages/affiliates`, the cart add and clear) goes through one helper, `backgroundRequest()`. On a 429 or a 5xx it records the refusal (status, time, and the headers `server`, `cf-ray`, `cf-mitigated`, `cf-cache-status`, `retry-after`, `x-request-id`, `content-type`) in `results.retries`, waits what `retry-after` asks (15 s when it is absent, at most 75 s), and asks once more. The refusal is printed and, on GitHub, raised as a warning, like a refused page load (Entry 31).
+- The waits share one budget of 150 s per run. Once a wait no longer fits, the refusal is recorded as "not retried" with what was left, so a bad day cannot run a job past its timeout (20 and 25 minutes).
+
+### Why it changed
+- On 2026-10-01 every local run failed four to nine checks that had nothing to do with the change under test. A burst diagnostic (scratchpad `burst-diag.cjs`, 12:25Z) found the cause: Shopify's own limiter answered every product lookup from the owner's machine with 429, body `local_rate_limited`, `retry-after: 60` and an `x-request-id`, with no `cf-mitigated`, from the first request, while searches in the same burst answered 200. A minute later every route answered 200 again, by curl, a page load and the background client alike. Entry 31 had said these requests were not covered; they now are.
+- What tripped the limiter is not known: nothing from this session had touched the store for two hours before that burst. The fix does not depend on it.
+
+### How it was checked
+- A stand-in storefront (scratchpad `refusing-server-2.cjs`) refuses the first search and the first product lookup once, and `/pages/affiliates` always, each with 429, `local_rate_limited` and a short `retry-after`.
+  - Before the change: no refusal recorded, "an available product exists in the grid" failed ("none of the first 8 are available"), and the picker passed over the refused "launcher" for "sisal".
+  - After: three refusals recorded with their headers; the product lookup waited 2 s and answered 200, so the collection check passed; the picker waited 1 s and kept "launcher"; the affiliate page answered 429 twice and the record says so.
+  - With the budget set to 1.5 s in a scratch copy: the 2 s wait did not fit and was recorded as not retried (1.5 s left), the 1 s search retry ran, and the next 1 s wait (0.5 s left) was recorded as not retried.
+- eslint clean.
+
+### Not changed
+- What counts as a pass: a request refused twice still fails the checks that depend on it.
+- Issue #18 stays open; these records are more evidence for it.
+
+### Files touched
+- `tests/independence.cjs`, `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.

@@ -60,6 +60,37 @@ const check = (rec, name, ok, detail, hard = true) => {
   if (!ok && hard) hardFailures += 1;
 };
 
+// Background requests (`context.request`: the thin-term picker, the collection's product lookups,
+// /pages/affiliates, the cart) are refused too. On 2026-10-01 Shopify's own limiter answered every
+// product lookup from the owner's machine with 429 "local_rate_limited", retry-after 60 and an
+// x-request-id (no cf-mitigated) while page loads passed, which failed the collection, picker,
+// price and checkout checks at once. A refused background request waits what the server asks (at
+// most 75 s) and is asked once more, and is recorded like a refused page load. The waits share one
+// budget per run, so a bad day cannot run the job past its timeout; once it is spent, a refusal is
+// recorded and not retried.
+const REQUEST_PAUSE_CAP_MS = 75000;
+let requestPauseBudgetMs = 150000;
+async function backgroundRequest(context, label, method, url, options) {
+  let r = await context.request[method](url, options);
+  const status = r.status();
+  if (status !== 429 && status < 500) return r;
+  const h = r.headers();
+  const after = Number(h['retry-after']);
+  const pauseMs = Math.min(Number.isFinite(after) && after > 0 ? after * 1000 : RETRY_PAUSE_MS, REQUEST_PAUSE_CAP_MS);
+  const refused = { page: `${label} (background request)`, url, status, at: new Date().toISOString(), pauseMs, headers: {}, retryStatus: null };
+  for (const k of REFUSAL_HEADERS) if (h[k]) refused.headers[k] = h[k].slice(0, 120);
+  results.retries.push(refused);
+  if (pauseMs > requestPauseBudgetMs) {
+    refused.notRetried = `the run's pause budget has ${requestPauseBudgetMs / 1000} s left`;
+    return r;
+  }
+  requestPauseBudgetMs -= pauseMs;
+  await new Promise((resolve) => setTimeout(resolve, pauseMs));
+  r = await context.request[method](url, options);
+  refused.retryStatus = r.status();
+  return r;
+}
+
 const acceptCookies = async (page) => {
   await page.evaluate(() => {
     const btn = document.querySelector('#shopify-pc__banner__btn-accept');
@@ -211,7 +242,7 @@ async function visit(context, name, url, specific, generic = true, before = null
 
 async function pickThinSearchTerm(context) {
   for (const term of THIN_TERMS) {
-    const r = await context.request.get(`${BASE}/search?q=${encodeURIComponent(term)}&type=product`);
+    const r = await backgroundRequest(context, `search "${term}"`, 'get', `${BASE}/search?q=${encodeURIComponent(term)}&type=product`);
     const html = await r.text();
     const m = html.match(/data-have="(\d+)"/);
     const have = m ? parseInt(m[1], 10) : -1;
@@ -471,7 +502,7 @@ async function openContext(browser, country) {
     check(rec, 'collection grid has products', cards > 0, `${cards} cards`);
     const hrefs = await page.locator('a[href^="/products/"]').evaluateAll((as) => [...new Set(as.map((a) => a.getAttribute('href').split('?')[0]))]);
     for (const href of hrefs.slice(0, 8)) {
-      const r = await context.request.get(`${BASE}${href}.js`);
+      const r = await backgroundRequest(context, 'product lookup', 'get', `${BASE}${href}.js`);
       const p = r.ok() ? await r.json() : null;
       if (p && p.available) { productUrl = href; break; }
     }
@@ -559,7 +590,7 @@ async function openContext(browser, country) {
   // carries the programme copy, an email route and the Apply button to the worker's
   // form; the button is hidden until the feed verdict proves the worker reachable.
   // Until the owner creates the page, the worker-rendered form is measured instead.
-  const affPage = await context.request.get(`${BASE}/pages/affiliates`);
+  const affPage = await backgroundRequest(context, 'affiliate page', 'get', `${BASE}/pages/affiliates`);
   if (affPage.status() === 200) {
     await visit(context, 'affiliate', `${BASE}/pages/affiliates`, async (page, rec) => {
       const apply = page.locator('[data-affiliate-apply]');
@@ -578,7 +609,7 @@ async function openContext(browser, country) {
 
   // Cart and checkout with a real line in the basket, then clear it.
   if (variantId) {
-    const add = await context.request.post(`${BASE}/cart/add.js`, { form: { id: variantId, quantity: '1' } });
+    const add = await backgroundRequest(context, 'cart add', 'post', `${BASE}/cart/add.js`, { form: { id: variantId, quantity: '1' } });
     await visit(context, 'cart', `${BASE}/cart`, async (page, rec) => {
       check(rec, 'cart/add.js accepted the line', add.ok(), `status ${add.status()}`);
       check(rec, 'cart line rendered', (await count(page, '.cart-items')) > 0);
@@ -589,7 +620,7 @@ async function openContext(browser, country) {
       check(rec, 'checkout reachable', /\/checkouts\//.test(page.url()) && rec.status === 200, where);
       check(rec, 'checkout has no stock problem', !/stock-problems/.test(page.url()), where);
     }, false);
-    await context.request.post(`${BASE}/cart/clear.js`).catch(() => {});
+    await backgroundRequest(context, 'cart clear', 'post', `${BASE}/cart/clear.js`).catch(() => {});
   }
 
   // A sparse market (PRD T19). The worker keeps products out of a market's catalogue unless
@@ -685,7 +716,8 @@ async function openContext(browser, country) {
   // A retried refusal passes the run, so it is printed where a reader of a green run sees it:
   // the log, and on GitHub a warning on the run's summary page.
   for (const r of results.retries) {
-    const line = `${r.page} answered ${r.status} at ${r.at}, then ${r.retryStatus === null ? 'no response' : r.retryStatus} after ${r.pauseMs / 1000} s (${Object.entries(r.headers).map(([k, v]) => `${k}: ${v}`).join('; ') || 'no identifying headers'})`;
+    const then = r.notRetried ? `not retried (${r.notRetried})` : `then ${r.retryStatus === null ? 'no response' : r.retryStatus} after ${r.pauseMs / 1000} s`;
+    const line = `${r.page} answered ${r.status} at ${r.at}, ${then} (${Object.entries(r.headers).map(([k, v]) => `${k}: ${v}`).join('; ') || 'no identifying headers'})`;
     console.log(`     refused    ${line}`);
     if (process.env.GITHUB_ACTIONS) console.log(`::warning title=Storefront refused a request (${MODE})::${line}`);
   }
