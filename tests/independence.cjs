@@ -193,7 +193,11 @@ async function visit(context, name, url, specific, generic = true, before = null
   // Shopify's own Shop embed and Trekkie analytics, and the browser's complaint about a response
   // header ("Invalid 'X-Frame-Options' header ... 'ALLOW-FROM ...' is not a recognized directive",
   // once, daily run 35601692288 on 2026-09-21; live sends DENY): a theme cannot set a header.
-  const isPlatform = (t) => /Content Security Policy|shop\.app|Monorail|Invalid 'X-Frame-Options' header/.test(t);
+  // The same holds for a request to Shopify's own service host refused by CORS ("Access to fetch
+  // at 'https://otlp-http-production.shopifysvc.com/v1/metrics' ... blocked by CORS policy", on
+  // three pages of a control run on 2026-10-01 and absent on a reload): the theme never calls
+  // shopifysvc.com, and only that host can send the missing header.
+  const isPlatform = (t) => /Content Security Policy|shop\.app|Monorail|Invalid 'X-Frame-Options' header|^Access to fetch at 'https:\/\/[a-z0-9-]+\.shopifysvc\.com\//.test(t);
   const ownErrors = rec.consoleErrors.filter((t) => !isResource(t) && !isPlatform(t));
   check(rec, 'no console errors from page code', ownErrors.length === 0 && rec.codeErrors.length === 0, [...ownErrors, ...rec.codeErrors].join(' | ') || 'none');
   rec.resourceErrorLines = rec.consoleErrors.filter(isResource).length;
@@ -439,14 +443,31 @@ async function openContext(browser, country) {
   });
 
   // Search: a thin native grid is exactly where the proxy would add ghost cards.
+  // The search's own matches are the cards before the grid's first separator; after it come the
+  // Liquid 'Suggested' cards (a term that hits a keyword rule) and the supplier's ghosts. They are
+  // compared with the count the same render prints in data-have, not with the picker's earlier
+  // request: the catalogue's answer can move between the two (run 35994930886, 2026-09-24:
+  // "fountain" read 3 for the picker, then the page rendered 5 and said 5).
   const thin = await pickThinSearchTerm(context);
   await visit(context, 'search', `${BASE}/search?q=${encodeURIComponent(thin.term)}&type=product`, async (page, rec) => {
-    const native = await count(page, '.search-results-grid .commerce-card:not(.pawscout-ghost)');
+    const grid = await page.evaluate(() => {
+      const host = document.querySelector('[data-pawscout-search]');
+      let matches = 0;
+      for (const n of document.querySelectorAll('.search-results-grid .commerce-card, .search-results-grid .search-suggested-sep')) {
+        if (n.classList.contains('search-suggested-sep')) break;
+        if (!n.classList.contains('pawscout-ghost')) matches += 1;
+      }
+      return { matches, have: host ? parseInt(host.getAttribute('data-have'), 10) : null };
+    });
     const ghosts = await count(page, '.pawscout-ghost');
     rec.searchTerm = thin.term;
-    rec.nativeCount = native;
+    rec.nativeCount = grid.matches;
+    rec.pageCount = grid.have;
+    rec.pickerCount = thin.have;
     rec.ghostCount = ghosts;
-    check(rec, 'native results rendered', native > 0 && (thin.have === null || native === thin.have), `${native} native (server said ${thin.have})`);
+    check(rec, 'native results rendered', grid.matches > 0 && grid.matches === grid.have, `${grid.matches} search matches rendered, the page says ${grid.have} (the picker read ${thin.have})`);
+    // A term that is no longer thin when the page renders leaves the ghost path untested.
+    check(rec, 'search term still thin when the page rendered (informational)', grid.have >= 1 && grid.have <= 3, `"${thin.term}": the picker read ${thin.have}, the page ${grid.have}`, false);
     if (BLOCK) check(rec, 'no supplier ghost cards', ghosts === 0, `${ghosts} ghost cards`);
     check(rec, 'no empty-state message', (await count(page, '.search-empty')) === 0);
   });
@@ -594,7 +615,7 @@ async function openContext(browser, country) {
     if (p.platformErrorLines) console.log(`     ${p.name.padEnd(10)} Shopify platform console errors (not theme code): ${p.platformErrorLines}`);
     if (p.platformSourceErrorLines) console.log(`     ${p.name.padEnd(10)} console errors logged by Shopify's own scripts (not theme code): ${p.platformSourceErrorLines}`);
     if (p.turnstileErrorLines) console.log(`     ${p.name.padEnd(10)} Cloudflare Turnstile console errors (not theme code): ${p.turnstileErrorLines}`);
-    if (p.name === 'search') console.log(`     ${p.name.padEnd(10)} term=${p.searchTerm} native=${p.nativeCount} ghost=${p.ghostCount}`);
+    if (p.name === 'search') console.log(`     ${p.name.padEnd(10)} term=${p.searchTerm} native=${p.nativeCount} page=${p.pageCount} picker=${p.pickerCount} ghost=${p.ghostCount}`);
   }
   // A retried refusal passes the run, so it is printed where a reader of a green run sees it:
   // the log, and on GitHub a warning on the run's summary page.

@@ -1095,3 +1095,33 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 33 - 2026-10-01: The search check compares the page with itself, not with an earlier read of a moving catalogue; Shopify's telemetry CORS line is platform
+
+### What changed
+- `tests/independence.cjs`, the `search` visit: "native results rendered" counts the search's own matches as the cards before the grid's first separator (the Liquid 'Suggested' cards and the supplier's ghost cards both come after one) and compares them with `data-have` from the same render. The picker's earlier count is still recorded (`pickerCount`, beside `pageCount`) but no longer decides the check.
+- A new informational line says whether the term was still thin (1 to 3 matches) when the page rendered, so a run that stops exercising the thin grid says so instead of passing quietly.
+- The log's search summary line also prints `page=` and `picker=`.
+- `isPlatform` gains one text rule: a fetch to a `*.shopifysvc.com` host refused by CORS is Shopify's own telemetry, not theme code.
+
+### Why it changed
+- The scheduled run of 2026-09-24 (35994930886, 11:45Z) failed one check: "5 native (server said 3)". Read from its artefact on 2026-10-01: the picker's request read `data-have="3"` for "fountain"; the browser loaded the same URL seconds later and the page itself said "5 products" (the screenshot shows every card badged "Search match" and no "Suggested" separator, and "fountain" matches no keyword rule). The picker for the next visit in the same run had already passed over "fountain", and the control run two minutes later picked "harness". Live read "fountain" as 4 on 2026-10-01. So the storefront's answer changed between two reads seconds apart; whether a product changed or the search index caught up is not known, and the fix does not depend on it.
+- A second way the old count could go wrong: on a thin result whose term hits a keyword rule (for example "scratcher" and the rule `pet-toys: ... scratch`), `sections/main-search.liquid` adds up to three 'Suggested' cards inside the same grid. They are `.commerce-card` and not ghosts, so the old selector counted them as search matches.
+- The comment the workflow added to issue #18 for that run files it with the refused page loads; it is a different cause.
+- The control run of 2026-10-01 09:43Z logged "Access to fetch at 'https://otlp-http-production.shopifysvc.com/v1/metrics' from origin 'https://activepaw.co.uk' has been blocked by CORS policy" on home, product and a search page; a reload of home a few minutes later sent the same telemetry requests with no error, so the endpoint fails now and then. The line carries no script URL, so it cannot be classified by source like the others. The theme references `shopifysvc.com` nowhere (`git grep`, theme directories), so theme code cannot make that request, and only that host can send the missing header. In blocked mode those requests are not blocked, so one such line would have been a hard failure and an issue.
+
+### How it was solved
+- Planted control (scratchpad `search-count-probe.cjs`, which extracts the committed `page.evaluate` function from the script, so the copy cannot drift), against live on 2026-10-01: "scratcher" (8 matches) and "harness" (1) pass unchanged; one native card removed fails (7 against 8, 0 against 1); one duplicated fails (9 against 8, 2 against 1); a separator followed by a suggested card and a ghost still passes, where the old selector reads 9 against 8 and 2 against 1. The suggestion case is simulated: no live term rendered real Liquid suggestions that day.
+- The platform rule, read out of the committed script and run on five lines: Shopify's telemetry line matches; a CORS line for the worker's proxy, one for the worker domain, one for another host whose query mentions `shopifysvc.com`, and a TypeError mentioning it do not.
+- Against live from this machine on 2026-10-01, blocked at 09:40Z and control at 09:43Z: the changed check passed in both ("19 search matches rendered, the page says 19", then 22 and 22; the term was "dog" both times because the picker found no thin term). Both runs failed other checks for a reason outside this change: the storefront answered 429 to this machine's bursts of background requests (the picker's six searches, the collection's eight product lookups; the affiliate request recorded the 429). That emptied the picker, so the two stand-in price visits had no thin grid to fill, and the collection check fell back to a product that is out of stock, so the checkout reported a stock problem. A single background request a minute later answered 200, as did a page load and curl (Cloudflare edge LHR, `x-request-id` present). Pet Toys has four available products by the Admin API and the storefront's own JSON, so the collection failure was the refusals and not the catalogue. The CI preview job on this PR runs from GitHub's runner and is the cleaner reading.
+- eslint, `shopify theme check --fail-level warning`, the unit tests, a dash scan of added lines with a planted control, and aramid: see the PR.
+
+### Not changed
+- What the search visit asserts in blocked mode (no ghost cards, no empty-state message) and the picker's terms.
+- The background requests (`context.request`) still have no retry (Entry 31 said so). On 2026-10-01 this machine's bursts drew 429s; the daily runs from GitHub's runner passed from 25 to 30 September with the same bursts. If the runner starts seeing them, that is its own change.
+
+### Files touched
+- `tests/independence.cjs`, `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
