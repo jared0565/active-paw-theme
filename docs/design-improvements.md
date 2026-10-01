@@ -1241,3 +1241,20 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 38 - 2026-10-01: The deployed table names #19 to #23
+
+### What changed
+- `docs/theme-production-grade-prd.md` section 4, "Deployed after phase 4": rows for #19 to #23 (merge time, merge commit, tag, post-deploy run, entry), and the paragraph on issue #18 now says what #19 and #23 record and what the first record showed.
+
+### Why it changed
+- The table stopped at #17, so it no longer said what is live.
+
+### How it was checked
+- Every figure read from GitHub on the day: `gh pr view` (merged time and merge commit), `git tag --points-at` on each merge commit, and the `workflow_run` runs of `independence-daily.yml` on each merge commit (all five completed with success). The first refusal record was read from the log of run 35966224773.
+
+### Files touched
+- `docs/theme-production-grade-prd.md`, `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
