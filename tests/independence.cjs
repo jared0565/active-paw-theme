@@ -439,11 +439,19 @@ async function layoutFits(browser, name, url) {
     const scrolls = [];
     const squeezed = [];
     const unnamed = [];
+    // A clamped card title whose box is taller than two lines shows the top of its third line
+    // (every phone card on 2026-10-01: a 42px box over 37.5px of text).
+    const slivers = [];
     let withBar = 0;
     for (const w of LAYOUT_WIDTHS) {
       await page.setViewportSize({ width: w, height: 900 });
       await page.waitForTimeout(200);
       const m = await page.evaluate(measureLayout);
+      const cut = await page.evaluate(() => [...document.querySelectorAll('.commerce-card h3')].filter((h) => h.offsetParent !== null).map((h) => {
+        const twoLines = 2 * parseFloat(window.getComputedStyle(h).lineHeight);
+        return { text: h.textContent.trim().slice(0, 30), box: h.clientHeight, content: h.scrollHeight, twoLines };
+      }).filter((t) => t.content > t.box + 1 && t.box > t.twoLines + 1));
+      if (cut.length) slivers.push(`${w}px: ${cut.length} (${cut[0].text}: box ${cut[0].box}px, two lines ${cut[0].twoLines}px)`);
       if (m.inner > m.client) withBar += 1;
       if (m.scroll > m.client + 1) scrolls.push(`${w}px: ${m.scroll - m.client}px past the window (${m.spill.join('; ') || 'no element named'})`);
       if (m.squeezed.length) squeezed.push(`${w}px: ${m.squeezed.join('; ')}`);
@@ -455,6 +463,7 @@ async function layoutFits(browser, name, url) {
     check(rec, `no sideways scroll at ${LAYOUT_WIDTHS.length} widths from 1400 to 360px`, scrolls.length === 0, scrolls.slice(0, 4).join(' | ') || 'none');
     check(rec, 'no container spills into its own padding', squeezed.length === 0, squeezed.slice(0, 4).join(' | ') || 'none');
     check(rec, 'every visible button, link and field has a name', unnamed.length === 0, unnamed.slice(0, 4).join(' | ') || 'none');
+    check(rec, 'no card title shows part of a third line', slivers.length === 0, slivers.slice(0, 4).join(' | ') || 'none');
   }, false);
   await context.close();
 }

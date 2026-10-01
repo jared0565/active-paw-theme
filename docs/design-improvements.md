@@ -1217,3 +1217,27 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 37 - 2026-10-01: A card title is exactly two lines tall, so nothing of a third line shows
+
+### What changed
+- `assets/theme.css`: `.commerce-card h3` is `2.5em` tall at least and at most, with `line-height: 1.25` and `align-self: start`, so the clamped box is exactly two lines. The phone rule's own `min-height: 42px` is gone; the em height follows its 15px size.
+- A focused title link is underlined (2px, `text-underline-offset: 2px`) in the accent's dark shade instead of outlined. The title's `overflow: hidden` cut the top and left off the outline, and the theme's nav and footer links already swap their outline for another mark.
+- `tests/independence.cjs`: the layout check measures every visible card title at each width and fails when a clamped title's box is taller than two of its lines ("no card title shows part of a third line").
+
+### Why it changed
+- On every phone card with a long title the top of the third line showed under the clamp: a 42px box over 37.5px of two lines, and 46px over 45px on wider screens, with the box stretched further by its grid row. `-webkit-line-clamp` hides lines past the second only when the box ends at the second.
+
+### How it was checked
+- A measuring probe (scratchpad `title-sliver.cjs`) on `/collections/all`: live showed 3, 0 and 12 titles with a sliver at 1280, 768 and 390px; the preview theme 208619897170 showed 0 at all three.
+- Screenshots looked at on a 390px phone: two-line titles end with an ellipsis and nothing under them; a title focused from the keyboard (`:focus-visible` true) is underlined in rgb(179, 55, 0) with no broken outline.
+- theme check, eslint and the unit tests clean; the new layout check fails on live and passes on the preview.
+
+### Not changed
+- How many lines a title gets (two), its size, and the card layout around it.
+
+### Files touched
+- `assets/theme.css`, `tests/independence.cjs`, `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
