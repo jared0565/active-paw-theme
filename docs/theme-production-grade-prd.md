@@ -143,7 +143,7 @@ Ordered. Each task names its files and its acceptance check. Tasks marked (owner
 
 ### Deployed after phase 4
 
-Every pull request below was merged by the owner into `shopify-deploy` (the merge is the deploy), tagged, and followed by a green post-deploy independence run against live. Read from GitHub and the tags on 2026-09-24; the change behind each is the named entry in `docs/design-improvements.md`.
+Every pull request below was merged by the owner into `shopify-deploy` (the merge is the deploy), tagged, and followed by a green post-deploy independence run against live. Read from GitHub and the tags on 2026-09-24 and 2026-10-01; the change behind each is the named entry in `docs/design-improvements.md`.
 
 | PR | Merged (UTC) | Merge commit | Tag | Post-deploy run | What |
 |---|---|---|---|---|---|
@@ -153,8 +153,13 @@ Every pull request below was merged by the owner into `shopify-deploy` (the merg
 | #14 | 2026-09-21 07:27 | `cf61ec2` | `release-2026-09-21-3` | 35573073134 | Prices built in JavaScript follow the visitor's currency (Entry 28) |
 | #15 | 2026-09-21 11:01 | `6714422` | `release-2026-09-21-4` | 35591915874 | No page scrolls sideways; icon buttons keep their names (Entry 29) |
 | #17 | 2026-09-23 00:53 | `8b0b0f3` | `release-2026-09-23-1` | 35804058594 | The product page shows the product's own delivery figure (Entry 30) |
+| #19 | 2026-09-24 06:47 | `79ba5f3` | `release-2026-09-24-1` | 35966224773 | A page load the storefront refuses with a 5xx is asked once more after 15 s and recorded (Entry 31) |
+| #20 | 2026-10-01 13:55 | `af0d421` | `release-2026-10-01-1` | 36872352859 | Dev tooling: wrangler 4.145.0 brings undici 7.29.1; ARAMID.md follows the aramid 0.19 template (Entry 32) |
+| #21 | 2026-10-01 13:57 | `aac6786` | `release-2026-10-01-2` | 36872682416 | The search check compares the page with itself; Shopify's telemetry CORS line is platform (Entry 33) |
+| #22 | 2026-10-01 14:00 | `1f4b72c` | `release-2026-10-01-3` | 36873032318 | An item stocked only overseas says so, on its card and in its preview (Entry 34); the worker serves overseas cards only once the owner turns its `OVERSEAS_STOREFRONT` switch on |
+| #23 | 2026-10-01 14:03 | `3dc94aa` | `release-2026-10-01-4` | 36873399941 | A refused background request is waited out and retried; a local item's preview gives the market's delivery line; card titles are exactly two lines (Entries 35 to 37) |
 
-Number 16 is an issue, not a pull request: a daily run that failed on the browser's message about a Shopify response header, now classified as platform text; closed. Open: issue #18, the storefront answering 503 to one page load from the GitHub runner (three times on 2026-09-23, a different page each time). Once that branch is merged the run asks for a 5xx page once more after 15 s and records the refusal with the headers that say who refused it (Entry 31, branch `fix/independence-retries-a-refused-request`); the issue stays open until those records explain the pattern.
+Number 16 is an issue, not a pull request: a daily run that failed on the browser's message about a Shopify response header, now classified as platform text; closed. Open: issue #18, the storefront answering 503 to one page load from the GitHub runner (three times on 2026-09-23, a different page each time). Since #19 the run asks for a 5xx page once more after 15 s and records the refusal with the headers that say who refused it; the first record (run 35966224773, 2026-09-24) was a 503 with `retry-after: 73`, an `x-request-id` and no `cf-mitigated`, which points at Shopify throttling the runner rather than an edge block. Since #23 the background requests are retried and recorded the same way. The issue stays open until a few more records agree.
 
 ## 5. Decisions (owner, 2026-09-19)
 
