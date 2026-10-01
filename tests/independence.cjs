@@ -252,6 +252,70 @@ async function supplierPrices(context, name) {
   }, false, standIn);
 }
 
+// Overseas items (channel rounds 288 and 290; owner rule 2026-09-30). The worker marks an item
+// stocked only overseas with `delivery: { overseas: true, days }`, and the customer must be told:
+// a note on its card, and on its preview in place of the market's supplier line, so the preview
+// never states two times. Local cards carry no note, a figure that is not a plain range is left
+// out, and no country is named. A stand-in answers both proxy calls (a page route outranks the
+// context's abort), so the rule is exercised whatever the worker's switch says, in both modes.
+const OVERSEAS_NOTE = 'Ships from overseas · estimated 8-21 days to your door';
+const OVERSEAS_CARDS = [
+  { pid: 'stand-in-local', title: 'Stand-in local match', image: PIXEL, price: 12.5, delivery: { overseas: false, days: null } },
+  { pid: 'stand-in-overseas', title: 'Stand-in overseas match', image: PIXEL, price: 12.5, delivery: { overseas: true, days: '8-21' } },
+  { pid: 'stand-in-overseas-odd', title: 'Stand-in overseas match, odd figure', image: PIXEL, price: 12.5, delivery: { overseas: true, days: 'soon' } },
+];
+async function overseasNotes(context, name, term) {
+  const asked = { search: [], product: [] };
+  let previewDelivery = { overseas: true, days: '8-21' };
+  const standIn = async (page) => {
+    await page.route(/\/apps\/pawscout\/search/, (route) => {
+      asked.search.push(route.request().url());
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, products: OVERSEAS_CARDS }) });
+    });
+    await page.route(/\/apps\/pawscout\/product/, (route) => {
+      asked.product.push(route.request().url());
+      const product = { pid: 'stand-in-overseas', title: 'Stand-in overseas match', images: [PIXEL], priceFrom: 12.5, variants: [{ name: 'One size' }], descriptionText: 'Stand-in preview.', url: `${BASE}/search`, delivery: previewDelivery };
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, product }) });
+    });
+  };
+  await visit(context, name, `${BASE}/search?q=${encodeURIComponent(term)}&type=product`, async (page, rec) => {
+    rec.searchTerm = term;
+    if (PREVIEW) {
+      const themeId = await page.evaluate(() => String((window.Shopify && window.Shopify.theme && window.Shopify.theme.id) || '')).catch(() => '');
+      check(rec, 'served by the preview theme', themeId === PREVIEW, `Shopify.theme.id ${themeId || 'unknown'}`);
+    }
+    check(rec, 'http 200', rec.status === 200, `status ${rec.status}`);
+    const notes = await page.evaluate(() => [...document.querySelectorAll('.pawscout-ghost')].map((c) => {
+      const n = c.querySelector('.pawscout-overseas');
+      return n ? n.textContent.trim() : null;
+    }));
+    rec.cardNotes = notes;
+    check(rec, 'the search asks the worker for overseas items', asked.search.length > 0 && asked.search.every((u) => new URL(u).searchParams.get('overseas') === '1'), asked.search.map((u) => new URL(u).search).join(' | ') || 'not asked');
+    const expected = [null, OVERSEAS_NOTE, 'Ships from overseas'];
+    check(rec, 'overseas cards say so, with a figure only when it is a plain range; local cards say nothing', notes.length === expected.length && notes.every((n, i) => n === expected[i]), `shown ${JSON.stringify(notes)} :: expected ${JSON.stringify(expected)}`);
+
+    // The preview of the overseas card: the note replaces the market's supplier line.
+    // No overseas card (no thin grid, say) fails the checks below; it must not end the whole run.
+    const preview = async () => {
+      const view = page.locator('.pawscout-ghost').nth(1).locator('.pawscout-view');
+      if (!(await view.count())) return [];
+      await view.click({ timeout: 5000 }).catch(() => {});
+      await page.locator('.pawscout-content .pawscout-ship').waitFor({ timeout: 8000 }).catch(() => {});
+      const lines = await page.evaluate(() => [...document.querySelectorAll('.pawscout-content .pawscout-ship')].map((e) => ({ text: e.textContent.trim(), overseas: e.classList.contains('pawscout-overseas') })));
+      await page.locator('.pawscout-close').click({ timeout: 3000 }).catch(() => {});
+      return lines;
+    };
+    const confirmed = await preview();
+    check(rec, 'the overseas preview states one time, the overseas one', confirmed.length === 1 && confirmed[0].overseas && confirmed[0].text === OVERSEAS_NOTE, JSON.stringify(confirmed));
+    previewDelivery = null;
+    const unconfirmed = await preview();
+    check(rec, 'a preview whose route was not confirmed says overseas with no figure', unconfirmed.length === 1 && unconfirmed[0].overseas && unconfirmed[0].text === 'Ships from overseas', JSON.stringify(unconfirmed));
+    check(rec, 'the ghost click asks for the overseas preview', asked.product.length === 2 && asked.product.every((u) => new URL(u).searchParams.get('overseas') === '1'), asked.product.map((u) => new URL(u).search).join(' | ') || 'not asked');
+    const said = [...notes, ...confirmed.map((l) => l.text), ...unconfirmed.map((l) => l.text)].filter(Boolean).join(' ');
+    check(rec, 'the overseas notes name no country', !/\b(UK|United Kingdom|Britain|China|CN|GB)\b/i.test(said), said);
+  }, false, standIn);
+}
+
 // Layout: no page may scroll sideways, no container may spill into its own padding, and every
 // visible control needs a name. All three were found by hand on 2026-09-21 (header, footer,
 // product columns and service cards between 901 and about 1300px; two icon buttons with no
@@ -472,6 +536,7 @@ async function openContext(browser, country) {
     check(rec, 'no empty-state message', (await count(page, '.search-empty')) === 0);
   });
   await supplierPrices(context, 'prices');
+  await overseasNotes(context, 'overseas', thin.term);
 
   let articleUrl = null;
   await visit(context, 'blog', `${BASE}/blogs/guides`, async (page, rec) => {
