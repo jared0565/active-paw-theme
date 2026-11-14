@@ -1,51 +1,100 @@
 {%- comment -%}
-  Storewide event item for the announcement bar. Nothing here is visible until
-  theme.js confirms a RUNNING event from PawScout's /public/event feed (the
-  same single fetch the welcome modal and hero badge use). It then clones this
-  template to the front of every announcement set (the bar renders its set
-  twice for the seamless mobile marquee, so both copies get one) and fills in
-  "<name>: <pct>% off everything with code <code>, until <end>" from the feed.
-  A planned-but-not-started event adds nothing: the bar only ever states an
-  offer that is live right now. The markup below is structure only (icon and
-  link target); every word a visitor reads comes from the feed.
+  Storewide event line for the announcement bar, rendered by
+  sections/announcement-bar.liquid only while its "Show the running storewide
+  event" setting is on. It ships hidden and stays hidden until theme.js
+  confirms a RUNNING event from PawScout's /public/event feed (the same single
+  fetch the hero seal and the welcome offer use); a planned event adds nothing,
+  so the bar only ever states an offer that is live right now, and theme.js
+  hides it again when the event's end time passes.
+
+  While it shows, it is laid over the bar's benefits, which stay laid out but
+  invisible: the bar keeps exactly the height it had at every width, so
+  nothing on the page moves when the feed answers. One line on every screen:
+  "<pct>% off everything with code <CODE> · <name> · until <end>". The parts
+  below are structure only (icon, link target, slots); every word a visitor
+  reads comes from the feed, and the end time is shown in the visitor's own
+  time zone. data-redirect is where the link lands (PRD R8); theme.js sends
+  it through /discount/<code> so the code is applied on the way.
 {%- endcomment -%}
-<template data-announcement-event-template>
-  <p class="announcement-event">
+<div class="announcement-event" data-announcement-event hidden>
+  <a class="announcement-event__link" data-event-link data-redirect="{{ routes.all_products_collection_url }}" href="{{ routes.all_products_collection_url }}">
     <span class="announcement-icon" aria-hidden="true">
       <svg viewBox="0 0 24 24" focusable="false">
         <path d="M3.5 12.5V4.5h8l8.5 8.5-8 8z"/>
         <circle cx="7.5" cy="8.5" r="1.4"/>
       </svg>
     </span>
-    <a href="{{ routes.all_products_collection_url }}"><strong data-event-name></strong> <span data-event-text></span></a>
-  </p>
-</template>
+    <strong class="announcement-event__offer" data-event-part="offer"></strong>
+    <span class="announcement-event__connector" data-event-part="connector"></span>
+    <span class="announcement-event__code" data-event-part="code"></span>
+    <span class="announcement-event__more" data-event-part="name"></span>
+    <span class="announcement-event__more" data-event-part="end"></span>
+  </a>
+</div>
 {% style %}
-  .announcement-event a {
-    display: inline-flex;
-    flex-wrap: wrap;
+  .announcement { position: relative; }
+  .announcement-event {
+    position: absolute;
+    top: env(safe-area-inset-top, 0px);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
     align-items: center;
-    gap: 4px 10px;
+    justify-content: center;
+    padding: 0 clamp(12px, 1.2vw, 28px);
+  }
+  .announcement-event[hidden] { display: none; }
+  .announcement.has-event .announcement-track {
+    visibility: hidden;
+    animation: none;
+  }
+  .announcement-event__link {
+    display: flex;
+    flex: 0 1 auto;
+    align-items: center;
+    gap: 10px;
     min-width: 0;
-    color: inherit;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    color: #eef8ef;
+    font-size: 13px;
     text-decoration: none;
   }
-  .announcement-event a:hover span { text-decoration: underline; }
-  @media (min-width: 901px) {
-    /* Desktop shows the set as a static row, so a fourth slot has to keep
-       the bar's 48px silhouette or the whole page jumps when the feed lands:
-       the event takes two shares, and the three benefits condense to their
-       bold titles while it runs (the mobile marquee keeps every word). */
-    .announcement.has-event .announcement-set {
-      grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr));
-    }
-    .announcement.has-event .announcement-set > p:not(.announcement-event) > span:not(.announcement-icon) {
-      display: none;
-    }
-    .announcement-event a { row-gap: 0; line-height: 1.25; }
+  .announcement-event__link > * { flex: none; }
+  .announcement-event__link [hidden] { display: none; }
+  .announcement-event__link:hover .announcement-event__offer,
+  .announcement-event__link:focus-visible .announcement-event__offer {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
   }
-  @media (min-width: 901px) and (max-width: 1120px) {
-    .announcement-event { font-size: 12px; }
-    .announcement-event strong { font-size: 14px; }
+  .announcement-event__link:focus-visible { outline: 2px solid #b8ff9f; outline-offset: -2px; border-radius: 4px; }
+  .announcement-event.is-tight .announcement-event__offer {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .announcement span.announcement-event__code {
+    padding: 2px 8px;
+    border: 1px dashed rgba(184, 255, 159, 0.7);
+    border-radius: 6px;
+    color: #ffffff;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+  }
+  .announcement-event__more::before {
+    content: "·";
+    margin-right: 10px;
+    color: rgba(255, 255, 255, 0.55);
+  }
+  /* The narrowest phones (320px): without the decorative icon, with tighter gaps and the
+     offer at the line's own size, the offer and a 13-character code fit whole. */
+  @media (max-width: 380px) {
+    .announcement-event__link { gap: 6px; }
+    .announcement-event__link .announcement-icon { display: none; }
+    .announcement strong.announcement-event__offer { font-size: 13px; }
   }
 {% endstyle %}
