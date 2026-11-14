@@ -30,15 +30,11 @@
   </div>
   {% if section.settings.badge_enabled %}
     {%- comment -%}
-      The seal renders these Theme Editor lines first, then theme.js repaints
-      it from PawScout's storewide-event feed (running event, or the next
-      planned one). See snippets/hero-event-badge.liquid for the rules.
+      The seal shows only what PawScout's storewide-event feed confirms (the
+      running event, or the next planned one) and is hidden otherwise. See
+      snippets/hero-event-badge.liquid for the rules.
     {%- endcomment -%}
-    {% render 'hero-event-badge',
-      emoji: section.settings.badge_emoji,
-      line1: section.settings.badge_line1,
-      line2: section.settings.badge_line2,
-      link: section.settings.badge_link %}
+    {% render 'hero-event-badge' %}
   {% endif %}
   <div class="hero-background-spacer" aria-hidden="true"></div>
 </section>
@@ -53,11 +49,7 @@
     { "type": "text", "id": "primary_label", "label": "Primary button", "default": "Shop pet finds" },
     { "type": "text", "id": "secondary_label", "label": "Secondary button", "default": "Explore best sellers" },
     { "type": "header", "content": "Event badge (seal sticker)" },
-    { "type": "checkbox", "id": "badge_enabled", "label": "Show event badge", "default": true },
-    { "type": "text", "id": "badge_emoji", "label": "Badge emoji", "default": "☀️🧊" },
-    { "type": "text", "id": "badge_line1", "label": "Badge headline", "default": "Stay cool!" },
-    { "type": "text", "id": "badge_line2", "label": "Badge subline", "default": "Shop the summer range" },
-    { "type": "text", "id": "badge_link", "label": "Badge link URL", "default": "/collections/keep-them-cool", "info": "Where the badge links until an event runs; a running event links to all products. This setting is the one place for that default." }
+    { "type": "checkbox", "id": "badge_enabled", "label": "Show event badge", "default": true, "info": "Shows the storewide event PawScout reports as running, or the next one planned, and links to all products. Hidden while nothing is running or planned, or while PawScout cannot be reached. There is no copy to type: every word comes from the event." }
   ],
   "presets": [{ "name": "Commerce hero" }]
 }

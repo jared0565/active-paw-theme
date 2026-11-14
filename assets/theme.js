@@ -929,24 +929,25 @@ const whenConsentBannerClear = () => {
 };
 
 /* ---------------- Hero event badge ---------------- */
-// The seal renders its Theme Editor copy server-side, then swaps in place
-// once the feed answers: the running event, else the next planned one, else
-// it hides (nothing to stamp that the calendar can vouch for). An unreachable
-// feed leaves the server copy alone. See snippets/hero-event-badge.liquid.
+// The seal is rendered hidden and empty, and shows only what the feed
+// confirms: the running event, else the next planned one. Anything else, an
+// unreachable feed included, leaves it hidden (owner decision 2026-11-14,
+// PRD T20b). Its link is the one Liquid rendered (PRD R8). See
+// snippets/hero-event-badge.liquid.
 (() => {
   const badge = document.querySelector('[data-event-badge]');
   if (!badge) return;
+  // Reveals the seal as its last step, so a paint that throws shows nothing.
   const paint = (state, emojiText, titleText, subText) => {
     const emoji = badge.querySelector('.hero-event-badge-emoji');
     const title = badge.querySelector('.hero-event-badge-title');
     const sub = badge.querySelector('.hero-event-badge-sub');
-    if (emoji && emojiText) emoji.textContent = emojiText;
+    if (emoji) emoji.textContent = emojiText || '';
     if (title) title.textContent = titleText;
     if (sub) sub.textContent = subText;
-    const badgeHref = badge.getAttribute('data-event-badge-href');
-    if (badgeHref) badge.setAttribute('href', badgeHref); // Liquid decides the destination (PRD R8)
     badge.setAttribute('aria-label', `${titleText} ${subText}`.trim());
     badge.setAttribute('data-event-state', state);
+    badge.hidden = false;
   };
   loadStorewideEvent().then((event) => {
     if (!event) return;
@@ -960,11 +961,7 @@ const whenConsentBannerClear = () => {
       return;
     }
     const next = storewideEventNext(event);
-    if (next) {
-      paintEventSafely('hero seal', () => paint('next', badge.getAttribute('data-event-emoji-next'), `Next: ${eventText(next.name)}`, storewideNextDates(next)));
-      return;
-    }
-    badge.hidden = true;
+    if (next) paintEventSafely('hero seal', () => paint('next', badge.getAttribute('data-event-emoji-next'), `Next: ${eventText(next.name)}`, storewideNextDates(next)));
   });
 })();
 
@@ -1049,8 +1046,11 @@ const whenConsentBannerClear = () => {
 // scroll, whichever comes first - never instantly on load (mobile interstitial
 // etiquette, and Google penalises intrusive entry interstitials) - and never
 // while Shopify's cookie banner is waiting for an answer. Rendered only while
-// the Theme-settings toggle is on, and skipped server-side for logged-in
-// customers with orders. Every way out of it that offers the code (the browse
+// the Theme-settings toggle is on. Customers who have ordered before see it
+// too (owner decision 2026-11-14, PRD T29), except a logged-in customer whose
+// past orders already used this event's code (the code is once per customer,
+// so "applied automatically" would be false for them; snippets/welcome-modal.liquid
+// lists those codes). Every way out of it that offers the code (the browse
 // link, a chip, the search form) navigates through /discount/<code>, so the
 // code is applied as part of that navigation: what "applied automatically when
 // you shop from here" promises. The only urgency shown is the event's real end
@@ -1111,8 +1111,11 @@ const openWelcomeModal = () => {
   modal.classList.add('is-open');
   modal.setAttribute('aria-hidden', 'false');
   document.body.classList.add('contact-modal-open'); // shared scroll lock
-  const input = modal.querySelector('[data-welcome-input]');
-  if (input) window.requestAnimationFrame(() => input.focus());
+  // Focus the dialog itself, as the details modal does: the dialog is named by
+  // its heading (aria-labelledby), so the offer is what is announced first,
+  // not an empty search field. Tab reaches the search field next.
+  const dialog = modal.querySelector('.contact-modal__dialog');
+  if (dialog) window.requestAnimationFrame(() => dialog.focus());
 };
 
 // The visitor's own close marks the offer seen; the event ending does not
@@ -1158,12 +1161,15 @@ const paintWelcomeModal = (modal, event) => {
   }
   const pct = storewidePctOff(event);
   const name = eventText(event.name);
+  // The eyebrow names the event; without a name it keeps the brand Liquid rendered.
+  const eyebrow = modal.querySelector('[data-welcome-eyebrow]');
+  if (eyebrow && name && name !== code) eyebrow.textContent = name;
   const heading = modal.querySelector('#WelcomeModalTitle');
   // "everything": see the announcement bar line and docs/theme-worker-contract.md §3.
   if (heading) heading.textContent = eventText(event.headline) || (pct ? `${pct}% off everything` : (name || code));
   const sub = modal.querySelector('.welcome-modal__sub');
   if (sub) {
-    sub.textContent = eventText(event.subline) || (name !== code ? name : '');
+    sub.textContent = eventText(event.subline);
     sub.hidden = !sub.textContent;
   }
   const chips = eventChips(event.chips);
@@ -1205,8 +1211,14 @@ const paintWelcomeModal = (modal, event) => {
   // Ask PawScout which storewide event is running. Only a successful answer
   // with a running code can open the modal; anything else keeps it closed.
   // Then wait for Shopify's cookie banner (whenConsentBannerClear).
+  // Codes this logged-in customer's past orders used (Liquid lists them; a
+  // guest's list is empty). A once-per-customer code they already used cannot
+  // be "applied automatically", so the offer stays closed for them.
+  const usedCodes = () => (modal.getAttribute('data-welcome-used-codes') || '')
+    .split(',').map((c) => c.trim().toUpperCase()).filter(Boolean);
   loadStorewideEvent().then((event) => {
     if (!storewideEventRunning(event)) return;
+    if (usedCodes().includes(eventText(event.code).toUpperCase())) return;
     if (!paintEventSafely('welcome offer', () => paintWelcomeModal(modal, event))) return;
     welcomeEvent = event;
     welcomeEventOver = false;
@@ -1292,7 +1304,9 @@ document.addEventListener('keydown', (event) => {
   if (focusables.length === 0) return;
   const first = focusables[0];
   const last = focusables[focusables.length - 1];
-  if (event.shiftKey && document.activeElement === first) {
+  // A modal that focuses its dialog on open (details, welcome offer) starts
+  // with focus on the dialog itself; Shift+Tab from there would leave it.
+  if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
     event.preventDefault();
     last.focus();
   } else if (!event.shiftKey && document.activeElement === last) {

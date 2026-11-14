@@ -1,38 +1,38 @@
 {%- comment -%}
-  Hero event badge (seal sticker). Renders the Theme Editor copy first so the
-  seal is never empty and nothing jumps, then theme.js repaints it in place
-  from PawScout's /public/event feed (ONE fetch per page view, shared with the
-  welcome modal and the announcement bar; the worker answers with
-  Cache-Control max-age=120, measured 2026-11-14):
+  Hero event badge (seal sticker). Rendered hidden and empty: it shows only
+  once PawScout's /public/event feed confirms something the calendar can
+  vouch for (ONE fetch per page view, shared with the welcome offer and the
+  announcement bar; the worker answers with Cache-Control max-age=120,
+  measured 2026-11-14). theme.js paints it, then reveals it:
     - a running event: its name, then "<pct>% off with code <code>" (plus
-      "until <end>" when it fits the seal), linking to all products; the seal
-      hides when the event's end time passes on an open page;
+      "until <end>" when it fits the seal); the seal hides again when the
+      event's end time passes on an open page;
     - nothing running but a planned event: "Next: <name>" and its dates.
       Name and dates only: codes and percentages are never announced ahead;
     - every date and time is built from the feed's timestamps in the
       visitor's own time zone, never from the worker's prose labels;
-    - nothing running and nothing planned: the seal hides. A seasonal stamp
-      that cannot be checked against the calendar is exactly the stale
-      "summer" badge the owner asked to retire;
-    - feed unreachable or malformed: the copy below stays, untouched.
-  Every word a visitor reads in the two feed states comes from the feed. The
-  emoji for those states live here rather than in JS so a copy tweak never
-  needs a script change. Sizes for feed copy are scoped below instead of in
-  theme.css: event names and date ranges run longer than the two-word stamp
-  the seal was drawn for.
+    - nothing running and nothing planned, or the feed unreachable, slow or
+      malformed: the seal stays hidden. Owner decision 2026-11-14 (PRD T20b):
+      no copy of its own, so it can never show a stale stamp such as the
+      summer one it carried until then.
+  Every word a visitor reads comes from the feed. The seal is positioned
+  absolutely (assets/theme.css) at every width, so revealing it late moves
+  nothing. The emoji for the two states live here rather than in JS so a
+  copy tweak never needs a script change. Sizes for feed copy are scoped
+  below: event names and date ranges run longer than the two-word stamp the
+  seal was drawn for.
 {%- endcomment -%}
 <a
   class="hero-event-badge"
   data-event-badge
-  data-event-badge-href="{{ routes.all_products_collection_url }}"
   data-event-emoji-active="🎉"
   data-event-emoji-next="📅"
-  href="{{ link | default: routes.all_products_collection_url }}"
-  aria-label="{{ line1 | strip_html }} {{ line2 | strip_html }}"
+  href="{{ routes.all_products_collection_url }}"
+  hidden
 >
-  <span class="hero-event-badge-emoji" aria-hidden="true">{{ emoji }}</span>
-  <span class="hero-event-badge-title">{{ line1 }}</span>
-  <span class="hero-event-badge-sub">{{ line2 }}</span>
+  <span class="hero-event-badge-emoji" aria-hidden="true"></span>
+  <span class="hero-event-badge-title"></span>
+  <span class="hero-event-badge-sub"></span>
 </a>
 {% style %}
   .hero-event-badge[hidden] { display: none; }
