@@ -1280,3 +1280,26 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 40 - 2026-11-14: The contact page's trading address drops "Office 19589"
+
+### What changed
+- `sections/main-page-contact.liquid`, the "Trading address" block in `aside.contact-details`: the line `Office 19589<br>` is gone. The address now reads Active Paw / 182-184 High Street North / East Ham, London E6 2JA / United Kingdom.
+
+### Why it changed
+- The owner decided on 2026-11-14 that the virtual office provider's number, "Office 19589", comes off Active Paw's public address.
+- The two store policies the section copies its details from (`/policies/contact-information`, `/policies/legal-notice`) already gave the address without it, read on live on 2026-11-14. So the section's header comment ("copied from ... so the two cannot drift apart") is true again and was left as it is.
+
+### How it was checked
+- Before: a read-only Playwright probe on live (theme 202067018066, 2026-11-14 11:10Z) found "19589" once in the page HTML and once in the visible text of both `/pages/contact` and `/pages/contact-us` (both use `templates/page.contact.json`), inside `aside.contact-details`; 0 times on both policies.
+- Search: "19589" occurs nowhere else in the repo, gitignored files included (`node_modules`, `.git`, `graph-out` and the nested worker repo excluded), and after the edit it occurs in no theme file (only in this log).
+- After the deploy: the same probe on both pages, passing only on status 200, the live theme id, and the exact four-line address with "19589" absent from HTML and text.
+
+### Not changed
+- The rest of the address, its line breaks ("East Ham, London E6 2JA" stays one line), the email, the correspondence note and the policy links.
+
+### Files touched
+- `sections/main-page-contact.liquid`, `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
