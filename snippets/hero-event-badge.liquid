@@ -2,12 +2,15 @@
   Hero event badge (seal sticker). Renders the Theme Editor copy first so the
   seal is never empty and nothing jumps, then theme.js repaints it in place
   from PawScout's /public/event feed (ONE fetch per page view, shared with the
-  welcome modal and the announcement bar; feed cached 10 minutes server-side,
-  120 seconds in the browser):
+  welcome modal and the announcement bar; the worker answers with
+  Cache-Control max-age=120, measured 2026-11-14):
     - a running event: its name, then "<pct>% off with code <code>" (plus
-      "until <end>" when it fits the seal), linking to all products;
+      "until <end>" when it fits the seal), linking to all products; the seal
+      hides when the event's end time passes on an open page;
     - nothing running but a planned event: "Next: <name>" and its dates.
       Name and dates only: codes and percentages are never announced ahead;
+    - every date and time is built from the feed's timestamps in the
+      visitor's own time zone, never from the worker's prose labels;
     - nothing running and nothing planned: the seal hides. A seasonal stamp
       that cannot be checked against the calendar is exactly the stale
       "summer" badge the owner asked to retire;

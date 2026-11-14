@@ -148,7 +148,8 @@ const noUkDeliveryClaim = async (page, rec) => {
   if (found.merchant.length) check(rec, 'collection description (store content) makes no UK delivery claim (informational)', false, found.merchant.join(' | '), false);
 };
 
-async function visit(context, name, url, specific, generic = true, before = null) {
+// options.keepConsentBanner leaves Shopify's cookie banner unanswered (the consent check needs it waiting).
+async function visit(context, name, url, specific, generic = true, before = null, options = {}) {
   const page = await context.newPage();
   if (before) await before(page);
   const rec = { name, url, checks: [], consoleErrors: [], codeErrors: [], blocked: [], turnstileErrorLines: 0, platformSourceErrorLines: 0 };
@@ -186,7 +187,7 @@ async function visit(context, name, url, specific, generic = true, before = null
   } catch (e) {
     rec.navigationError = String(e).slice(0, 160);
   }
-  await acceptCookies(page);
+  if (!options.keepConsentBanner) await acceptCookies(page);
   await page.waitForTimeout(500);
   const h0 = await mainHeight(page).catch(() => null);
   await page.waitForTimeout(SETTLE_MS);
@@ -206,7 +207,10 @@ async function visit(context, name, url, specific, generic = true, before = null
     check(rec, 'header and footer rendered', headerCount === 1 && footerCount === 1);
     const mainText = await text(page, '#MainContent');
     check(rec, 'main content not empty', mainText.trim().length > 200, `${mainText.trim().length} chars`);
-    check(rec, 'no open dialog', (await page.locator('[role="dialog"]:visible').count()) === 0);
+    // With the feed blocked nothing may open. With the real feed, the welcome offer opens by
+    // design while a real event runs (27 to 30 November 2026), so it is the one dialog allowed.
+    const dialogs = BLOCK ? '[role="dialog"]:visible' : '[role="dialog"]:visible:not(.welcome-modal__dialog)';
+    check(rec, 'no open dialog', (await page.locator(dialogs).count()) === 0);
     if (BLOCK) {
       check(rec, 'no layout shift after the feed window', h0 !== null && h1 !== null && Math.abs(h1 - h0) <= 2, `main ${h0}px -> ${h1}px`);
     } else {
@@ -470,8 +474,8 @@ async function layoutFits(browser, name, url) {
 
 // One browser context per visitor. `country` sets Shopify's localization cookie: the store has
 // no market web presences, so that cookie is the only thing that moves a visitor off the GB market.
-async function openContext(browser, country) {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+async function openContext(browser, country, options = {}) {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, ...(options.timezoneId ? { timezoneId: options.timezoneId } : {}) });
   if (country) await context.addCookies([{ name: 'localization', value: country, url: `${BASE}/` }]);
   await context.addInitScript(() => {
     window.__cls = 0;
@@ -492,8 +496,368 @@ async function openContext(browser, country) {
   return context;
 }
 
+// ---- Storewide event surfaces (PRD phase 5, T21 to T26) ----
+// PawScout's /public/event drives the hero seal, the announcement bar line and the welcome offer.
+// A stand-in answers it through a PAGE route (which outranks the blocked mode's context abort),
+// so every state is exercised in both modes whatever the worker says today. No check clicks
+// anything that reaches Shopify's /discount/ route: the one chip click is answered by a stand-in page.
+const EVENT_FEED_URL = 'https://pawscout.activepaw.co.uk/public/event';
+const EVENT_FEED_RE = /^https:\/\/pawscout\.activepaw\.co\.uk\/public\/event/;
+const EVENT_CODE = 'STANDINCODE15'; // 13 characters, longer than the real BLACKFRIDAY, so the layout is tried harder
+const EVENT_NAME = 'Black Friday to Cyber Monday';
+const EVENT_LONG_NAME = 'Black Friday to Cyber Monday Weekend Sale';
+const EVENT_WIDTHS = [1440, 1280, 1100, 960, 390, 320];
+const ALL_PRODUCTS = '/collections/all';
+const LONDON = 'Europe/London';
+const NEW_YORK = 'America/New_York';
+const utcDay = (days, h, m, s) => {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + days);
+  d.setUTCHours(h, m, s, 0);
+  return d.toISOString();
+};
+const runningEvent = (extra = {}) => ({ active: true, name: EVENT_NAME, code: EVENT_CODE, pctOff: 15, endsAt: utcDay(3, 23, 59, 59), endsLabel: 'LABEL-THE-THEME-MUST-NOT-PRINT', ...extra });
+// The oracle states the rule independently of the theme's code: times in the visitor's zone, en-GB, 24-hour.
+const zoned = (iso, timeZone, options) => new Intl.DateTimeFormat('en-GB', { ...options, timeZone }).format(new Date(iso));
+const DAY = { weekday: 'long', day: 'numeric', month: 'long' };
+const CLOCK = { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' };
+const endText = (iso, timeZone) => `${zoned(iso, timeZone, CLOCK)} on ${zoned(iso, timeZone, DAY)}`;
+const nextDates = (startIso, endIso, timeZone) => {
+  const whole = zoned(startIso, timeZone, CLOCK) === '00:00' && zoned(endIso, timeZone, CLOCK) === '23:59';
+  const when = (iso) => (whole ? zoned(iso, timeZone, DAY) : `${zoned(iso, timeZone, DAY)}, ${zoned(iso, timeZone, CLOCK)}`);
+  return `${when(startIso)} to ${when(endIso)}`;
+};
+// `payload` may be a function, evaluated when the feed is asked, so "ends in 25 s" is relative to the visit.
+const eventStandIn = (payload, { delayMs = 0, dismissWelcome = false, discountAsked = null } = {}) => async (page) => {
+  await page.route(EVENT_FEED_RE, async (route) => {
+    if (delayMs) await new Promise((resolve) => setTimeout(resolve, delayMs));
+    const body = typeof payload === 'function' ? payload() : payload;
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*', 'cache-control': 'no-store' }, body: JSON.stringify(body) });
+  });
+  // The modal locks the page's scroll, which takes the scrollbar and so changes the layout being measured.
+  if (dismissWelcome) await page.addInitScript((code) => { try { localStorage.setItem(`ap_welcome_dismissed:${code}`, '1'); } catch { /* no storage: the modal stays closed anyway */ } }, EVENT_CODE);
+  if (discountAsked) {
+    await page.route(/\/discount\//, (route) => {
+      discountAsked.push(route.request().url());
+      return route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>stand-in for the discount route</title>' });
+    });
+  }
+};
+const readEventBar = () => {
+  const bar = document.querySelector('.announcement');
+  const line = document.querySelector('[data-announcement-event]');
+  const link = line ? line.querySelector('[data-event-link]') : null;
+  const part = (n) => (line ? line.querySelector(`[data-event-part="${n}"]`) : null);
+  const box = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { l: r.left, r: r.right, t: r.top, b: r.bottom, h: r.height, mid: r.top + r.height / 2 }; };
+  const visible = Boolean(line) && !line.hidden && window.getComputedStyle(line).display !== 'none';
+  const shown = (el) => Boolean(el) && !el.hidden && el.getBoundingClientRect().width > 0;
+  const code = part('code');
+  const offer = part('offer');
+  return {
+    barHeight: bar ? Math.round(bar.getBoundingClientRect().height) : null,
+    rendered: Boolean(line),
+    visible,
+    label: link ? link.getAttribute('aria-label') || '' : '',
+    href: link ? link.getAttribute('href') || '' : '',
+    offerText: offer ? offer.textContent : '',
+    link: box(link),
+    // The icon is decorative and left out below 380px; a box of width 0 is no icon.
+    icon: (() => { const i = line ? line.querySelector('.announcement-icon') : null; return i && i.getBoundingClientRect().width > 0 ? box(i) : null; })(),
+    offer: box(offer),
+    code: box(code),
+    codeWhole: Boolean(code) && code.scrollWidth <= code.clientWidth + 1,
+    offerCut: Boolean(offer) && offer.scrollWidth > offer.clientWidth + 1,
+    parts: ['connector', 'name', 'end'].filter((n) => shown(part(n))),
+    lineText: visible && link ? link.innerText.replace(/\s+/g, ' ').trim() : '',
+  };
+};
+// One line, icon first, code whole and inside the line: the layout rules of T22 at one width.
+const barLayoutProblems = (b) => {
+  const out = [];
+  if (!b.visible) return ['line not visible'];
+  if (!(b.link && b.offer && b.code)) return ['line parts missing'];
+  if ((b.icon && Math.abs(b.icon.mid - b.offer.mid) > 4) || Math.abs(b.code.mid - b.offer.mid) > 4) out.push('parts on different rows');
+  if (b.link.h > b.barHeight) out.push(`line ${Math.round(b.link.h)}px taller than the bar ${b.barHeight}px`);
+  if (b.icon && b.icon.r > b.offer.l + 1) out.push('icon not before the offer');
+  if (!b.codeWhole || b.code.l < b.link.l - 1 || b.code.r > b.link.r + 1) out.push('code cut');
+  return out;
+};
+const readSeal = () => {
+  const s = document.querySelector('[data-event-badge]');
+  // textContent: the seal's CSS uppercases its title, and innerText would return it uppercased.
+  return s ? { hidden: s.hidden || window.getComputedStyle(s).display === 'none', text: s.textContent.replace(/\s+/g, ' ').trim(), state: s.getAttribute('data-event-state') } : null;
+};
+const readModal = () => {
+  const m = document.querySelector('[data-welcome-modal]');
+  if (!m) return null;
+  const q = (sel) => { const el = m.querySelector(sel); return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; };
+  const browse = m.querySelector('[data-welcome-browse]');
+  return { open: m.classList.contains('is-open'), heading: q('#WelcomeModalTitle'), code: q('.welcome-modal__code strong'), ends: q('.welcome-modal__ends'), text: m.textContent.replace(/\s+/g, ' ').trim(), chips: m.querySelectorAll('[data-welcome-chip]').length, browse: browse ? browse.getAttribute('href') : '' };
+};
+const servedByPreview = async (page, rec) => {
+  if (!PREVIEW) return;
+  const themeId = await page.evaluate(() => String((window.Shopify && window.Shopify.theme && window.Shopify.theme.id) || '')).catch(() => '');
+  check(rec, 'served by the preview theme', themeId === PREVIEW, `Shopify.theme.id ${themeId || 'unknown'}`);
+};
+const discountHref = (path) => `/discount/${EVENT_CODE}?redirect=${encodeURIComponent(path)}`;
+// Follows a link after the event's end, before the end timer has run: the page's clock is moved
+// past the end (its timers keep real time, so the timer stays days away) and the element is
+// clicked. The landing page is a stand-in. Returns where the click went.
+const followAfterEnd = async (page, endIso, selector, landing) => {
+  await page.route(landing, (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>stand-in landing</title>' }));
+  await page.evaluate((endMs) => {
+    const offset = endMs + 60000 - Date.now();
+    const real = Date.now.bind(Date);
+    Date.now = () => real() + offset;
+  }, Date.parse(endIso));
+  await Promise.all([
+    page.waitForURL(landing, { timeout: 8000 }).catch(() => {}),
+    page.evaluate((sel) => { const el = document.querySelector(sel); if (el) el.click(); }, selector).catch(() => {}),
+  ]);
+  return new URL(page.url());
+};
+
+// The surfaces in every feed state, in one browser with the usual (hidden) scrollbar.
+async function eventSurfaces(browser) {
+  const context = await openContext(browser, null, { timezoneId: LONDON });
+
+  // A planned event: the seal names it with dates built from the timestamps; nothing else shows.
+  const nextStart = utcDay(10, 0, 0, 0);
+  const nextEnd = utcDay(13, 23, 59, 59);
+  await visit(context, 'event-next', `${BASE}/`, async (page, rec) => {
+    await servedByPreview(page, rec);
+    const seal = await page.evaluate(readSeal);
+    const bar = await page.evaluate(readEventBar);
+    const modal = await page.evaluate(readModal);
+    const dates = nextDates(nextStart, nextEnd, LONDON);
+    check(rec, 'a planned event: the seal names it with its dates in the visitor\'s time zone', seal && !seal.hidden && seal.text.includes(`Next: ${EVENT_NAME}`) && seal.text.includes(dates), seal ? `${seal.text} :: expected ${dates}` : 'no seal');
+    check(rec, 'a planned event: no bar line and no offer', !bar.visible && !(modal && modal.open), `bar ${bar.visible}, modal ${modal && modal.open}`);
+  }, false, eventStandIn({ active: false, next: { key: 'stand-in', name: EVENT_NAME, startsAt: nextStart, endsAt: nextEnd, startsLabel: 'LABEL-THE-THEME-MUST-NOT-PRINT', endsLabel: 'LABEL-THE-THEME-MUST-NOT-PRINT' } }));
+
+  // A running event whose end has passed: no surface may state the offer.
+  await visit(context, 'event-ended', `${BASE}/`, async (page, rec) => {
+    await servedByPreview(page, rec);
+    const seal = await page.evaluate(readSeal);
+    const bar = await page.evaluate(readEventBar);
+    const modal = await page.evaluate(readModal);
+    check(rec, 'an event past its end: no bar line, no offer modal, no seal offer', !bar.visible && !(modal && modal.open) && !(seal && !seal.hidden && seal.text.includes(EVENT_CODE)), `bar ${bar.visible}, modal ${modal && modal.open}, seal ${seal ? (seal.hidden ? 'hidden' : seal.text) : 'none'}`);
+  }, false, eventStandIn(() => runningEvent({ endsAt: new Date(Date.now() - 60000).toISOString() })));
+
+  // Malformed fields: each one is dropped, the offer still opens, nothing prints "[object Object]".
+  await visit(context, 'event-bad-fields', `${BASE}/`, async (page, rec) => {
+    await servedByPreview(page, rec);
+    const modal = await page.evaluate(readModal);
+    check(rec, 'malformed fields: the offer still opens with its own heading and the settings chips', modal && modal.open && modal.heading === '15% off everything' && modal.chips > 0, modal ? `open ${modal.open}, heading "${modal.heading}", ${modal.chips} chips` : 'no modal');
+    check(rec, 'malformed fields: nothing malformed is printed', modal && !/\[object Object\]|\b42\b/.test(modal.text), modal ? modal.text.slice(0, 160) : 'no modal');
+  }, false, eventStandIn(runningEvent({ chips: 'Cat trees', headline: { text: 'x' }, subline: 42, name: 42 })));
+
+  // An event that ends while the page is open: everything stating it goes away at the end.
+  let endsAt = null;
+  await visit(context, 'event-ends-now', `${BASE}/`, async (page, rec) => {
+    await servedByPreview(page, rec);
+    const before = await page.evaluate(readEventBar);
+    check(rec, 'an event ending soon shows until its end', before.visible, `bar ${before.visible}`);
+    await page.waitForTimeout(Math.max(0, Date.parse(endsAt) - Date.now()) + 2000);
+    const bar = await page.evaluate(readEventBar);
+    const modal = await page.evaluate(readModal);
+    const seal = await page.evaluate(readSeal);
+    check(rec, 'at its end the bar line, the open offer and the seal offer go away without a reload', !bar.visible && !(modal && modal.open) && !(seal && !seal.hidden && seal.text.includes(EVENT_CODE)), `bar ${bar.visible}, modal ${modal && modal.open}, seal ${seal ? (seal.hidden ? 'hidden' : seal.text) : 'none'}`);
+  }, false, eventStandIn(() => { endsAt = new Date(Date.now() + 25000).toISOString(); return runningEvent({ endsAt }); }));
+
+  // A running event, answering 2 s late so the line lands after first paint, as it does for real.
+  const discountAsked = [];
+  const ends = utcDay(3, 23, 59, 59);
+  await visit(context, 'event-running', `${BASE}/`, async (page, rec) => {
+    await servedByPreview(page, rec);
+    check(rec, 'http 200', rec.status === 200, `status ${rec.status}`);
+    const bar = await page.evaluate(readEventBar);
+    const cls = await page.evaluate(() => (typeof window.__cls === 'number' ? +window.__cls.toFixed(4) : null)).catch(() => null);
+    const end = endText(ends, LONDON);
+    rec.eventBar = bar;
+    check(rec, 'the bar line shows the offer, the code, the name and the end in the visitor\'s time zone', bar.visible && bar.label === `15% off everything with code ${EVENT_CODE}, ${EVENT_NAME}, until ${end}.`,`"${bar.label}" :: end expected "${end}"`);
+    check(rec, 'the bar line\'s accessible name starts with its visible offer', bar.label.startsWith(bar.offerText) && bar.offerText === '15% off everything', `offer "${bar.offerText}"`);
+    check(rec, 'the bar line applies the code on the way to all products', bar.href === discountHref(ALL_PRODUCTS), bar.href);
+    check(rec, 'the bar line: one line, icon first, code whole (1280px)', barLayoutProblems(bar).length === 0, barLayoutProblems(bar).join('; ') || 'ok');
+    check(rec, 'no layout shift when the event lands after first paint (CLS below 0.05)', cls !== null && cls < 0.05, `CLS ${cls}`);
+    check(rec, 'the worker\'s prose labels are never printed', !(await page.evaluate(() => document.body.innerText.includes('LABEL-THE-THEME-MUST-NOT-PRINT'))));
+    // The seal's offer line takes the end only while the whole line fits the seal (52 characters).
+    const seal = await page.evaluate(readSeal);
+    const sealBase = `15% off with code ${EVENT_CODE}`;
+    const sealOffer = `${sealBase} until ${end}`.length <= 52 ? `${sealBase} until ${end}` : sealBase;
+    check(rec, 'the seal names the running event and states its offer', seal && !seal.hidden && seal.state === 'active' && seal.text.includes(EVENT_NAME) && seal.text.endsWith(sealOffer), seal ? `"${seal.text}" :: expected to end "${sealOffer}"` : 'no seal');
+    const modal = await page.evaluate(readModal);
+    check(rec, 'the offer opens with the heading, the code and the end in the visitor\'s time zone', modal && modal.open && modal.heading === '15% off everything' && modal.code === EVENT_CODE && modal.ends === `Ends at ${end}`, modal ? `open ${modal.open}, "${modal.heading}", "${modal.code}", "${modal.ends}"` : 'no modal');
+    check(rec, 'the offer\'s browse link applies the code on the way', modal && modal.browse === discountHref(ALL_PRODUCTS), modal ? modal.browse : 'no modal');
+    // Last, because it leaves the page: a chip navigates through the discount route with its query kept.
+    const chip = await page.locator('[data-welcome-chip]').first().getAttribute('data-welcome-chip').catch(() => null);
+    if (chip) {
+      await Promise.all([page.waitForURL(/\/discount\//, { timeout: 8000 }).catch(() => {}), page.locator('[data-welcome-chip]').first().click().catch(() => {})]);
+    }
+    const asked = discountAsked[0] ? new URL(discountAsked[0]) : null;
+    check(rec, 'a chip navigates through the discount route with its search kept', Boolean(chip) && asked && `${asked.pathname}${asked.search}` === discountHref(`/search?q=${encodeURIComponent(chip)}`), asked ? `${asked.pathname}${asked.search}` : `chip ${chip}, no discount request`);
+  }, false, eventStandIn(runningEvent({ endsAt: ends }), { delayMs: 2000, discountAsked }));
+  await context.close();
+
+  // The same event for a visitor in New York: the end is 18:59 there, not 23:59.
+  const newYork = await openContext(browser, null, { timezoneId: NEW_YORK });
+  const afterEndAsked = [];
+  const chipAfterEndAsked = [];
+  await visit(newYork, 'event-new-york', `${BASE}/`, async (page, rec) => {
+    await servedByPreview(page, rec);
+    const bar = await page.evaluate(readEventBar);
+    const modal = await page.evaluate(readModal);
+    const end = endText(ends, NEW_YORK);
+    check(rec, 'a New York visitor reads the end in New York time, on the bar and in the offer', bar.label.endsWith(`until ${end}.`) && modal && modal.ends === `Ends at ${end}`, `bar "${bar.label}", offer "${modal && modal.ends}" :: expected ${end}`);
+    // Last, because it leaves the page.
+    const landed = await followAfterEnd(page, ends, '[data-event-link]', /\/collections\/all(\?|$)/);
+    check(rec, 'past the end, the bar link goes on without the code even before the end timer runs', landed.pathname === ALL_PRODUCTS && afterEndAsked.length === 0, `${landed.pathname}${landed.search}, discount asked ${afterEndAsked.length}`);
+  }, false, eventStandIn(runningEvent({ endsAt: ends }), { discountAsked: afterEndAsked }));
+  await visit(newYork, 'event-chip-after-end', `${BASE}/`, async (page, rec) => {
+    await servedByPreview(page, rec);
+    const chip = await page.locator('[data-welcome-chip]').first().getAttribute('data-welcome-chip').catch(() => null);
+    const landed = await followAfterEnd(page, ends, '[data-welcome-chip]', /\/search\?/);
+    check(rec, 'past the end, an offer chip goes on to its search without the code even before the end timer runs', Boolean(chip) && `${landed.pathname}${landed.search}` === `/search?q=${encodeURIComponent(chip)}` && chipAfterEndAsked.length === 0, `chip ${chip}: ${landed.pathname}${landed.search}, discount asked ${chipAfterEndAsked.length}`);
+  }, false, eventStandIn(runningEvent({ endsAt: ends }), { discountAsked: chipAfterEndAsked }));
+  await newYork.close();
+
+  // Shopify's cookie banner comes first. Which branch runs depends on where the browser is:
+  // a UK visitor gets the banner, a US runner does not. The branch is recorded either way.
+  const fresh = await openContext(browser, null, { timezoneId: LONDON });
+  await visit(fresh, 'event-consent', `${BASE}/`, async (page, rec) => {
+    await servedByPreview(page, rec);
+    const consent = await page.evaluate(() => new Promise((resolve) => {
+      setTimeout(() => resolve({ api: false }), 4000);
+      if (!window.Shopify || typeof window.Shopify.loadFeatures !== 'function') { resolve({ api: false }); return; }
+      window.Shopify.loadFeatures([{ name: 'consent-tracking-api', version: '0.2' }], (error) => {
+        if (error) { resolve({ api: false }); return; }
+        const p = window.Shopify.customerPrivacy;
+        const a = p.currentVisitorConsent() || {};
+        resolve({ api: true, waiting: p.shouldShowBanner() === true && ['marketing', 'analytics', 'preferences'].every((k) => a[k] === '') });
+      });
+    }));
+    rec.consentBranch = consent.api ? (consent.waiting ? 'banner waiting' : 'no banner waiting') : 'consent API unavailable';
+    const first = await page.evaluate(readModal);
+    if (consent.api && consent.waiting) {
+      check(rec, 'while the cookie banner waits, the offer stays closed', first && !first.open, `modal ${first && first.open}`);
+      await acceptCookies(page);
+      await page.waitForTimeout(1500);
+      const after = await page.evaluate(readModal);
+      check(rec, 'once the visitor answers the banner, the offer opens', after && after.open, `modal ${after && after.open}`);
+    } else if (consent.api) {
+      check(rec, 'no cookie banner waiting: the offer opens after 3 s', first && first.open, `modal ${first && first.open}`);
+    } else {
+      check(rec, 'consent API unavailable: the offer stays closed (fails closed)', first && !first.open, `modal ${first && first.open}`);
+    }
+    check(rec, `consent branch exercised: ${rec.consentBranch} (informational)`, true, rec.consentBranch, false);
+  }, false, eventStandIn(runningEvent({ endsAt: ends })), { keepConsentBanner: true });
+  await fresh.close();
+
+  // Shopify's banner and consent API blocked, as a privacy blocker does (both are served from the
+  // shop's own /cdn/shopifycloud/, measured 2026-11-14): the theme cannot learn whether a banner
+  // waits, so the offer stays closed in every region (fails closed, the accepted trade-off).
+  const blockedConsent = await openContext(browser, null, { timezoneId: LONDON });
+  const standIn = eventStandIn(runningEvent({ endsAt: ends }));
+  await visit(blockedConsent, 'event-consent-blocked', `${BASE}/`, async (page, rec) => {
+    await servedByPreview(page, rec);
+    await page.waitForTimeout(2500);
+    const modal = await page.evaluate(readModal);
+    check(rec, 'consent script blocked: the offer stays closed past its 3 s trigger', modal && !modal.open, `modal ${modal && modal.open}`);
+  }, false, async (page) => {
+    await standIn(page);
+    await page.route(/\/cdn\/shopifycloud\/(consent-tracking-api|privacy-banner)\//, (route) => route.abort());
+  }, { keepConsentBanner: true });
+  await blockedConsent.close();
+
+  // The real feed's shape, read once in control mode: a malformed field is caught here before
+  // a visitor meets it (the stand-ins above prove the theme survives one; this proves none is sent).
+  if (!BLOCK) {
+    const rec = { name: 'event-feed', url: EVENT_FEED_URL, checks: [], consoleErrors: [], codeErrors: [], blocked: [] };
+    const plain = await browser.newContext();
+    try {
+      const r = await backgroundRequest(plain, 'event feed', 'get', EVENT_FEED_URL);
+      const body = await r.json().catch(() => null);
+      const iso = (v) => typeof v === 'string' && Number.isFinite(Date.parse(v));
+      const str = (v) => typeof v === 'string' && v.trim().length > 0;
+      const problems = [];
+      if (!body || typeof body !== 'object') problems.push('not a JSON object');
+      else {
+        if (typeof body.active !== 'boolean') problems.push('active is not a boolean');
+        if (body.active === true) {
+          if (!str(body.code)) problems.push('code');
+          if (!iso(body.endsAt)) problems.push('endsAt (an end the theme can state)');
+          if ('pctOff' in body && !(Number(body.pctOff) > 0)) problems.push('pctOff');
+          for (const k of ['name', 'headline', 'subline', 'endsLabel']) if (k in body && typeof body[k] !== 'string') problems.push(k);
+          if ('chips' in body && !(Array.isArray(body.chips) && body.chips.every((c) => typeof c === 'string'))) problems.push('chips');
+        }
+        if (body.next != null) {
+          if (typeof body.next !== 'object' || !str(body.next.name)) problems.push('next.name');
+          for (const k of ['startsAt', 'endsAt']) if (k in body.next && !iso(body.next[k])) problems.push(`next.${k}`);
+        }
+      }
+      rec.status = r.status();
+      rec.feed = body;
+      check(rec, 'the real event feed has the shape the theme reads', r.status() === 200 && problems.length === 0, problems.join(', ') || `status ${r.status()}, active ${body && body.active}`);
+    } finally {
+      await plain.close();
+    }
+    results.pages.push(rec);
+  }
+}
+
+// The bar line at six widths, in the browser that keeps its scrollbar: as tall as the idle bar at
+// every width (so nothing moves), one line, code whole, also for a long event name.
+async function eventBarWidths(browser) {
+  const context = await openContext(browser, null, { timezoneId: LONDON });
+  const idle = {};
+  const sweep = async (page) => {
+    const out = {};
+    for (const w of EVENT_WIDTHS) {
+      await page.setViewportSize({ width: w, height: 900 });
+      await page.waitForTimeout(300);
+      out[w] = await page.evaluate(readEventBar);
+    }
+    return out;
+  };
+  await visit(context, 'event-idle', `${BASE}/`, async (page, rec) => {
+    await servedByPreview(page, rec);
+    const seal = await page.evaluate(readSeal);
+    check(rec, 'nothing running or planned: the seal hides', seal && seal.hidden, seal ? seal.text : 'no seal');
+    const widths = await sweep(page);
+    for (const w of EVENT_WIDTHS) idle[w] = widths[w].barHeight;
+    check(rec, 'nothing running: no bar line at any width', EVENT_WIDTHS.every((w) => !widths[w].visible), EVENT_WIDTHS.map((w) => `${w}:${widths[w].barHeight}px`).join(' '));
+  }, false, eventStandIn({ active: false }));
+  for (const [name, label] of [[EVENT_NAME, 'event-widths'], [EVENT_LONG_NAME, 'event-long-name']]) {
+    await visit(context, label, `${BASE}/`, async (page, rec) => {
+      await servedByPreview(page, rec);
+      const widths = await sweep(page);
+      rec.eventWidths = widths;
+      const heights = EVENT_WIDTHS.filter((w) => Math.abs(widths[w].barHeight - idle[w]) > 1).map((w) => `${w}px: ${idle[w]} -> ${widths[w].barHeight}`);
+      check(rec, `the bar is as tall with the event as without it at ${EVENT_WIDTHS.join(', ')}px`, heights.length === 0, heights.join(' | ') || EVENT_WIDTHS.map((w) => `${w}:${widths[w].barHeight}px`).join(' '));
+      const layout = EVENT_WIDTHS.map((w) => [w, barLayoutProblems(widths[w])]).filter(([, p]) => p.length).map(([w, p]) => `${w}px: ${p.join(', ')}`);
+      check(rec, 'one line, icon first, code whole at every width', layout.length === 0, layout.join(' | ') || EVENT_WIDTHS.map((w) => `${w}:${widths[w].parts.join('+') || 'offer+code'}`).join(' '));
+      const cutAt = (keep) => EVENT_WIDTHS.filter((w) => keep(w) && widths[w].offerCut).map((w) => `${w}px`);
+      check(rec, 'the offer itself is never cut short from 360px up', cutAt((w) => w >= 360).length === 0, cutAt((w) => w >= 360).join(', ') || 'none');
+      check(rec, 'the offer below 360px (informational)', cutAt((w) => w < 360).length === 0, cutAt((w) => w < 360).join(', ') || 'not cut', false);
+    }, false, eventStandIn(runningEvent({ name }), { dismissWelcome: true }));
+  }
+  await context.close();
+}
+
 (async () => {
   const browser = await chromium.launch();
+
+  // ONLY=events runs just the storewide event checks, for iterating on them without asking the
+  // storefront for every page (it throttles a machine that asks for many in a row). CI runs all.
+  if (process.env.ONLY === 'events') {
+    await eventSurfaces(browser);
+    await browser.close();
+    const barOnly = await chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
+    await eventBarWidths(barOnly);
+    await barOnly.close();
+    finish();
+    return;
+  }
+
   const context = await openContext(browser, null);
 
   // Home: the hero badge must keep its server-rendered copy when the feed is unreachable.
@@ -502,7 +866,8 @@ async function openContext(browser, country) {
     const badgeVisible = await page.locator('[data-event-badge]:visible').count();
     if (BLOCK) check(rec, 'hero badge keeps the server default', badgeVisible === 1 && /stay cool/i.test(badge), badge);
     else rec.heroBadge = badge;
-    check(rec, 'no announcement event item', (await count(page, '.announcement-event')) === 0);
+    // The line is rendered hidden and shows only for a running event, which a blocked feed can never report.
+    if (BLOCK) check(rec, 'no announcement event line', (await count(page, '[data-announcement-event]:visible')) === 0);
     check(rec, 'collection showcase cards', (await count(page, '.category-showcase .commerce-grid > *')) > 0);
     check(rec, 'product cards on the home page', (await count(page, '.commerce-grid .commerce-card')) > 0);
     await deliveryPromise(page, rec);
@@ -701,14 +1066,22 @@ async function openContext(browser, country) {
   });
   await switcher.close();
 
+  // The storewide event surfaces in every feed state (PRD phase 5).
+  await eventSurfaces(browser);
+
   await browser.close();
 
   // Layout, in a browser that keeps its scrollbar (see layoutFits).
   const barBrowser = await chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
   await layoutFits(barBrowser, 'layout-home', `${BASE}/`);
   await layoutFits(barBrowser, 'layout-pdp', `${BASE}${productUrl || '/products/automatic-ball-launcher-for-dogs'}`);
+  await eventBarWidths(barBrowser);
   await barBrowser.close();
 
+  finish();
+})().catch((e) => { console.error(e); process.exit(2); });
+
+function finish() {
   const file = path.join(OUT, `independence-${MODE}.json`);
   fs.writeFileSync(file, JSON.stringify(results, null, 2));
   let total = 0;
@@ -737,4 +1110,4 @@ async function openContext(browser, country) {
   }
   console.log(`\n${MODE}: ${passed}/${total} checks passed, ${hardFailures} hard failure(s); details in ${file}`);
   process.exit(BLOCK && hardFailures ? 1 : 0);
-})().catch((e) => { console.error(e); process.exit(2); });
+}

@@ -40,7 +40,9 @@
     </div>
     {% endfor %}
   </div>
-  {% render 'announcement-event' %}
+  {%- if section.settings.event_bar_enabled -%}
+    {% render 'announcement-event' %}
+  {%- endif -%}
 </div>
 
 {% schema %}
@@ -48,6 +50,7 @@
   "name": "Announcement bar",
   "settings": [
     { "type": "paragraph", "content": "The delivery item changes with the visitor's country, so its wording is in Theme settings > Delivery." },
+    { "type": "checkbox", "id": "event_bar_enabled", "label": "Show the running storewide event", "default": true, "info": "While PawScout reports a storewide event as running, one line with its offer and code replaces the three items above. Turn this off to keep the three items during an event; the seal and the welcome offer have their own settings." },
     { "type": "text", "id": "returns_title", "label": "Returns title", "default": "Easy returns" },
     { "type": "text", "id": "returns_text", "label": "Returns text", "default": "14-day returns, contact us first" },
     { "type": "text", "id": "support_title", "label": "Support title", "default": "Pet-care support" },

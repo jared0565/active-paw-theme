@@ -739,14 +739,15 @@ document.addEventListener('click', (event) => {
 });
 
 /* ---------------- Storewide event feed (shared) ---------------- */
-// PawScout's /public/event is the single source of truth for which storewide
-// event is running (name, code, percentage, end date) and which enabled
-// calendar event comes next (name and dates only, never a code or a
-// percentage ahead of time). The welcome modal, the hero event badge and the
-// announcement bar all read ONE fetch per page view; the feed is cached 10
-// minutes server-side and 120 seconds in the browser. Resolves to null when
-// the feed is unreachable, slow (3s cap) or malformed, so a failure can never
-// paint anything: every consumer keeps its server-rendered state.
+// PawScout's /public/event says which storewide event is running (name, code,
+// percentage, end time) and which enabled calendar event comes next (name and
+// dates only, never a code or a percentage ahead of time). The hero seal, the
+// announcement bar line, the welcome offer modal and the install pill share
+// ONE fetch per page view. The worker answers with Cache-Control max-age=120
+// (measured 2026-11-14), so a browser may reuse an answer for two minutes.
+// Resolves to null when the feed is unreachable, slow (3 s cap) or not a JSON
+// object, so a failure can never paint anything: every surface keeps its
+// server-rendered state.
 let storewideEventPromise = null;
 const loadStorewideEvent = () => {
   if (storewideEventPromise) return storewideEventPromise;
@@ -769,27 +770,163 @@ const loadStorewideEvent = () => {
   return storewideEventPromise;
 };
 
-// Feature-detect every field: `name` and `next` are optional, and an active
-// payload is only trusted when it carries a code.
-const storewideEventRunning = (event) => Boolean(event) && event.active === true && Boolean(event.code);
+// Every field is checked before anything shows it. A text field counts only as
+// a non-empty string, a time only as a parseable ISO string, chips only as an
+// array of strings (at most six). Anything else counts as absent, so one
+// malformed field drops that field, never a whole surface.
+const eventText = (value) => (typeof value === 'string' ? value.trim() : '');
+const eventTime = (value) => {
+  const ms = typeof value === 'string' ? Date.parse(value) : NaN;
+  return Number.isFinite(ms) ? ms : null;
+};
+const eventChips = (value) => (Array.isArray(value) ? value.map(eventText).filter(Boolean).slice(0, 6) : []);
+
+// An event is over once its endsAt has passed on this device's clock. The rule
+// only ever hides an offer: a device clock running fast hides it early, and an
+// event with no usable endsAt is never hidden by it. The feed's own Date header
+// cannot be read from this origin, so the device clock is the only clock here.
+const storewideEventEnded = (event) => {
+  const end = eventTime(event.endsAt);
+  return end !== null && Date.now() >= end;
+};
+// A running event is trusted only with a code, and only until its end.
+const storewideEventRunning = (event) => Boolean(event) && event.active === true && Boolean(eventText(event.code)) && !storewideEventEnded(event);
 const storewideEventNext = (event) => {
   const next = event && event.next;
-  return next && typeof next === 'object' && next.name ? next : null;
+  if (!next || typeof next !== 'object' || !eventText(next.name)) return null;
+  return storewideEventEnded(next) ? null : next;
 };
 const storewidePctOff = (event) => {
   const pct = Number(event.pctOff);
   return Number.isFinite(pct) && pct > 0 ? pct : null;
 };
-// Running-event offer line, e.g. "15% off with code SUMMERSALE until 31 August".
-// The end date is appended only while the whole line still fits the seal.
+
+// Dates and times a visitor reads are built from the feed's ISO timestamps in
+// the visitor's own time zone, never from the worker's prose labels: an event
+// ending 23:59:59 UTC ends at 18:59 in New York, where "until Monday 30
+// November" would be false. en-GB, 24-hour, like the rest of the storefront.
+const EVENT_DAY = { weekday: 'long', day: 'numeric', month: 'long' };
+const EVENT_CLOCK = { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' };
+const eventFormat = (ms, options) => {
+  try { return new Intl.DateTimeFormat('en-GB', options).format(new Date(ms)); } catch (error) { return ''; }
+};
+// "23:59 on Monday 30 November", or '' when the feed gave no usable endsAt (then no end is stated at all).
+const storewideEndText = (event) => {
+  const end = eventTime(event.endsAt);
+  if (end === null) return '';
+  const clock = eventFormat(end, EVENT_CLOCK);
+  const day = eventFormat(end, EVENT_DAY);
+  return clock && day ? `${clock} on ${day}` : '';
+};
+// Next-event dates: "Friday 27 November to Monday 30 November" when the event
+// covers whole local days, with times when it starts or ends part-way through
+// one ("Thursday 26 November, 19:00 to Monday 30 November, 18:59" in New York).
+// '' when either timestamp is missing, so no date is stated that cannot be checked.
+const storewideNextDates = (next) => {
+  const start = eventTime(next.startsAt);
+  const end = eventTime(next.endsAt);
+  if (start === null || end === null) return '';
+  const startClock = eventFormat(start, EVENT_CLOCK);
+  const endClock = eventFormat(end, EVENT_CLOCK);
+  const wholeDays = startClock === '00:00' && endClock === '23:59';
+  const when = (ms, clock) => (wholeDays ? eventFormat(ms, EVENT_DAY) : `${eventFormat(ms, EVENT_DAY)}, ${clock}`);
+  return `${when(start, startClock)} to ${when(end, endClock)}`;
+};
+// Running-event offer line for the seal, e.g. "15% off with code BLACKFRIDAY".
+// The end is appended only while the whole line still fits the seal.
 const storewideBadgeOffer = (event) => {
   const pct = storewidePctOff(event);
-  const base = pct ? `${pct}% off with code ${event.code}` : `Code ${event.code}`;
-  const withEnd = event.endsLabel ? `${base} until ${event.endsLabel}` : base;
+  const code = eventText(event.code);
+  const base = pct ? `${pct}% off with code ${code}` : `Code ${code}`;
+  const end = storewideEndText(event);
+  const withEnd = end ? `${base} until ${end}` : base;
   return withEnd.length <= 52 ? withEnd : base;
 };
-// Next-event date line, e.g. "Friday 27 November to Monday 30 November".
-const storewideNextDates = (next) => [next.startsLabel, next.endsLabel].filter(Boolean).join(' to ');
+// Shopify's /discount/<code> route applies the code to the visitor's session
+// and then redirects. Its redirect keeps a query string (measured on live
+// 2026-11-14: /discount/BLACKFRIDAY?redirect=/search?q=cat landed on
+// /search?q=cat with the code set), so every link that offers the code goes
+// through it and the code is applied as part of the navigation itself.
+const storewideDiscountUrl = (code, path) => `/discount/${encodeURIComponent(code)}${path ? `?redirect=${encodeURIComponent(path)}` : ''}`;
+
+// setTimeout fires at once for a delay over 2^31-1 ms (about 24.8 days), so a
+// later end is left to a later page view, which reads the feed again.
+const MAX_TIMER_MS = 2147483647;
+const atEventEnd = (event, onEnd) => {
+  const end = eventTime(event.endsAt);
+  if (end === null) return;
+  const wait = end - Date.now();
+  if (wait > 0 && wait <= MAX_TIMER_MS) setTimeout(onEnd, wait);
+};
+// Each surface paints inside its own guard, so a bad field or a bug in one
+// surface never takes another down. Surfaces reveal themselves as their last
+// step, so a paint that throws leaves nothing half-shown.
+const paintEventSafely = (surface, paint) => {
+  try {
+    paint();
+    return true;
+  } catch (error) {
+    if (window.console) window.console.warn(`[Active Paw] ${surface}: event not shown`, error);
+    return false;
+  }
+};
+
+/* ---------------- Shopify's cookie banner comes first ---------------- */
+// Shopify shows its cookie banner to a first-time visitor in the regions the
+// store sets (the UK among them). The welcome offer and the install pill wait
+// until that banner is not waiting for an answer, so two overlays never share
+// the screen and the modal's focus trap never cuts a keyboard user off from
+// the banner's buttons. Measured on live 2026-11-14:
+//   - Shopify.customerPrivacy exists only once Shopify.loadFeatures loads it;
+//   - shouldShowBanner() stays true AFTER the visitor answers (it says the
+//     region shows a banner), so "waiting" also needs currentVisitorConsent()
+//     to hold no answer yet ('' for marketing, analytics and preferences);
+//   - the document event visitorConsentCollected fires when the visitor answers.
+// Resolves true when nothing is waiting (now, or once the visitor answers in
+// this page view) and false when the API cannot be read within 2 s. False
+// means neither overlay opens in this page view (the next one asks again):
+// where Shopify's consent script is blocked, the welcome offer never opens.
+// Loaded only when an overlay might open, not on every page view.
+const CONSENT_WAIT_MS = 2000;
+const CONSENT_KEYS = ['marketing', 'analytics', 'preferences'];
+let consentAnsweredThisView = false;
+document.addEventListener('visitorConsentCollected', () => { consentAnsweredThisView = true; });
+let consentBannerPromise = null;
+const whenConsentBannerClear = () => {
+  if (consentBannerPromise) return consentBannerPromise;
+  consentBannerPromise = new Promise((resolve) => {
+    if (consentAnsweredThisView) { resolve(true); return; }
+    document.addEventListener('visitorConsentCollected', () => resolve(true));
+    const started = Date.now();
+    const ask = () => {
+      const shopify = window.Shopify;
+      if (!shopify || typeof shopify.loadFeatures !== 'function') {
+        if (Date.now() - started < CONSENT_WAIT_MS) setTimeout(ask, 100);
+        else resolve(false);
+        return;
+      }
+      const giveUp = setTimeout(() => resolve(false), Math.max(0, CONSENT_WAIT_MS - (Date.now() - started)));
+      try {
+        shopify.loadFeatures([{ name: 'consent-tracking-api', version: '0.2' }], (error) => {
+          clearTimeout(giveUp);
+          if (error) { resolve(false); return; }
+          try {
+            const privacy = shopify.customerPrivacy;
+            const answers = privacy.currentVisitorConsent() || {};
+            const waiting = privacy.shouldShowBanner() === true && CONSENT_KEYS.every((key) => answers[key] === '');
+            // While the banner waits, this settles on visitorConsentCollected.
+            if (!waiting) resolve(true);
+          } catch (readError) { resolve(false); }
+        });
+      } catch (loadError) {
+        clearTimeout(giveUp);
+        resolve(false);
+      }
+    };
+    ask();
+  });
+  return consentBannerPromise;
+};
 
 /* ---------------- Hero event badge ---------------- */
 // The seal renders its Theme Editor copy server-side, then swaps in place
@@ -814,58 +951,111 @@ const storewideNextDates = (next) => [next.startsLabel, next.endsLabel].filter(B
   loadStorewideEvent().then((event) => {
     if (!event) return;
     if (storewideEventRunning(event)) {
-      paint('active', badge.getAttribute('data-event-emoji-active'), event.name || event.code, storewideBadgeOffer(event));
+      const shown = paintEventSafely('hero seal', () => {
+        const code = eventText(event.code);
+        paint('active', badge.getAttribute('data-event-emoji-active'), eventText(event.name) || code, storewideBadgeOffer(event));
+      });
+      // Past its end the seal states no offer at all.
+      if (shown) atEventEnd(event, () => { badge.hidden = true; });
       return;
     }
     const next = storewideEventNext(event);
     if (next) {
-      paint('next', badge.getAttribute('data-event-emoji-next'), `Next: ${next.name}`, storewideNextDates(next));
+      paintEventSafely('hero seal', () => paint('next', badge.getAttribute('data-event-emoji-next'), `Next: ${eventText(next.name)}`, storewideNextDates(next)));
       return;
     }
     badge.hidden = true;
   });
 })();
 
-/* ---------------- Announcement bar event item ---------------- */
-// While an event runs, one extra item leads the bar: "<name>: <pct>% off
-// everything with code <code>, until <end>". It is cloned from the template
-// in snippets/announcement-event.liquid into EVERY announcement set (the bar
-// renders its set twice for the seamless mobile marquee). Nothing is added
-// when no event runs, a planned event included.
+/* ---------------- Announcement bar event line ---------------- */
+// While an event runs, the bar shows one line in place of its three benefits:
+// "<pct>% off everything with code <CODE> · <name> · until <end>". The line is
+// laid over the benefits, which stay laid out but invisible, so the bar keeps
+// exactly the height it had at every width and nothing on the page moves when
+// the feed answers. (A line inserted beside the benefits grew the bar from 49
+// to 80 px at 1280 and shifted the page by 0.37 CLS; measured 2026-11-14.)
+// The offer and the code come first and never shrink. When the line does not
+// fit, the end, then the name, then the words "with code" are left out whole,
+// never cut mid-claim; only when the offer and code alone overflow does the
+// offer get an ellipsis. The full sentence is the link's accessible name and
+// tooltip. The link goes through /discount/<code>, so following it applies the
+// code on the way to the page Liquid chose (PRD R8). Nothing shows when no
+// event runs, a planned one included, or when the section's "Show the running
+// storewide event" setting is off (then the line is not rendered at all).
 (() => {
-  const template = document.querySelector('[data-announcement-event-template]');
-  const bar = document.querySelector('.announcement');
-  if (!template || !bar || !('content' in template) || !template.content.firstElementChild) return;
+  const line = document.querySelector('[data-announcement-event]');
+  const bar = line ? line.closest('.announcement') : null;
+  const link = line ? line.querySelector('[data-event-link]') : null;
+  if (!line || !bar || !link) return;
+  const part = (name) => line.querySelector(`[data-event-part="${name}"]`);
+  const parts = ['offer', 'connector', 'code', 'name', 'end'].map(part);
+  if (parts.some((el) => !el)) return;
+  const [offerEl, connectorEl, codeEl, nameEl, endEl] = parts;
+  const droppable = [endEl, nameEl, connectorEl];
+  const fit = () => {
+    line.classList.remove('is-tight');
+    droppable.forEach((el) => { el.hidden = !el.textContent; });
+    for (const el of droppable) {
+      if (link.scrollWidth <= link.clientWidth) break;
+      el.hidden = true;
+    }
+    if (link.scrollWidth > link.clientWidth) line.classList.add('is-tight');
+  };
   loadStorewideEvent().then((event) => {
     if (!storewideEventRunning(event)) return;
-    const pct = storewidePctOff(event);
-    const offer = pct ? `${pct}% off everything with code ${event.code}` : `Use code ${event.code}`;
-    const text = event.endsLabel ? `${offer}, until ${event.endsLabel}` : offer;
-    bar.querySelectorAll('.announcement-set').forEach((set) => {
-      const item = template.content.firstElementChild.cloneNode(true);
-      const nameEl = item.querySelector('[data-event-name]');
-      const textEl = item.querySelector('[data-event-text]');
-      if (nameEl) nameEl.textContent = `${event.name || event.code}:`;
-      if (textEl) textEl.textContent = text;
-      // The duplicate set is aria-hidden for the marquee; keep its copy of the
-      // link out of the tab order too.
-      if (set.classList.contains('announcement-dup')) {
-        item.querySelectorAll('a').forEach((link) => link.setAttribute('tabindex', '-1'));
-      }
-      set.insertBefore(item, set.firstChild);
+    const shown = paintEventSafely('announcement bar', () => {
+      const code = eventText(event.code);
+      const pct = storewidePctOff(event);
+      const name = eventText(event.name);
+      const end = storewideEndText(event);
+      // "everything" holds because the worker reports an event as running only
+      // for a discount on all items with no minimum (docs/theme-worker-contract.md §3).
+      const offer = pct ? `${pct}% off everything` : 'Use code';
+      offerEl.textContent = offer;
+      connectorEl.textContent = pct ? 'with code' : '';
+      codeEl.textContent = code;
+      nameEl.textContent = name && name !== code ? name : '';
+      endEl.textContent = end ? `until ${end}` : '';
+      const sentence = [`${offer} ${pct ? 'with code ' : ''}${code}`, nameEl.textContent, endEl.textContent].filter(Boolean).join(', ');
+      link.setAttribute('aria-label', `${sentence}.`);
+      link.setAttribute('title', `${sentence}.`);
+      link.setAttribute('href', storewideDiscountUrl(code, link.getAttribute('data-redirect') || ''));
+      line.hidden = false;
+      bar.classList.add('has-event');
+      fit();
     });
-    bar.classList.add('has-event');
+    if (!shown) return;
+    window.addEventListener('resize', fit, { passive: true });
+    const hide = () => {
+      line.hidden = true;
+      bar.classList.remove('has-event');
+      window.removeEventListener('resize', fit);
+    };
+    atEventEnd(event, hide);
+    // The clock is read again when the link is followed, so the code is never
+    // sent after the end even if the end timer has not run yet.
+    link.addEventListener('click', (click) => {
+      if (!storewideEventEnded(event)) return;
+      click.preventDefault();
+      hide();
+      window.location.href = link.getAttribute('data-redirect') || '/';
+    });
   });
 })();
 
 /* ---------------- Welcome offer modal (event slot) ---------------- */
 // Shows once per browser per event: after 3 seconds or the visitor's first
 // scroll, whichever comes first - never instantly on load (mobile interstitial
-// etiquette, and Google penalises intrusive entry interstitials). Rendered
-// only while the Theme-settings toggle is on, and skipped server-side for
-// logged-in customers with orders. Every CTA routes through /discount/<code>
-// so the offer is already applied at checkout. The only urgency shown is the
-// event's real end date from the feed.
+// etiquette, and Google penalises intrusive entry interstitials) - and never
+// while Shopify's cookie banner is waiting for an answer. Rendered only while
+// the Theme-settings toggle is on, and skipped server-side for logged-in
+// customers with orders. Every way out of it that offers the code (the browse
+// link, a chip, the search form) navigates through /discount/<code>, so the
+// code is applied as part of that navigation: what "applied automatically when
+// you shop from here" promises. The only urgency shown is the event's real end
+// time from the feed, in the visitor's time zone, and the modal closes itself
+// if that end passes while it is open.
 const getWelcomeModal = () => document.querySelector('[data-welcome-modal]');
 const WELCOME_SEEN_KEY = 'ap_welcome_dismissed';
 
@@ -901,6 +1091,8 @@ let welcomeEventOver = true;
 // Set once the 3s timer or the first scroll has passed, so a late verdict can
 // still open the modal without ever opening it instantly on load.
 let welcomeTriggerFired = false;
+// Set once Shopify's cookie banner is not waiting for an answer (whenConsentBannerClear).
+let welcomeConsentClear = false;
 
 // True while the offer may still open in this page view: used by the install
 // pill so two overlays never stack.
@@ -912,8 +1104,9 @@ const openWelcomeModal = () => {
   // A dismissed offer stays dismissed. The first-scroll trigger stays armed
   // after the 3s timer has already opened the modal, so without this check a
   // close-then-scroll reopened it (the "shows twice" bug). Every trigger path
-  // funnels through here, so re-check dismissal at the door.
-  if (welcomeSeen() || welcomeEventOver) return;
+  // funnels through here, so re-check dismissal, the event and the cookie
+  // banner at the door.
+  if (welcomeSeen() || welcomeEventOver || !welcomeConsentClear) return;
   welcomeReturnFocus = document.activeElement;
   modal.classList.add('is-open');
   modal.setAttribute('aria-hidden', 'false');
@@ -922,30 +1115,31 @@ const openWelcomeModal = () => {
   if (input) window.requestAnimationFrame(() => input.focus());
 };
 
-const closeWelcomeModal = () => {
+// The visitor's own close marks the offer seen; the event ending does not
+// (a later event has a different code anyway).
+const closeWelcomeModal = (markSeen = true) => {
   const modal = getWelcomeModal();
   if (!modal || !modal.classList.contains('is-open')) return;
   modal.classList.remove('is-open');
   modal.setAttribute('aria-hidden', 'true');
   document.body.classList.remove('contact-modal-open');
-  markWelcomeSeen();
+  if (markSeen) markWelcomeSeen();
   if (welcomeReturnFocus && typeof welcomeReturnFocus.focus === 'function') welcomeReturnFocus.focus();
   welcomeReturnFocus = null;
 };
 
-// Shopify's /discount/<code> route applies the code to the checkout session
-// via Set-Cookie - nobody fails to redeem because they forgot to type it.
-// Its ?redirect= only accepts a bare path (query strings are stripped), so
-// for search targets we apply the code with a background fetch of the route
-// and then navigate ourselves, keeping ?q= intact. Capped at 1.5s so a slow
-// network can never strand the click.
-const applyWelcomeCodeThenGo = (targetPath) => {
+// Navigate with the code applied (storewideDiscountUrl). This used to fetch
+// /discount/<code> in the background and navigate after at most 1.5 s, which
+// aborted the request on a slow connection and left the code unapplied
+// (measured 2026-11-14 with the route held for 3 s: net::ERR_ABORTED, no
+// discount cookie). The clock is read again here, so once the event has ended
+// the visitor goes on without the code, even if the end timer has not run yet.
+let welcomeEvent = null;
+const welcomeOfferLive = () => Boolean(welcomeEvent) && !storewideEventEnded(welcomeEvent);
+const welcomeGo = (targetPath) => {
   const modal = getWelcomeModal();
   const code = modal ? modal.getAttribute('data-welcome-code') || '' : '';
-  const applied = fetch(`/discount/${encodeURIComponent(code)}`, { credentials: 'same-origin' }).catch(() => {});
-  Promise.race([applied, new Promise((resolve) => setTimeout(resolve, 1500))]).then(() => {
-    window.location.href = targetPath;
-  });
+  window.location.href = code && welcomeOfferLive() ? storewideDiscountUrl(code, targetPath) : targetPath;
 };
 
 // Paint the whole modal from a running event: headline, wording, chips, code,
@@ -953,28 +1147,31 @@ const applyWelcomeCodeThenGo = (targetPath) => {
 // a plain code falls back to lines built from its percentage and name, so no
 // wording is ever invented beyond what the feed states.
 const paintWelcomeModal = (modal, event) => {
-  modal.setAttribute('data-welcome-code', event.code);
+  const code = eventText(event.code);
+  modal.setAttribute('data-welcome-code', code);
   const codeEl = modal.querySelector('.welcome-modal__code strong');
-  if (codeEl) codeEl.textContent = event.code;
+  if (codeEl) codeEl.textContent = code;
   const browse = modal.querySelector('[data-welcome-browse]');
   if (browse) {
     const redirect = modal.getAttribute('data-welcome-redirect') || ''; // Liquid decides the destination (PRD R8)
-    browse.setAttribute('href', `/discount/${encodeURIComponent(event.code)}${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`);
+    browse.setAttribute('href', storewideDiscountUrl(code, redirect));
   }
   const pct = storewidePctOff(event);
+  const name = eventText(event.name);
   const heading = modal.querySelector('#WelcomeModalTitle');
-  if (heading) heading.textContent = event.headline || (pct ? `${pct}% off everything` : (event.name || event.code));
+  // "everything": see the announcement bar line and docs/theme-worker-contract.md §3.
+  if (heading) heading.textContent = eventText(event.headline) || (pct ? `${pct}% off everything` : (name || code));
   const sub = modal.querySelector('.welcome-modal__sub');
   if (sub) {
-    const eventName = event.name && event.name !== event.code ? event.name : '';
-    sub.textContent = event.subline || eventName;
+    sub.textContent = eventText(event.subline) || (name !== code ? name : '');
     sub.hidden = !sub.textContent;
   }
-  if (event.chips && event.chips.length) {
+  const chips = eventChips(event.chips);
+  if (chips.length) {
     const wrap = modal.querySelector('.welcome-modal__chips');
     if (wrap) {
       wrap.textContent = '';
-      event.chips.forEach((chip) => {
+      chips.forEach((chip) => {
         const b = document.createElement('button');
         b.type = 'button';
         b.setAttribute('data-welcome-chip', chip);
@@ -984,14 +1181,15 @@ const paintWelcomeModal = (modal, event) => {
     }
   }
   let ends = modal.querySelector('.welcome-modal__ends');
-  if (event.endsLabel) {
+  const end = storewideEndText(event);
+  if (end) {
     if (!ends) {
       ends = document.createElement('p');
       ends.className = 'welcome-modal__ends';
       const later = modal.querySelector('.welcome-modal__later');
       if (later && later.parentNode) later.parentNode.insertBefore(ends, later);
     }
-    ends.textContent = `Ends ${event.endsLabel}`;
+    ends.textContent = `Ends at ${end}`;
   } else if (ends) {
     ends.remove();
   }
@@ -1004,16 +1202,28 @@ const paintWelcomeModal = (modal, event) => {
   // and the feed below decides WHICH event this visitor is being offered.
   // openWelcomeModal re-checks at the door.
 
-  // Ask PawScout which storewide event is actually running - the Shopify
-  // discount is the single source of truth. Only a successful answer with a
-  // running code can open the modal; anything else keeps it closed.
+  // Ask PawScout which storewide event is running. Only a successful answer
+  // with a running code can open the modal; anything else keeps it closed.
+  // Then wait for Shopify's cookie banner (whenConsentBannerClear).
   loadStorewideEvent().then((event) => {
     if (!storewideEventRunning(event)) return;
-    paintWelcomeModal(modal, event);
+    if (!paintEventSafely('welcome offer', () => paintWelcomeModal(modal, event))) return;
+    welcomeEvent = event;
     welcomeEventOver = false;
-    // The verdict can land after the 3s timer or the first scroll has already
-    // passed; opening now still honours "never instantly on load".
-    if (welcomeTriggerFired) openWelcomeModal();
+    atEventEnd(event, () => {
+      welcomeEventOver = true;
+      closeWelcomeModal(false);
+    });
+    // A visitor who already closed this event's offer will not see it again,
+    // so Shopify's consent API is not loaded for it.
+    if (welcomeSeen()) return;
+    whenConsentBannerClear().then((clear) => {
+      if (!clear) return;
+      welcomeConsentClear = true;
+      // The verdicts can land after the 3s timer or the first scroll has
+      // already passed; opening now still honours "never instantly on load".
+      if (welcomeTriggerFired) openWelcomeModal();
+    });
   });
 
   const trigger = () => {
@@ -1035,11 +1245,18 @@ const paintWelcomeModal = (modal, event) => {
     const chip = event.target.closest('[data-welcome-chip]');
     if (chip) {
       markWelcomeSeen();
-      applyWelcomeCodeThenGo(`/search?q=${encodeURIComponent(chip.getAttribute('data-welcome-chip'))}`);
+      welcomeGo(`/search?q=${encodeURIComponent(chip.getAttribute('data-welcome-chip'))}`);
       return;
     }
-    // The browse link navigates via its href; just stop it re-appearing.
-    if (event.target.closest('[data-welcome-browse]')) markWelcomeSeen();
+    // The browse link navigates via its href (through /discount/<code>); just
+    // stop it re-appearing. Past the end it goes on without the code.
+    if (event.target.closest('[data-welcome-browse]')) {
+      markWelcomeSeen();
+      if (!welcomeOfferLive()) {
+        event.preventDefault();
+        welcomeGo(modal.getAttribute('data-welcome-redirect') || '/');
+      }
+    }
   });
 
   const form = modal.querySelector('[data-welcome-search]');
@@ -1049,7 +1266,7 @@ const paintWelcomeModal = (modal, event) => {
       const input = modal.querySelector('[data-welcome-input]');
       const query = input && input.value ? input.value.trim() : '';
       markWelcomeSeen();
-      applyWelcomeCodeThenGo(query
+      welcomeGo(query
         ? `/search?q=${encodeURIComponent(query)}`
         : modal.getAttribute('data-welcome-redirect') || '/');
     });
@@ -1160,14 +1377,16 @@ const isIosDevice = () =>
   };
 
   // Auto-reveal etiquette mirrors the welcome modal: small screens only,
-  // a beat after load, and skipped entirely on the page view where the
-  // welcome offer shows so two overlays never stack.
+  // a beat after load, never while Shopify's cookie banner is waiting for an
+  // answer (the pill and the banner both sit at the bottom of a phone screen),
+  // and skipped entirely on the page view where the welcome offer shows, so
+  // two overlays never stack.
   const scheduleReveal = () => {
     if (!smallScreen() || installDismissed()) return;
     // Wait for PawScout's verdict on the storewide event so the pill never
     // races the welcome offer: it yields whenever the offer may still open.
-    loadStorewideEvent().then(() => {
-      if (welcomeMayOpen()) return;
+    Promise.all([loadStorewideEvent(), whenConsentBannerClear()]).then(([, consentClear]) => {
+      if (!consentClear || welcomeMayOpen()) return;
       setTimeout(() => {
         if (pill.hidden === false || steps.hidden === false || installDismissed()) return;
         pill.hidden = false;

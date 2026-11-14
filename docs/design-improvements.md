@@ -1303,3 +1303,142 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 41 - 2026-11-14: A running event takes over the announcement bar without moving the page, and it has an off switch
+
+PRD phase 5, T21 and T22. The owner left the bar's design to the agent ("surprise me").
+
+### What changed
+- `snippets/announcement-event.liquid` is rewritten. It no longer holds a `<template>` cloned into every benefit set; it renders one hidden line with:
+  - a link (target from Liquid, PRD R8);
+  - slots for the offer, the words "with code", the code, the event name and the end;
+  - its own style block.
+- `sections/announcement-bar.liquid` renders that snippet only while the new setting "Show the running storewide event" (`event_bar_enabled`, default on) is on.
+- `assets/theme.js`, "Announcement bar event line":
+  - It fills the slots from the feed and points the link through `/discount/<code>?redirect=<all products>`.
+  - It sets the full sentence as the link's accessible name and tooltip.
+  - It reveals the line, fits it to the width, and hides it again when the event's end passes.
+
+### Why it changed
+- With a real running event (measured 2026-11-14 with the Black Friday values), the old item grew the desktop bar from 49 to 80 px at 1280, and from 66 to 95 px at 1100.
+- The tag icon sat on its own row above the text.
+- When the item landed, about 0.5 s after load, it shifted the page by a layout-shift score of 0.37 to 0.38. An idle feed gave 0.
+- The snippet's own comment claimed the bar kept its 48 px silhouette.
+- The item had no off switch, while the seal (`badge_enabled`) and the welcome offer (`welcome_enabled`) both had one.
+
+### How it is solved
+- **Overlay.** The line is laid over the bar: `position: absolute`, over the bar's own box below the safe-area inset. The three benefits stay laid out under `visibility: hidden`, and the mobile marquee stops.
+  - The bar therefore keeps exactly its idle height at every width, including the 66 px it already measures at 1100 and 960, where the benefit lines wrap.
+  - Nothing moves: hidden content and a newly placed absolute element do not count as layout shift.
+- **Order of the line.** The offer and the code come first and never shrink, and the code sits in a dashed chip.
+- **When the line does not fit:**
+  - the end, then the name, then the words "with code" are left out whole, never cut mid-claim;
+  - only if the offer and code alone overflow does the offer get an ellipsis;
+  - below 380 px the decorative icon is left out and the offer is set at 13 px, so offer and code fit whole at 320 px.
+- **Link and accessible name.** The link applies the code on the way to all products; following it is the only way the bar acts on a code. The accessible name begins with the visible offer, and it is the full sentence even where the visible line is shortened.
+
+### How it was checked
+- **Preview theme 212371767634**, stand-in feed served inside the test browser, with the real values (`BLACKFRIDAY`, 15%, ends 2026-11-30T23:59:59Z) and a longer 13-character stand-in code:
+  - **Height and shift:** the bar is the same height with and without the event at 1440, 1280, 1100, 960, 390 and 320 px (49, 49, 66, 66, 43, 43). The layout-shift score is 0 when the feed answers 2 s after load (0.3872 on live in the same check).
+  - **One line:** the icon (where shown) sits beside the text and the code is whole at every width, also with a 41-character event name.
+  - **What fits:** 1440 to 960 px fit the whole line; 390 and 320 px show "15% off everything" and the code.
+- **Contrast on the bar's `rgb(16, 24, 32)`:** offer 15.20:1, code 17.89:1, name and end 13.36:1.
+- **Screenshots looked at:** 1440, 1280, 960, 390 and 320 px.
+- **Off switch:** with `event_bar_enabled: false` pushed to the preview only (and the repo file restored by `git checkout`), the line is not rendered and the three benefits show. With the key absent, which is how live stores it today, the line shows: the default is on.
+- **Standing checks:** `tests/independence.cjs` `event-running`, `event-idle`, `event-widths` and `event-long-name` cover all of the above. On live they fail (layout shift 0.3872, bar 49 to 96 px, line missing) and on the preview they pass.
+
+### Files touched
+- `snippets/announcement-event.liquid`, `sections/announcement-bar.liquid`, `assets/theme.js`, `tests/independence.cjs`, `docs/design-improvements.md`.
+
+## Entry 42 - 2026-11-14: The welcome offer and the install pill wait for Shopify's cookie banner
+
+PRD phase 5, T23.
+
+### What changed
+- `assets/theme.js`, "Shopify's cookie banner comes first": `whenConsentBannerClear()` decides whether the banner is waiting, and the welcome offer and the install pill both wait on it.
+- The welcome offer opens only once that resolves true. The install pill reveals itself only once it resolves true and the offer will not open.
+
+### Why it changed
+- On a first visit from the UK, Shopify's cookie banner sat over the open welcome offer: at 1280 px it covered the offer's bottom, "Maybe later" included, and on a 390x844 phone it is 481 px tall.
+- The offer's focus trap also kept keyboard users from reaching the banner's buttons (read from the code).
+- The pill sits at the bottom of a phone screen, where the banner sits. That collision is read from the code, not measured: headless Chromium never offers installation.
+
+### How it is solved
+Measured on live on 2026-11-14 before writing the rule:
+- **`Shopify.customerPrivacy` is undefined until `Shopify.loadFeatures([{ name: 'consent-tracking-api', version: '0.2' }])` loads it.** It loaded in 59 ms.
+- **`shouldShowBanner()` stays `true` after the visitor answers,** on the same page and on the next one, so it means "this region shows a banner". "Waiting" therefore also needs `currentVisitorConsent()` to hold no answer yet. It reads `""` for marketing, analytics and preferences before an answer, `"no"` after Decline and `"yes"` after Accept.
+- **The document event `visitorConsentCollected` fires on the answer.**
+
+The rule is waiting = `shouldShowBanner()` and no answer yet. While waiting, the decision is made when the visitor answers. If the API cannot be read within 2 s, the answer is false: neither overlay opens in that page view, and the next one asks again. So where Shopify's consent script is blocked, the welcome offer never opens; that is the accepted trade-off. The API is loaded only when an overlay might open:
+- for a running event's offer the visitor has not closed;
+- or, on a small screen, once installing is possible.
+
+### How it was checked
+- **On the preview, as a UK visitor:** with the banner waiting, the offer stays closed past its 3 s trigger. After Decline it opens within 1.5 s, without the page being reloaded.
+- **Phone screenshot looked at:** the offer alone, with no banner under or over it.
+- **Standing check `event-consent`:** it records which branch it ran. A UK browser takes "banner waiting" and must stay closed, then open after the answer. A US runner, where the store shows no banner, takes "no banner waiting" and must open after 3 s. If the API cannot be read, the offer must stay closed. On live the "stays closed" check fails, because the offer opened under the banner.
+- **Standing check `event-consent-blocked`:**
+  - It blocks Shopify's banner script and consent API script, as a privacy blocker would. Both are served from the shop's own `/cdn/shopifycloud/`; the API is `consent-tracking-api/v0.2/consent-tracking-api.js`, measured 2026-11-14.
+  - The offer must stay closed past its 3 s trigger, and the page's own code must log no error.
+  - It passes on the preview.
+
+### Files touched
+- `assets/theme.js`, `tests/independence.cjs`, `docs/design-improvements.md`.
+
+## Entry 43 - 2026-11-14: Every event claim a visitor reads can be checked, and stops at the event's end
+
+PRD phase 5, T24 and T25. The owner's rule (2026-11-14): every claim a person reads must be defensible and match the code.
+
+### What changed
+- **Field checks (`assets/theme.js`):** `eventText`, `eventTime` and `eventChips` vet every feed field before any surface shows it, and each surface paints inside its own guard (`paintEventSafely`).
+- **End times, in the visitor's own time zone (en-GB, 24-hour):**
+  - built from `endsAt` and `startsAt` (`storewideEndText`, `storewideNextDates`), never from the worker's `endsLabel` and `startsLabel`;
+  - the bar reads "until 23:59 on Monday 30 November" and the offer "Ends at 23:59 on Monday 30 November";
+  - a New York visitor reads 18:59 in both places.
+- **End guard (`storewideEventEnded`):** a running event whose `endsAt` has passed counts as not running.
+  - On an open page, the bar line and the seal's offer go away at the end, and an open offer closes (`atEventEnd`).
+  - The timer is skipped past setTimeout's 24.8-day limit; a later page view reads the feed again.
+  - The clock is also read again at the click. Following the bar link, the offer's browse link, a chip or the offer's search after the end goes on without the code, even if the end timer has not run yet.
+- **Code applied:** every way out of the welcome offer that offers the code (browse link, chip, search) navigates through `/discount/<code>?redirect=<path and query>` (`storewideDiscountUrl`, `welcomeGo`).
+- **Comments corrected:** the shared feed comment and the seal snippet's comment now state the measured `max-age=120`, not an unmeasured "10 minutes server-side".
+
+### Why it changed
+- **Prose labels were false outside the UK.** The labels say "Monday 30 November", but the code stops at 23:59:59 UTC, which is 18:59 in New York, and the bar and the offer show to every market.
+- **One bad field silenced the offer.** A `chips` value that was a string threw `TypeError: event.chips.forEach is not a function`, and the offer never opened. A `headline` that was an object printed "[object Object]".
+- **The offer outlived the code.** The theme never read `endsAt`, so an offer stayed on screen after its code had stopped working: for up to 120 s of browser cache, and for as long as a page stayed open.
+- **"Applied automatically" could be false.** The offer says the code is "applied automatically when you shop from here". The chip and search paths fetched `/discount/<code>` in the background and navigated after at most 1.5 s. With the route held for 3 s, the navigation aborted the request (`net::ERR_ABORTED`) and no discount cookie was set (measured on live 2026-11-14), so the claim was false on a slow connection. The old comment said Shopify's redirect strips query strings; it does not (`/discount/BLACKFRIDAY?redirect=/search?q=cat` landed on `/search?q=cat` with the code set).
+
+### Claims checked against their sources
+Read on 2026-11-14:
+- **"15% off everything".** `BLACKFRIDAY` in the Admin API is 15%, all items, no minimum, all buyers. The owner chose to keep "everything", and `docs/theme-worker-contract.md` §3 now makes "all items, no minimum" a condition of reporting an event as running. The store sells no gift cards (0 of 318 products), so no product falls outside "everything".
+- **The end time.** The feed's `endsAt` equals the discount's end, and the time is shown in the visitor's time zone.
+- **"applied automatically when you shop from here".** True on every path, by the route above.
+
+Not established here:
+- the worker's own words: `name`, `headline`, `subline` and `chips` are shown as sent, and contract §3 obligation 5 makes them the worker's claims to keep true. Today's feed sends only the next event's name and dates;
+- whether the code applies in every market (inferred from the discount type having no market field);
+- `pctOff` on a live running payload (none has been sent yet; PRD T35 compares it at the start).
+
+### How it was checked
+- **On the preview, `tests/independence.cjs` passes:**
+  - `event-ended`: an end 60 s past shows nothing.
+  - `event-ends-now`: an end 25 s ahead shows, then is gone without a reload.
+  - `event-bad-fields`: the offer opens with its own heading and the settings chips, prints nothing malformed, and raises no page error.
+  - `event-running`: the bar and offer end times match an en-GB oracle computed outside the theme, and the worker's labels are never printed.
+  - `event-running`: the seal names the event and reads "15% off with code <CODE>". The end is added only when the whole line fits the seal's 52 characters; with `BLACKFRIDAY` it does not.
+  - `event-new-york`: 18:59.
+  - `event-next`: the seal's dates come from the timestamps.
+  - A chip navigates to `/discount/STANDINCODE15?redirect=%2Fsearch%3Fq%3DCat%2520trees`. That request is answered by a stand-in page, so the test never applies a code.
+  - `event-new-york` and `event-chip-after-end`: the page's clock is moved past the end while its timers keep real time. The bar link then lands on `/collections/all` and a chip on `/search?q=Cat%20trees`, with no `/discount/` request.
+- **On live, all of these fail:**
+  - the labels are printed;
+  - the offer shows after its end;
+  - the `TypeError` above is raised;
+  - the chip goes to `/discount/STANDINCODE15` with no redirect, and still asks for it after the end.
+- **In control mode,** `event-feed` checks the REAL feed's field types, so a malformed field is caught before a visitor meets it.
+
+### Files touched
+- `assets/theme.js`, `snippets/hero-event-badge.liquid` (comment only), `docs/theme-worker-contract.md`, `tests/independence.cjs`, `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.

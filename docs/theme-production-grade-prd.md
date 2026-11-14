@@ -99,6 +99,7 @@ Acceptance: the setting exists in `config/settings_schema.json`; a GB visit show
 2. **Honesty and independence** (R4, R5, R6, R7, R11). Fixes to what customers see; each verified on a preview then merged by the owner.
 3. **Structure** (R8). Consolidation with no visible change; verified by the same Playwright runs.
 4. **Observability** (R9). The daily run and zero-warning theme check.
+5. **Storewide events before Black Friday** (added 2026-11-14). The feed-driven seal, announcement item and welcome offer, fixed and tested before the first real running event on 27 November 2026. Tasks T20 to T38 in section 4.
 
 Phase 2's fixes are small and safe on their own; R5 can ship first as a single-line removal.
 
@@ -160,6 +161,206 @@ Every pull request below was merged by the owner into `shopify-deploy` (the merg
 | #23 | 2026-10-01 14:03 | `3dc94aa` | `release-2026-10-01-4` | 36873399941 | A refused background request is waited out and retried; a local item's preview gives the market's delivery line; card titles are exactly two lines (Entries 35 to 37) |
 
 Number 16 is an issue, not a pull request: a daily run that failed on the browser's message about a Shopify response header, now classified as platform text; closed. Open: issue #18, the storefront answering 503 to one page load from the GitHub runner (three times on 2026-09-23, a different page each time). Since #19 the run asks for a 5xx page once more after 15 s and records the refusal with the headers that say who refused it; the first record (run 35966224773, 2026-09-24) was a 503 with `retry-after: 73`, an `x-request-id` and no `cf-mitigated`, which points at Shopify throttling the runner rather than an edge block. Since #23 the background requests are retried and recorded the same way. The issue stays open until a few more records agree.
+
+### Phase 5: storewide events before Black Friday
+
+Added 2026-11-14 from an audit of the storewide event feature. PawScout's `/public/event` feed drives the hero seal (`snippets/hero-event-badge.liquid`), the announcement bar item (`snippets/announcement-event.liquid`) and the welcome offer modal (`snippets/welcome-modal.liquid`), all through `loadStorewideEvent()` in `assets/theme.js`. The first real running event is Black Friday to Cyber Monday, 27 November 00:00 UTC to 30 November 23:59:59 UTC. Before this phase no automated check covered the running state.
+
+**Baselines, so every task has its control.** Measured on live (theme 202067018066) on 2026-11-14. Where a probe served a stand-in feed, it did so inside its own browser only, and it clicked nothing.
+
+- **Bar:** with the real Black Friday values, the bar grows from 49 to 80 px at 1440 and 1280, and from 66 to 95 px at 1100. With no event it is already 66 px at 1100 and 960, because benefit lines wrap below about 1220 px. The tag icon sits on its own row above the text. One layout shift of 0.37 to 0.38 lands at 0.5 to 0.6 s; an idle feed gives 0. At 390 px the marquee stays 43 px. Phone layout shift with a running event was not measured.
+- **Consent:**
+  - On a first visit from the UK, Shopify's cookie banner sits over the welcome modal at 390 and 1280. At 1280 it covers the modal's bottom, including "Maybe later". On a 390x844 phone the banner is 481 px tall.
+  - While it shows, `window.Shopify.customerPrivacy` is undefined; only `Shopify.loadFeatures` exists.
+  - From reading the code: the modal's focus trap keeps keyboard users from reaching the banner's buttons.
+- **Payload:** a `chips` value that is a string throws `TypeError: event.chips.forEach is not a function`, and the modal never opens.
+- **Seal:** `templates/index.json` sets no `badge_*` keys, so live shows the schema default "Stay cool! / Shop the summer range", linking to `/collections/keep-them-cool` (200, 6 products). It shows whenever the feed is unreachable. It also shows on every home view until the feed answers; in one run, from 360 ms to 589 ms, with first paint at 452 ms.
+- **Feed:** `Cache-Control: public, max-age=120` (measured). The 10-minute server cache comes from a code comment and was not measured. The theme reads neither `endsAt` nor `startsAt`, although contract §3 lists both.
+- **Discount, read through the Admin API:** `BLACKFRIDAY`, 15%, all items, no minimum, all buyers, once per customer, scheduled for exactly the event window.
+- **Kill switches:** the seal has one (`badge_enabled`) and the modal has one (`welcome_enabled`). The bar item is rendered unconditionally, so turning it off takes a deploy.
+
+**Dates:**
+
+| By | What |
+|---|---|
+| Wed 18 Nov | Owner answers T20 |
+| Fri 20 Nov | Pull request A open |
+| Tue 24 Nov | Pull request A merged |
+| Fri 27 to Mon 30 Nov | Deploy freeze, except reverts and the T21 switch |
+
+#### Owner decisions
+
+- [x] T20 (owner) Four decisions, each named by the task it gates. **Answered 2026-11-14:**
+  - (a) takeover, with the design left to the agent ("surprise me"); built in T22;
+  - (b) **B**: the seal stays hidden until the feed answers;
+  - (c) **yes**: customers with past orders see the offer modal;
+  - (d) **keep** "everything".
+
+  The same day, the owner set a standing rule: every claim and piece of information a visitor reads must be defensible and match the code. The options as they were put:
+  - (a) The desktop bar while an event runs, which gates T22:
+    - **Takeover (recommended):** the event line replaces the three benefits for the event's days, on one line, with the offer and code first, so a cut only loses the tail.
+    - **Keep the benefits:** a fixed slot needs short copy and breaks on the next long event name.
+  - (b) The seal default, which gates T28:
+    - **A:** evergreen copy and link replace the summer stamp.
+    - **B:** the seal stays hidden until the feed confirms a running or next event, so there is no seal while the worker is down.
+  - (c) Do customers with past orders see the event offer modal? This gates T29. `BLACKFRIDAY` is open to all buyers.
+  - (d) Keep "% off everything", or drop "everything"? This gates T33. "Everything" is true for `BLACKFRIDAY` and for every discount scheduled today (all items, no minimum).
+
+#### Pull request A: must ship before 27 November
+
+- [x] T21 Kill switch for the bar item. Add the setting `event_bar_enabled` (default on) to `sections/announcement-bar.liquid`, and render `announcement-event` only when it is on. This is the rollback during the event that needs no deploy. Acceptance: on a preview with a stand-in running event, the item is absent with the setting off and present with it on.
+  - **Done in pull request A (Entry 41).** Measured on preview 212371767634 on 2026-11-14:
+    - with `event_bar_enabled: false` pushed to the preview only, the line is not rendered and the three benefits show;
+    - with the key absent, which is how live stores it today, the line shows.
+  - The preview's settings were then restored to the committed file.
+- [x] T22 Bar layout and layout shift (design from T20a). Files: `snippets/announcement-event.liquid`, `assets/theme.js` (text order: offer and code first), `assets/theme.css`.
+  - Root cause, from the code: `.announcement p { flex-wrap: wrap }` lets the link drop under the icon. The event item needs `nowrap`, with an ellipsis on its text only.
+  - Copy length alone is not a fix, because the event name comes from the worker.
+  - A takeover held at 48 px would shrink the bar at 1100 and 960, where idle is 66 px, and that shrink is a layout shift too. So either match the idle height at each width, or fix the wrap below 1220 px in this task.
+  - **Acceptance:** within ONE page load with a stand-in running event, at 1440, 1280, 1100, 960 and 390 px:
+    - the bar height equals the idle bar height at that width;
+    - layout shift is under 0.05 (0.37 to 0.38 today);
+    - the item is one line, with the icon beside the text;
+    - the code's text box is fully visible;
+    - all of this also holds for a 40-character event name.
+  - **Done in pull request A (Entry 41).** The design is a takeover laid over the bar: an absolute line over benefits that stay laid out but invisible. It differs from the plan in three ways:
+    - the styles live in the snippet's own style block, not in `assets/theme.css`;
+    - the wrap is sidestepped rather than fixed, because the line no longer sits inside `.announcement p`;
+    - when the line does not fit, whole parts drop in a set order (end, then name, then "with code"); only an offer and code that overflow on their own get an ellipsis.
+  - Measured on preview 212371767634 on 2026-11-14, against live on the same day:
+    - **Height.** The bar is as tall with the event as without it at all six widths checked (1440, 1280, 1100, 960, 390 and 320 px: 49, 49, 66, 66, 43 and 43 px). Live grew it, for example from 49 to 96 px at 1280 with the 13-character stand-in code.
+    - **Layout shift.** 0 with the feed answering 2 s after load; live measured 0.3872. This was measured in one page load at 1280 px only. At the other widths, the equal heights are the evidence.
+    - **Layout.** One line, the icon beside the text, and the code whole at every width, also with a 41-character name.
+    - **Offer.** Not cut from 360 px up; at 320 px it fits whole too.
+    - **Contrast.** Offer 15.20:1, code 17.89:1, other text 13.36:1.
+- [x] T23 Consent first: the welcome modal and the install pill open only when Shopify's consent banner is not waiting for an answer. File: `assets/theme.js`.
+  - **Step 1, a spike recorded in the pull request:** confirm in Shopify's docs how a theme loads the Customer Privacy API (`Shopify.loadFeatures` exists on live; the feature name to request is unconfirmed), and whether a decision event exists.
+  - **Rule:**
+    - load the API;
+    - if `shouldShowBanner()` is true, skip this page view, mark nothing as seen, and let the next page view try again;
+    - if the API has not answered within 2 s, skip as well;
+    - open on a decision event only if step 1 confirms one exists.
+  - **Accepted trade-off, to be written down:** this fails closed, so no modal opens wherever Shopify's consent script is blocked.
+  - **Acceptance:**
+    - First UK visit at 390 and 1280: with the banner up there is no modal, no pill and no focus trap.
+    - Banner region with consent already given, or a stub reporting no banner: the modal opens after 3 s.
+    - Consent script blocked: no modal and no console error.
+  - The pill part rests on code reading. The pill is fixed to the bottom on phones, which is where the banner sits, but headless Chromium never offers installation, so the collision itself is not measured.
+  - **Done in pull request A (Entry 42).**
+  - **Spike.** Shopify's docs were searched and live was measured on 2026-11-14:
+    - `Shopify.loadFeatures([{ name: 'consent-tracking-api', version: '0.2' }])` loads the API (59 ms; the script is served from the shop's own `/cdn/shopifycloud/consent-tracking-api/v0.2/`);
+    - the decision event exists: `visitorConsentCollected` fires on the answer;
+    - `shouldShowBanner()` stays true after an answer.
+  - **Rule as built,** which differs from the plan: "waiting" means `shouldShowBanner()` with no answer yet, and while it waits the offer opens on the visitor's answer within the same page view, instead of skipping the view.
+  - Measured on preview 212371767634, as a UK visitor:
+    - **1280 px** (`event-consent`): with the banner waiting, the offer stays closed past its 3 s trigger and opens after the answer.
+    - **390 px:** the same, read by eye from screenshots (closed while the banner waits, open after Decline).
+    - **Consent script blocked** (`event-consent-blocked`: Shopify's banner and API script blocked): the offer stays closed and the page's own code logs no error.
+  - Not measured: the no-banner branch runs only where no banner shows, so the US CI runner is its reading of record. The pill's part rests on code reading, as above.
+- [x] T24 Feed hardening. File: `assets/theme.js`.
+  - Read every string field through one `asText()` helper: name, code, headline, subline, endsLabel, `next.name` and its labels.
+  - Use `chips` only when `Array.isArray`, keep string entries only, at most 6.
+  - Wrap each surface's paint in try/catch, so one bad field cannot silently disable a surface.
+  - **Acceptance:** a stand-in with `chips` as a string opens the modal with the settings chips and raises no page error (today: a `TypeError` and no modal). A `headline` sent as an object falls back and never shows "[object Object]".
+  - **Done in pull request A (Entry 43).** The helper is `eventText`, with `eventTime` and `eventChips` beside it, and `paintEventSafely` guards each surface. The labels are no longer read at all (T25).
+  - Standing check `event-bad-fields`, with `chips` as a string, `headline` as an object, and `subline` and `name` as numbers. On the preview the modal opens with its own heading and the settings chips, prints nothing malformed, and raises no page error. On live the same stand-in raises the `TypeError` and no modal opens.
+- [x] T25 End-time guard. File: `assets/theme.js`.
+  - A running event whose `endsAt` has passed (device clock, 60 s grace) counts as not running on all three surfaces.
+  - A `next` whose `endsAt` has passed is not shown.
+  - The call-to-action path re-checks before requesting `/discount/<code>`.
+  - An open page removes the bar item and the seal's offer when `endsAt` passes.
+  - The guard only ever hides, never shows. A fast device clock hides a live offer early; that is the accepted direction. A server timestamp needs `generatedAt` from the worker (T37), because the feed's `Date` header is not readable cross-origin.
+  - **Acceptance:**
+    - `endsAt` one minute in the past: no surface shows the offer.
+    - `endsAt` 90 s ahead: the item is present, and is gone after about 90 s without a reload.
+  - **Done in pull request A (Entry 43),** with two deviations:
+    - **No 60 s grace.** The guard hides at `endsAt` itself, because the code stops working at that moment and a grace period would state a dead code. A device clock running fast still hides early, the accepted direction.
+    - **25 s instead of 90 s** in the "ends while open" check, to keep the run short.
+  - Times shown are built from `endsAt` and `startsAt` in the visitor's own time zone; the worker's `endsLabel` and `startsLabel` are not printed.
+  - Every way to follow the offer reads the clock again at the click: the bar link, the offer's browse link, a chip and the search form.
+  - Standing checks, all passing on the preview:
+    - `event-ended`: an end 60 s past shows nothing.
+    - `event-ends-now`: the bar line, the open offer and the seal's offer are gone at the end without a reload.
+    - `event-next`: a planned event's dates come from its timestamps.
+    - `event-new-york`: the end reads 18:59 for a visitor in New York.
+    - `event-new-york` and `event-chip-after-end`: past the end, before the end timer has run, the bar link and a chip go on without the code.
+- [x] T26 Tests in `tests/independence.cjs`.
+  - **Stand-in visits** for the running, next and idle states, through a PAGE route (it outranks blocked mode's context abort, as the prices stand-in does). They assert:
+    - the T22 checks at five widths;
+    - the T24 and T25 cases;
+    - the modal opening after 3 s in the no-banner case;
+    - the seal states.
+  - **Consent:** the CI runner is in the US, where the banner does not show. Spike a seam that stubs the consent API without Shopify's own script overwriting it, for example by blocking that script and defining the API in an init script. If no clean seam exists:
+    - CI asserts the fail-closed path;
+    - a local UK run is the reading of record for the real banner.
+  - **Control mode:** a type check of the REAL feed: `active` boolean; `code`, `name` and `endsLabel` strings when active; `endsAt` parseable; `chips` an array when present; `next.name` a string.
+  - **Budget:** under about 60 s added (the preview job takes 5m26s today).
+  - Each new running-state check must FAIL against live today. That is the control.
+  - **Done in pull request A:**
+    - `eventSurfaces` and `eventBarWidths` run 12 visits: next, ended, bad fields, ends now, running, New York, chip after the end, consent, consent blocked, idle, widths and long name; plus, in control mode, a shape check of the real feed.
+    - `ONLY=events` runs just these.
+  - **Measured 2026-11-14, events only, blocked mode:**
+    - **Preview 212371767634:** 59 of 59 pass.
+    - **Live, the control:** 24 of 46 fail, run before the seal's running-state check was added. Every failure is a behaviour this pull request changes. The checks that pass on live cover behaviour live already has: no error from theme code, the idle and planned states, the offer's browse link, and opening after the answer.
+  - **Consent seam:** the real banner is used, with no stub. The branch taken is recorded, so a UK machine reads "banner waiting" and the US runner "no banner waiting". The fail-closed path has its own check that blocks Shopify's scripts.
+  - **Over budget:** the events-only run took 112 to 120 s on this machine, about twice the 60 s budget, mostly page loads plus the 27 s wait in `event-ends-now`. The jobs' limits are 25 minutes (preview) and 20 minutes (daily); the CI time is read from this pull request's run.
+- [x] T27 Records.
+  - `docs/theme-worker-contract.md` §2 row 1 and §3 say what the theme reads after T24 and T25, plus the consent gate and the kill switch.
+  - One `docs/design-improvements.md` entry per change.
+  - The pull request lists the preview's measurements against the baselines above.
+  - **Done in pull request A:**
+    - The contract's §2 row 1 and §3 are rewritten. §3 also states the worker's obligations behind each claim: "everything" means all items with no minimum; `pctOff` is the discount's; `endsAt` is the discount's end.
+    - The changes are recorded in Entries 41 to 43.
+    - The pull request carries a table of every sentence a visitor can read, with its source and how it was checked.
+    - Corrected on the way: comments that stated an unmeasured "10 minutes server-side" cache, and one that said Shopify's redirect strips query strings.
+
+#### Pull request B: after the owner's answers
+
+- [ ] T28 Seal (T20b). Files: `snippets/hero-event-badge.liquid`, and the `sections/hero-commerce.liquid` schema defaults.
+  - The blocked-mode assertion in `tests/independence.cjs` (`/stay cool/`) changes in the same commit, because today it asserts the stale copy.
+  - The seal is `position: absolute` (`assets/theme.css`), so showing it late should not shift layout. Measure it anyway.
+  - **Acceptance:** with the feed blocked, no summer copy shows. With the real feed, nothing stale shows at first paint.
+- [ ] T29 Customers with orders (T20c). Files: `snippets/welcome-modal.liquid`, `assets/theme.js`.
+  - If the answer is yes, the modal renders for them too. Its eyebrow "Welcome to <brand>" no longer fits, so it becomes neutral during events.
+  - Longer term, eligibility comes from the feed (T37).
+  - **Acceptance:** on a preview, a logged-in test customer with an order sees the modal. The owner provides the test customer.
+- [ ] T30 Modal focus. On open, focus the dialog (`tabindex="-1"`, as the details modal does), not the search input; today the input takes focus at every width (measured). Raising the phone keyboard is inferred, not observed. **Acceptance:** after opening, `document.activeElement` is the dialog, and Tab reaches the input.
+- [ ] T31 Preconnect to the worker origin.
+  - Assign the origin once in Liquid in `layout/theme.liquid`, and use it for both `data-storewide-event-src` and `<link rel="preconnect" ... crossorigin>`. The contract allows one worker URL in the theme.
+  - **Acceptance:** the origin literal appears once. On the same probe, the seal repaint comes earlier than today's 589 ms (informational).
+- [ ] T32 Seasonal leftovers.
+  - The welcome chips default and value still say "Cooling mats". Make them evergreen, with copy from the owner.
+  - Remove the orphan `welcome_ends` and `welcome_ends_date` from `config/settings_data.json`. Pull first, because Shopify writes that file.
+  - Replace the badge link default `/collections/keep-them-cool` if T20b chose A.
+- [x] T33 The "everything" wording (T20d), in `assets/theme.js`. Keep it or drop it as decided. Longer term, it follows a scope field in the feed (T37).
+  - **Kept, in pull request A.**
+  - The claim rests on a written condition: `docs/theme-worker-contract.md` §3 says the worker reports an event as running only for a discount on all items with no minimum. The code comments at both places that print "everything" point to it.
+  - `BLACKFRIDAY` meets the condition (read through the Admin API on 2026-11-14). The scope field (T37) remains the longer-term check.
+
+#### Around the event
+
+- [ ] T34 (owner) Merge pull request A by Tue 24 Nov, and pull request B as its answers allow. Deploy freeze from Fri 27 to Mon 30 Nov, except reverts. T21's setting is the off switch.
+  - Since the answers of 2026-11-14, pull request B must also merge by Tue 24 Nov. Until T29 ships, customers with past orders do not see the offer modal, so "customers will see the offer modal regardless" holds during Black Friday only once B is live.
+- [ ] T35 (owner) Start check: soon after 00:00 UTC on Fri 27 Nov, run `gh workflow run independence-daily.yml --ref shopify-deploy`, because the scheduled run is not until 06:17 UTC. Then look at the real bar, seal and modal at desktop and phone width.
+- [ ] T36 End check: after 23:59:59 UTC on Mon 30 Nov, confirm that all three surfaces stop offering the code within about 2 minutes (T25) and that the code is refused.
+
+#### Worker side, routed through the owner
+
+- [ ] T37 (owner) Decide what to ask the worker for. Not posted on the agent channel by the theme agent:
+  - `generatedAt`, the server time of each answer, for T25;
+  - Black Friday `chips`, `headline` and `subline`, if wanted;
+  - a scope field, for the wording in T33;
+  - an eligibility field (all buyers or first order only), for T29;
+  - whether `BLACKFRIDAY` applies in every market. This was not checked, and the feed is the same for every market.
+
+#### Later, not before Black Friday
+
+- [ ] T38 Render the event from Shopify data instead of a browser fetch. The worker writes the running and next event into a shop metafield at start and end, and Liquid renders all three surfaces with the page.
+  - **What it removes:** the stale-copy flash, the late insertion, the 3 s timeout and the cross-origin call.
+  - **Open questions:**
+    - how Shopify's page cache reacts to a metafield write (unverified);
+    - whether the worker's scheduler fires on time at the start and end.
+  - Needs the owner and the worker.
 
 ## 5. Decisions (owner, 2026-09-19)
 
