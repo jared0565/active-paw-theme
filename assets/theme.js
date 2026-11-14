@@ -1214,6 +1214,9 @@ const paintWelcomeModal = (modal, event) => {
       welcomeEventOver = true;
       closeWelcomeModal(false);
     });
+    // A visitor who already closed this event's offer will not see it again,
+    // so Shopify's consent API is not loaded for it.
+    if (welcomeSeen()) return;
     whenConsentBannerClear().then((clear) => {
       if (!clear) return;
       welcomeConsentClear = true;

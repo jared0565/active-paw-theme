@@ -39,10 +39,14 @@ One worker URL in the theme (`layout/theme.liquid`), one proxy prefix (`assets/p
     - Timestamps must be ISO 8601 strings `Date.parse` can read.
     - `chips` must be an array of strings; at most 6 are shown.
   - **What keeps the visitor-facing claims true.** These are the worker's obligations. Each is checked against the Shopify discount where it was read.
-    1. **The word "everything."** The bar line and the offer say "<pct>% off everything", so an event is reported running only for a discount on all items with no minimum. Owner decision, 2026-11-14: keep the word. `BLACKFRIDAY`, read through the Admin API on 2026-11-14, applies to all items with no minimum, to all buyers, once per customer.
+    1. **The word "everything."** The bar line and the offer say "<pct>% off everything", so an event is reported running only for a discount on all items with no minimum. Owner decision, 2026-11-14: keep the word. `BLACKFRIDAY`, read through the Admin API on 2026-11-14, applies to all items with no minimum, to all buyers, once per customer. The store sells no gift cards: 0 of its 318 products, by `productsCount(query: "gift_card:true")`, with `gift_card:false` returning all 318 as the control. A gift card added to the catalogue would need checking against this word before it is published. "Once per customer" is a condition of the discount that no surface states.
     2. **`pctOff`** equals the discount's percentage (15 for `BLACKFRIDAY`). It is compared with the live feed at the event's start (PRD T35).
     3. **`endsAt`** equals the discount's end. The live feed's `next.endsAt`, 2026-11-30T23:59:59.000Z, equalled `BLACKFRIDAY`'s `endsAt` on 2026-11-14. A running payload without `endsAt` shows no end time, and the theme cannot hide it when the event ends.
     4. **`code`** is the discount code itself: the theme sends it through `/discount/<code>`.
+    5. **`name`, `headline`, `subline` and `chips` are shown word for word.**
+       - Where shown: the name on the bar and the seal, the headline and subline in the offer, and the chips as search shortcuts in the offer.
+       - The theme cannot check them. They are the worker's own claims about the discount and must hold for it; for example, a headline may not promise more than `pctOff` or a scope narrower than the discount's.
+       - On 2026-11-14 the live feed sent `active: false` and `next{key, name, startsAt, endsAt, startsLabel, endsLabel}` only. No running payload, headline, subline or chips had been seen yet (PRD T35 reads the first one).
   - **Markets.** The feed is the same for every market. `DiscountCodeBasic` has no market field (schema read 2026-11-14), so the code applying in every market is inferred from the schema and has not been seen at a checkout.
 - `/apps/pawscout/search`: `ok`, `products[{pid,title,image,price,url,currency?,delivery{overseas,days}}]`.
 - `/apps/pawscout/product`: `ok`, `product{pid,title,images,priceFrom,variants[{name}],descriptionText,url,currency?,delivery{overseas,days}|null}`.

@@ -1369,7 +1369,9 @@ Measured on live on 2026-11-14 before writing the rule:
 - **`shouldShowBanner()` stays `true` after the visitor answers,** on the same page and on the next one, so it means "this region shows a banner". "Waiting" therefore also needs `currentVisitorConsent()` to hold no answer yet. It reads `""` for marketing, analytics and preferences before an answer, `"no"` after Decline and `"yes"` after Accept.
 - **The document event `visitorConsentCollected` fires on the answer.**
 
-The rule is waiting = `shouldShowBanner()` and no answer yet. While waiting, the decision is made when the visitor answers. If the API cannot be read within 2 s, the answer is false: neither overlay opens in that page view, and the next one asks again. So where Shopify's consent script is blocked, the welcome offer never opens; that is the accepted trade-off. The API is loaded only when an overlay might open.
+The rule is waiting = `shouldShowBanner()` and no answer yet. While waiting, the decision is made when the visitor answers. If the API cannot be read within 2 s, the answer is false: neither overlay opens in that page view, and the next one asks again. So where Shopify's consent script is blocked, the welcome offer never opens; that is the accepted trade-off. The API is loaded only when an overlay might open:
+- for a running event's offer the visitor has not closed;
+- or, on a small screen, once installing is possible.
 
 ### How it was checked
 - **On the preview, as a UK visitor:** with the banner waiting, the offer stays closed past its 3 s trigger. After Decline it opens within 1.5 s, without the page being reloaded.
@@ -1408,11 +1410,12 @@ PRD phase 5, T24 and T25. The owner's rule (2026-11-14): every claim a person re
 
 ### Claims checked against their sources
 Read on 2026-11-14:
-- **"15% off everything".** `BLACKFRIDAY` in the Admin API is 15%, all items, no minimum, all buyers. The owner chose to keep "everything", and `docs/theme-worker-contract.md` §3 now makes "all items, no minimum" a condition of reporting an event as running.
+- **"15% off everything".** `BLACKFRIDAY` in the Admin API is 15%, all items, no minimum, all buyers. The owner chose to keep "everything", and `docs/theme-worker-contract.md` §3 now makes "all items, no minimum" a condition of reporting an event as running. The store sells no gift cards (0 of 318 products), so no product falls outside "everything".
 - **The end time.** The feed's `endsAt` equals the discount's end, and the time is shown in the visitor's time zone.
 - **"applied automatically when you shop from here".** True on every path, by the route above.
 
 Not established here:
+- the worker's own words: `name`, `headline`, `subline` and `chips` are shown as sent, and contract §3 obligation 5 makes them the worker's claims to keep true. Today's feed sends only the next event's name and dates;
 - whether the code applies in every market (inferred from the discount type having no market field);
 - `pctOff` on a live running payload (none has been sent yet; PRD T35 compares it at the start).
 
