@@ -1258,3 +1258,25 @@
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 39 - 2026-11-14: Dev tooling moves past seven npm advisories that refused every push
+
+### What changed
+- `package.json`: `wrangler` `^4.100.0` -> `^4.156.0`.
+- `package-lock.json`: wrangler 4.145.0 -> 4.156.0 (miniflare 5.20260930.0-alpha -> 5.20261023.3-beta, workerd 1.20260930.2 -> 1.20261023.1, esbuild 0.28.1 -> 0.28.2, sharp 0.35.4 -> 0.35.5, undici 7.29.1 -> 7.30.1); eslint 10.10.0 -> 10.15.0 (@eslint/config-array 0.23.5 -> 0.23.6, minimatch 10.2.6 -> 11.0.8, brace-expansion 5.0.12 -> 5.0.13, new @isaacs/nonrecursive-glob-match 1.1.0); semver 7.8.6, tslib 2.9.1, @jridgewell/resolve-uri 3.1.3. 71 lockfile entries in all, most of them per-platform binaries of esbuild, sharp and workerd.
+
+### Why it changed
+- On 2026-11-14 Aramid's pre-push gate refused a theme fix with seven BLOCK findings, all in dev tooling from advisories published since the last push: minimatch GHSA-g3hv-75wg-m249 (through eslint and @eslint/config-array), sharp GHSA-wq5f-xc86-pv6w and undici GHSA-4qv8-2p9j-2685 plus seven more undici advisories (through wrangler and miniflare). As on 2026-10-01 (Entry 32), the dependencies are fixed rather than the findings overridden. None of these packages reaches the theme: `.shopifyignore` keeps every root file out of the push.
+
+### How it was checked
+- `npm audit`: exit 1 before (seven packages), exit 0 and "found 0 vulnerabilities" after.
+- `npm audit signatures`: 116 packages with verified registry signatures, 39 with verified attestations.
+- Release age, read from the registry: `npm audit fix` alone took wrangler to 4.162.0, published the day before (13 Nov), together with its workerd and miniflare. Wrangler is pinned instead to 4.156.0 (29 Oct), the newest release at least two weeks old whose miniflare is outside the vulnerable range (`<= 5.20261019.2-beta`). eslint 10.15.0 and @eslint/config-array 0.23.6 (13 Nov) and minimatch 11.0.8 (11 Nov) are the only fixed versions, so they stay as fresh as they are.
+- `npm ls`: one deduped copy each of workerd, sharp and undici.
+- `npx eslint .` (7 files linted, 0 errors, 0 warnings), `shopify theme check --fail-level warning` (71 files, no offences), `python -m unittest discover -s tests -t .` (37 tests OK), `npx wrangler --version` 4.156.0.
+
+### Files touched
+- `package.json`, `package-lock.json`, `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
