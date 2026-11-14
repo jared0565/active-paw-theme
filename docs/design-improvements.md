@@ -1442,3 +1442,133 @@ Not established here:
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 44 - 2026-11-14: The hero seal shows only what the event feed confirms
+
+PRD phase 5, T28. Owner decision 2026-11-14 (T20b, option B): the seal stays hidden until the feed answers.
+
+### What changed
+- `snippets/hero-event-badge.liquid` renders the seal hidden and empty.
+- `assets/theme.js` paints it from the feed and reveals it as the paint's last step:
+  - for a running event, its name and offer;
+  - for a planned one, "Next: <name>" and its dates.
+- Anything else leaves it hidden, an unreachable feed included.
+- `sections/hero-commerce.liquid` drops the four settings that fed the old copy (emoji, headline, subline, link). The "Show event badge" switch stays, with a note saying what the seal shows.
+
+### Why it changed
+- Live showed the schema default "Stay cool! / Shop the summer range", linking to `/collections/keep-them-cool`, in November:
+  - whenever the feed was unreachable;
+  - on every home view until the feed answered (measured 2026-11-14: from 360 ms to 589 ms in one run).
+- The blocked independence check asserted that stale copy.
+
+### How it was checked
+- **On preview 212381401426:**
+  - `event-running`: at DOMContentLoaded, with the feed answering 2 s late, the seal is hidden and empty.
+  - `event-next-phone`: at 390 px the planned event shows once the feed answers, with no layout shift (CLS 0). The seal is positioned absolutely at every width (`assets/theme.css`, including the 900 px rule).
+  - `event-next`, `event-running` and `event-idle` keep passing.
+- **The blocked home check** now asserts that the seal is hidden and empty while the feed is unreachable.
+- **On live, the control:** `event-running` fails, with the seal showing "☀️🧊 Stay cool! Shop the summer range" at DOMContentLoaded. `event-next-phone` passes on live too: the seal was already absolutely positioned, so that check guards against a regression rather than proving this change.
+
+### Files touched
+- `snippets/hero-event-badge.liquid`, `sections/hero-commerce.liquid`, `assets/theme.js`, `tests/independence.cjs`, `docs/theme-worker-contract.md`, `docs/design-improvements.md`.
+
+## Entry 45 - 2026-11-14: Customers who have ordered before see the event offer too
+
+PRD phase 5, T29. Owner decision 2026-11-14 (T20c): yes.
+
+### What changed
+- **`snippets/welcome-modal.liquid`:**
+  - no longer skips signed-in customers with orders;
+  - its eyebrow "Welcome to Active Paw" becomes the brand alone, which `assets/theme.js` replaces with the event's name;
+  - the subline is now only the feed's `subline`, since the name moved to the eyebrow;
+  - the close button is named "Close offer".
+- **A once-per-customer code is not offered again.** For a signed-in customer, Liquid lists the discount codes their orders used (`order.discount_applications` of type `discount_code`, first page of up to 20 orders), and the offer stays closed when the running code is on that list.
+
+### Why it changed
+- `BLACKFRIDAY` is open to all buyers (Admin API, 2026-11-14), so skipping returning customers withheld an offer they can use.
+- "Welcome to" no longer fits a returning customer.
+- The code is once per customer, so without the list a customer who used it on Friday could be told on Sunday that it is "applied automatically", and checkout would refuse it.
+
+### How it was checked
+- **On preview 212381401426:**
+  - `event-running`: the eyebrow reads the event's name and no "Welcome to" remains.
+  - `event-code-used`: the page's list is set to `WELCOME10,standincode15` before the feed answers (lowercase, to prove the match ignores case). The offer stays closed and the bar line still shows.
+- **On live, both fail:** the eyebrow reads "Welcome to Active Paw", and the offer opens for the used code.
+- **Not checked:** an offer actually shown to a signed-in customer with an order. The PRD's acceptance needs a test customer from the owner, and the Admin API counts 0 orders. That `title` holds the code itself is inferred from Shopify's docs, not seen.
+- **Not covered:** a guest who used the code can still be offered it in another browser, because Shopify knows a guest only by email at checkout. The same goes for the same browser when the guest applied the code without going through the offer, from the bar's link or at checkout; closing or following the offer is what marks it seen.
+
+### Files touched
+- `snippets/welcome-modal.liquid`, `assets/theme.js`, `config/settings_schema.json` (the switch's note), `tests/independence.cjs`, `docs/theme-worker-contract.md` (§2 row 1, §3 obligation 6), `docs/design-improvements.md`.
+
+## Entry 46 - 2026-11-14: The offer focuses its dialog, and Shift+Tab can no longer leave a modal
+
+PRD phase 5, T30.
+
+### What changed
+- `assets/theme.js` `openWelcomeModal` focuses the dialog (`tabindex="-1"`), as the details modal does, instead of the search field.
+- The shared Tab trap now treats focus on the dialog itself like focus on its first control. Shift+Tab from there goes to the last control instead of leaving the modal.
+
+### Why it changed
+- The search field took focus at every width (measured 2026-11-14), so the offer's heading was not what was announced first.
+- The trap compared only against the first and last controls. A dialog that held focus itself let Shift+Tab escape. Reading the code, that was already true of the details modal, which focuses its dialog on open; the same fix covers it and the contact modal.
+- Whether the phone keyboard rose was inferred, never observed, and is not claimed.
+
+### How it was checked
+On preview 212381401426, `event-running` asserts three things:
+- the offer opens with focus on its dialog;
+- Shift+Tab from the dialog keeps focus inside the offer;
+- two presses of Tab from the dialog reach the search field.
+
+The Shift+Tab check starts from the dialog explicitly, so it tests the trap, not the open. On live the first two checks fail: focus starts in the search field, and Shift+Tab from the dialog leaves the offer.
+
+### Files touched
+- `assets/theme.js`, `tests/independence.cjs`, `docs/design-improvements.md`.
+
+## Entry 47 - 2026-11-14: The browser opens PawScout's connection while the page parses
+
+PRD phase 5, T31.
+
+### What changed
+- `layout/theme.liquid` names PawScout's origin once (`pawscout_origin`) and uses it for:
+  - a `<link rel="preconnect" ... crossorigin>` in the head;
+  - the body's `data-storewide-event-src`.
+
+### Why it changed
+The event fetch starts only after the page is parsed (theme.js is deferred), and the seal, the bar line and the offer all wait for it.
+
+### How it was checked
+- `crossorigin` (anonymous) matches the fetch, which sends no credentials to another origin. This was read from `loadStorewideEvent`, which passes only an abort signal.
+- The origin literal appears once in the theme's files.
+- The blocked home check asserts one matching preconnect, anonymous.
+- **Informational, not proof:** with the real feed, a fresh browser per run and 5 runs per arm, the seal was painted at a median of 536 ms on the preview (497 to 579) against 611 ms on live (470 to 771). The ranges overlap, and a preview page is rendered fresh while live may be served from cache, so the arms differ in more than the preconnect.
+
+### Files touched
+- `layout/theme.liquid`, `tests/independence.cjs`, `docs/design-improvements.md`.
+
+## Entry 48 - 2026-11-14: The offer's search shortcuts stop saying "Cooling mats"
+
+PRD phase 5, T32.
+
+### What changed
+- The default chips are now "Grooming, Teeth cleaning, Cat toys, Litter boxes" (`config/settings_schema.json`, and the snippet's fallback). They were "Cat trees, Cooling mats, Litter boxes, Dog beds".
+- The setting gained a note: pick terms that find products all year round.
+- `config/settings_data.json` loses `welcome_ends` and `welcome_ends_date`. They belonged to a July offer and nothing has read them since 2026-09-18. Live's copy of the file was pulled first and equalled the repo's (same blob).
+- The PRD's deployed table gains #24 to #27.
+
+### Why it changed
+"Cooling mats" was a summer shortcut that found one product.
+
+### How it was checked
+- Live search with the worker blocked (Shopify's own results only), 2026-11-14. Each new chip's top results match the term: Grooming 11, Teeth cleaning 5, Cat toys 13, Litter boxes 3.
+- Measured against the old chips: "Cooling mats" found 1. "Dog beds" found 14, but its top results were dental wipes and a brush.
+- The chips are a proposal: the owner can change them in the Theme Editor (Theme settings, Welcome offer).
+- `settings_data.json` holds no `welcome_chips` value, so the default is what live renders.
+
+### Not changed
+The home page's "Keep Them Cool" collection block (`templates/index.json`: badge "Summer", copy about shade for sunny walks) is the same kind of leftover. That file is written by the Theme Editor and the block is a merchandising choice, so it is left to the owner.
+
+### Files touched
+- `config/settings_schema.json`, `config/settings_data.json`, `snippets/welcome-modal.liquid`, `docs/theme-production-grade-prd.md`, `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.

@@ -528,7 +528,24 @@ const nextDates = (startIso, endIso, timeZone) => {
   return `${when(startIso)} to ${when(endIso)}`;
 };
 // `payload` may be a function, evaluated when the feed is asked, so "ends in 25 s" is relative to the visit.
-const eventStandIn = (payload, { delayMs = 0, dismissWelcome = false, discountAsked = null } = {}) => async (page) => {
+const eventStandIn = (payload, { delayMs = 0, dismissWelcome = false, discountAsked = null, usedCodes = null, viewport = null } = {}) => async (page) => {
+  if (viewport) await page.setViewportSize(viewport);
+  // The seal as the page is parsed, before any feed answer can paint it (PRD T28).
+  await page.addInitScript(() => {
+    document.addEventListener('DOMContentLoaded', () => {
+      const s = document.querySelector('[data-event-badge]');
+      window.__sealAtStart = s ? { hidden: s.hidden, text: s.textContent.replace(/\s+/g, ' ').trim() } : null;
+    });
+  });
+  // Stands in for Liquid's list of codes a signed-in customer's orders used (no such customer exists on the store).
+  if (usedCodes) {
+    await page.addInitScript((codes) => {
+      document.addEventListener('DOMContentLoaded', () => {
+        const m = document.querySelector('[data-welcome-modal]');
+        if (m) m.setAttribute('data-welcome-used-codes', codes);
+      });
+    }, usedCodes);
+  }
   await page.route(EVENT_FEED_RE, async (route) => {
     if (delayMs) await new Promise((resolve) => setTimeout(resolve, delayMs));
     const body = typeof payload === 'function' ? payload() : payload;
@@ -592,7 +609,10 @@ const readModal = () => {
   if (!m) return null;
   const q = (sel) => { const el = m.querySelector(sel); return el ? el.textContent.replace(/\s+/g, ' ').trim() : ''; };
   const browse = m.querySelector('[data-welcome-browse]');
-  return { open: m.classList.contains('is-open'), heading: q('#WelcomeModalTitle'), code: q('.welcome-modal__code strong'), ends: q('.welcome-modal__ends'), text: m.textContent.replace(/\s+/g, ' ').trim(), chips: m.querySelectorAll('[data-welcome-chip]').length, browse: browse ? browse.getAttribute('href') : '' };
+  const dialog = m.querySelector('.welcome-modal__dialog');
+  const active = document.activeElement;
+  // textContent, not innerText: CSS may uppercase the eyebrow.
+  return { open: m.classList.contains('is-open'), eyebrow: q('.welcome-modal__eyebrow'), focus: active === dialog ? 'dialog' : (active && dialog && dialog.contains(active) ? 'inside' : 'outside'), heading: q('#WelcomeModalTitle'), code: q('.welcome-modal__code strong'), ends: q('.welcome-modal__ends'), text: m.textContent.replace(/\s+/g, ' ').trim(), chips: m.querySelectorAll('[data-welcome-chip]').length, browse: browse ? browse.getAttribute('href') : '' };
 };
 const servedByPreview = async (page, rec) => {
   if (!PREVIEW) return;
@@ -651,6 +671,25 @@ async function eventSurfaces(browser) {
     check(rec, 'malformed fields: nothing malformed is printed', modal && !/\[object Object\]|\b42\b/.test(modal.text), modal ? modal.text.slice(0, 160) : 'no modal');
   }, false, eventStandIn(runningEvent({ chips: 'Cat trees', headline: { text: 'x' }, subline: 42, name: 42 })));
 
+  // A signed-in customer whose orders already used this code (the code is once per customer):
+  // the offer stays closed; the bar still announces the event to everyone.
+  await visit(context, 'event-code-used', `${BASE}/`, async (page, rec) => {
+    await servedByPreview(page, rec);
+    await page.waitForTimeout(1500);
+    const modal = await page.evaluate(readModal);
+    const bar = await page.evaluate(readEventBar);
+    check(rec, 'a customer who already used the code is not offered it', modal && !modal.open && bar.visible, `modal ${modal && modal.open}, bar ${bar.visible}`);
+  }, false, eventStandIn(runningEvent(), { delayMs: 1000, usedCodes: `WELCOME10,${EVENT_CODE.toLowerCase()}` }));
+
+  // The seal appearing late on a phone moves nothing (it is positioned absolutely at every width).
+  await visit(context, 'event-next-phone', `${BASE}/`, async (page, rec) => {
+    await servedByPreview(page, rec);
+    const seal = await page.evaluate(readSeal);
+    const cls = await page.evaluate(() => (typeof window.__cls === 'number' ? +window.__cls.toFixed(4) : null)).catch(() => null);
+    check(rec, 'at 390px the seal shows the planned event once the feed answers', seal && !seal.hidden && seal.text.includes(`Next: ${EVENT_NAME}`), seal ? seal.text : 'no seal');
+    check(rec, 'at 390px no layout shift when the seal appears after first paint (CLS below 0.05)', cls !== null && cls < 0.05, `CLS ${cls}`);
+  }, false, eventStandIn({ active: false, next: { key: 'stand-in', name: EVENT_NAME, startsAt: nextStart, endsAt: nextEnd } }, { delayMs: 2000, viewport: { width: 390, height: 844 } }));
+
   // An event that ends while the page is open: everything stating it goes away at the end.
   let endsAt = null;
   await visit(context, 'event-ends-now', `${BASE}/`, async (page, rec) => {
@@ -688,6 +727,23 @@ async function eventSurfaces(browser) {
     const modal = await page.evaluate(readModal);
     check(rec, 'the offer opens with the heading, the code and the end in the visitor\'s time zone', modal && modal.open && modal.heading === '15% off everything' && modal.code === EVENT_CODE && modal.ends === `Ends at ${end}`, modal ? `open ${modal.open}, "${modal.heading}", "${modal.code}", "${modal.ends}"` : 'no modal');
     check(rec, 'the offer\'s browse link applies the code on the way', modal && modal.browse === discountHref(ALL_PRODUCTS), modal ? modal.browse : 'no modal');
+    // T28: before the feed answers (it answers 2 s late here) the seal shows nothing at all.
+    const sealAtStart = await page.evaluate(() => window.__sealAtStart);
+    check(rec, 'before the feed answers, the seal is hidden and states nothing', sealAtStart && sealAtStart.hidden === true, sealAtStart ? `hidden ${sealAtStart.hidden}, "${sealAtStart.text}"` : 'no seal');
+    // T29: the eyebrow names the event and welcomes no one in particular.
+    check(rec, 'the offer\'s eyebrow names the event', modal && modal.eyebrow === EVENT_NAME && !/welcome to/i.test(modal.text), modal ? `"${modal.eyebrow}"` : 'no modal');
+    // T30: the dialog takes focus on open; the Tab trap keeps focus inside from there, and Tab reaches the search field.
+    check(rec, 'the offer focuses its dialog, not the search field', modal && modal.focus === 'dialog', modal ? `focus ${modal.focus}` : 'no modal');
+    // Start from the dialog itself whatever the open did, so this tests the trap, not the open.
+    await page.evaluate(() => { const d = document.querySelector('.welcome-modal__dialog'); if (d) d.focus(); });
+    await page.keyboard.press('Shift+Tab');
+    const back = await page.evaluate(readModal);
+    check(rec, 'Shift+Tab from the dialog stays inside the offer', back && back.focus === 'inside', back ? `focus ${back.focus}` : 'no modal');
+    await page.evaluate(() => { const d = document.querySelector('.welcome-modal__dialog'); if (d) d.focus(); });
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    const reached = await page.evaluate(() => (document.activeElement ? document.activeElement.matches('[data-welcome-input]') : false));
+    check(rec, 'Tab from the dialog reaches the search field', reached, `active ${reached ? 'search field' : 'elsewhere'}`);
     // Last, because it leaves the page: a chip navigates through the discount route with its query kept.
     const chip = await page.locator('[data-welcome-chip]').first().getAttribute('data-welcome-chip').catch(() => null);
     if (chip) {
@@ -860,12 +916,19 @@ async function eventBarWidths(browser) {
 
   const context = await openContext(browser, null);
 
-  // Home: the hero badge must keep its server-rendered copy when the feed is unreachable.
+  // Home: with the feed unreachable the hero seal stays hidden and states nothing (PRD T28).
   await visit(context, 'home', `${BASE}/`, async (page, rec) => {
     const badge = (await text(page, '[data-event-badge]')).replace(/\s+/g, ' ').trim();
     const badgeVisible = await page.locator('[data-event-badge]:visible').count();
-    if (BLOCK) check(rec, 'hero badge keeps the server default', badgeVisible === 1 && /stay cool/i.test(badge), badge);
+    if (BLOCK) check(rec, 'hero seal hidden while the feed is unreachable, with no copy of its own', badgeVisible === 0 && badge === '', `${badgeVisible} visible, "${badge}"`);
     else rec.heroBadge = badge;
+    // T31: one preconnect to PawScout's origin, matching the feed's anonymous fetch.
+    const pre = await page.evaluate(() => {
+      const src = document.body.getAttribute('data-storewide-event-src') || '';
+      const links = Array.from(document.querySelectorAll('link[rel="preconnect"]')).filter((l) => src.startsWith(l.getAttribute('href') || '\u0000'));
+      return { count: links.length, anonymous: links.length === 1 && links[0].crossOrigin === 'anonymous', src };
+    });
+    check(rec, 'one preconnect to the event feed\'s origin, anonymous like the fetch', pre.count === 1 && pre.anonymous, `${pre.count} matching, anonymous ${pre.anonymous}, feed ${pre.src}`);
     // The line is rendered hidden and shows only for a running event, which a blocked feed can never report.
     if (BLOCK) check(rec, 'no announcement event line', (await count(page, '[data-announcement-event]:visible')) === 0);
     check(rec, 'collection showcase cards', (await count(page, '.category-showcase .commerce-grid > *')) > 0);

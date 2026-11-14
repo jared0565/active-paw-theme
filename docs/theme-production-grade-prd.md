@@ -144,7 +144,7 @@ Ordered. Each task names its files and its acceptance check. Tasks marked (owner
 
 ### Deployed after phase 4
 
-Every pull request below was merged by the owner into `shopify-deploy` (the merge is the deploy), tagged, and followed by a green post-deploy independence run against live. Read from GitHub and the tags on 2026-09-24 and 2026-10-01; the change behind each is the named entry in `docs/design-improvements.md`.
+Every pull request below was merged by the owner into `shopify-deploy` (the merge is the deploy), tagged, and followed by a green post-deploy independence run against live. Read from GitHub and the tags on 2026-09-24, 2026-10-01 and 2026-11-14; the change behind each is the named entry in `docs/design-improvements.md`.
 
 | PR | Merged (UTC) | Merge commit | Tag | Post-deploy run | What |
 |---|---|---|---|---|---|
@@ -159,6 +159,10 @@ Every pull request below was merged by the owner into `shopify-deploy` (the merg
 | #21 | 2026-10-01 13:57 | `aac6786` | `release-2026-10-01-2` | 36872682416 | The search check compares the page with itself; Shopify's telemetry CORS line is platform (Entry 33) |
 | #22 | 2026-10-01 14:00 | `1f4b72c` | `release-2026-10-01-3` | 36873032318 | An item stocked only overseas says so, on its card and in its preview (Entry 34); the worker serves overseas cards only once the owner turns its `OVERSEAS_STOREFRONT` switch on |
 | #23 | 2026-10-01 14:03 | `3dc94aa` | `release-2026-10-01-4` | 36873399941 | A refused background request is waited out and retried; a local item's preview gives the market's delivery line; card titles are exactly two lines (Entries 35 to 37) |
+| #24 | 2026-10-01 17:18 | `4948305` | `release-2026-10-01-5` | 36898537565 | Docs: this table names #19 to #23 (Entry 38) |
+| #25 | 2026-11-14 11:44 | `acdc3d6` | `release-2026-11-14-1` | 43591463041 | Dev tooling moves past seven npm advisories that refused every push (Entry 39) |
+| #26 | 2026-11-14 11:45 | `3037a90` | `release-2026-11-14-2` | 43591561978 | The contact page's trading address drops "Office 19589" (Entry 40) |
+| #27 | 2026-11-14 15:25 | `695ba11` | `release-2026-11-14-3` | 43610125529 | Phase 5 pull request A: the storewide event surfaces hold their claims (Entries 41 to 43) |
 
 Number 16 is an issue, not a pull request: a daily run that failed on the browser's message about a Shopify response header, now classified as platform text; closed. Open: issue #18, the storefront answering 503 to one page load from the GitHub runner (three times on 2026-09-23, a different page each time). Since #19 the run asks for a 5xx page once more after 15 s and records the refusal with the headers that say who refused it; the first record (run 35966224773, 2026-09-24) was a 503 with `retry-after: 73`, an `x-request-id` and no `cf-mitigated`, which points at Shopify throttling the runner rather than an edge block. Since #23 the background requests are retried and recorded the same way. The issue stays open until a few more records agree.
 
@@ -316,22 +320,53 @@ Added 2026-11-14 from an audit of the storewide event feature. PawScout's `/publ
 
 #### Pull request B: after the owner's answers
 
-- [ ] T28 Seal (T20b). Files: `snippets/hero-event-badge.liquid`, and the `sections/hero-commerce.liquid` schema defaults.
+- [x] T28 Seal (T20b). Files: `snippets/hero-event-badge.liquid`, and the `sections/hero-commerce.liquid` schema defaults.
   - The blocked-mode assertion in `tests/independence.cjs` (`/stay cool/`) changes in the same commit, because today it asserts the stale copy.
   - The seal is `position: absolute` (`assets/theme.css`), so showing it late should not shift layout. Measure it anyway.
   - **Acceptance:** with the feed blocked, no summer copy shows. With the real feed, nothing stale shows at first paint.
+  - **Done in pull request B (Entry 44).**
+    - The seal is rendered hidden and empty; theme.js reveals it after painting a running or a planned event.
+    - The four settings that fed the old copy are removed. "Show event badge" stays.
+  - **Preview 212381401426:**
+    - at DOMContentLoaded, with the feed 2 s late, the seal is hidden and empty (live shows "Stay cool! Shop the summer range" there);
+    - at 390 px the planned event appears with layout shift 0;
+    - the blocked home check now asserts "hidden and empty".
 - [ ] T29 Customers with orders (T20c). Files: `snippets/welcome-modal.liquid`, `assets/theme.js`.
   - If the answer is yes, the modal renders for them too. Its eyebrow "Welcome to <brand>" no longer fits, so it becomes neutral during events.
   - Longer term, eligibility comes from the feed (T37).
   - **Acceptance:** on a preview, a logged-in test customer with an order sees the modal. The owner provides the test customer.
-- [ ] T30 Modal focus. On open, focus the dialog (`tabindex="-1"`, as the details modal does), not the search input; today the input takes focus at every width (measured). Raising the phone keyboard is inferred, not observed. **Acceptance:** after opening, `document.activeElement` is the dialog, and Tab reaches the input.
-- [ ] T31 Preconnect to the worker origin.
+  - **Built in pull request B (Entry 45); the acceptance is still owed, so this stays open.** What was built:
+    - the modal renders for every customer;
+    - the eyebrow is the brand, replaced by the event's name;
+    - a signed-in customer whose orders already used the running code is not offered it, because `BLACKFRIDAY` is once per customer. Liquid lists `discount_code` applications from the first 20 orders.
+  - **Checked so far:** by reading the code, plus `event-running` (the eyebrow) and `event-code-used` (with a stand-in list of used codes).
+  - **Still owed:**
+    - Seen with a real signed-in customer with an order: needs the owner's test customer. The Admin API counts 0 orders.
+    - That `title` holds the code: inferred from Shopify's docs, not yet seen on an order.
+    - Not covered: a guest who used the code in another browser.
+  - **Contract:** §3 obligation 6, "open to all buyers".
+- [x] T30 Modal focus. On open, focus the dialog (`tabindex="-1"`, as the details modal does), not the search input; today the input takes focus at every width (measured). Raising the phone keyboard is inferred, not observed. **Acceptance:** after opening, `document.activeElement` is the dialog, and Tab reaches the input.
+  - **Done in pull request B (Entry 46).**
+  - The shared Tab trap also treats focus on the dialog like focus on its first control, so Shift+Tab no longer leaves a modal. Reading the code, the details modal had the same gap.
+  - `event-running` on the preview checks three things: focus is on the dialog, Shift+Tab from the dialog stays inside, and Tab twice from the dialog reaches the search field.
+- [x] T31 Preconnect to the worker origin.
   - Assign the origin once in Liquid in `layout/theme.liquid`, and use it for both `data-storewide-event-src` and `<link rel="preconnect" ... crossorigin>`. The contract allows one worker URL in the theme.
   - **Acceptance:** the origin literal appears once. On the same probe, the seal repaint comes earlier than today's 589 ms (informational).
-- [ ] T32 Seasonal leftovers.
+  - **Done in pull request B (Entry 47).**
+    - The origin literal appears once in the theme's files.
+    - The blocked home check asserts one matching anonymous preconnect.
+  - **Informational,** with the real feed in a fresh browser per run, 5 runs per arm alternated: the seal was painted at a median of 536 ms on the preview (497 to 579) against 611 ms on live (470 to 771).
+    - The ranges overlap.
+    - The arms differ in more than the preconnect, because a preview page is rendered fresh, so this is not proof of a gain.
+- [x] T32 Seasonal leftovers.
   - The welcome chips default and value still say "Cooling mats". Make them evergreen, with copy from the owner.
   - Remove the orphan `welcome_ends` and `welcome_ends_date` from `config/settings_data.json`. Pull first, because Shopify writes that file.
   - Replace the badge link default `/collections/keep-them-cool` if T20b chose A.
+  - **Done in pull request B (Entry 48).**
+    - The chips default is now "Grooming, Teeth cleaning, Cat toys, Litter boxes". It is a proposal: each term found matching products on live search, and the owner can change it in the Theme Editor.
+    - The orphan settings are removed; live's copy of the file was pulled first and equalled the repo's.
+    - The badge link setting is gone with T28 (option B): the seal links to all products.
+  - **Left to the owner:** the home page's "Keep Them Cool" block, with badge "Summer" (`templates/index.json`, written by the Theme Editor).
 - [x] T33 The "everything" wording (T20d), in `assets/theme.js`. Keep it or drop it as decided. Longer term, it follows a scope field in the feed (T37).
   - **Kept, in pull request A.**
   - The claim rests on a written condition: `docs/theme-worker-contract.md` §3 says the worker reports an event as running only for a discount on all items with no minimum. The code comments at both places that print "everything" point to it.
@@ -339,7 +374,7 @@ Added 2026-11-14 from an audit of the storewide event feature. PawScout's `/publ
 
 #### Around the event
 
-- [ ] T34 (owner) Merge pull request A by Tue 24 Nov, and pull request B as its answers allow. Deploy freeze from Fri 27 to Mon 30 Nov, except reverts. T21's setting is the off switch.
+- [ ] T34 (owner) Merge pull request A by Tue 24 Nov, and pull request B as its answers allow. Pull request A (#27) merged 2026-11-14 15:25 UTC as `695ba11`, `release-2026-11-14-3`. Deploy freeze from Fri 27 to Mon 30 Nov, except reverts. T21's setting is the off switch.
   - Since the answers of 2026-11-14, pull request B must also merge by Tue 24 Nov. Until T29 ships, customers with past orders do not see the offer modal, so "customers will see the offer modal regardless" holds during Black Friday only once B is live.
 - [ ] T35 (owner) Start check: soon after 00:00 UTC on Fri 27 Nov, run `gh workflow run independence-daily.yml --ref shopify-deploy`, because the scheduled run is not until 06:17 UTC. Then look at the real bar, seal and modal at desktop and phone width.
 - [ ] T36 End check: after 23:59:59 UTC on Mon 30 Nov, confirm that all three surfaces stop offering the code within about 2 minutes (T25) and that the code is refused.
