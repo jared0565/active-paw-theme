@@ -99,7 +99,7 @@ Acceptance: the setting exists in `config/settings_schema.json`; a GB visit show
 2. **Honesty and independence** (R4, R5, R6, R7, R11). Fixes to what customers see; each verified on a preview then merged by the owner.
 3. **Structure** (R8). Consolidation with no visible change; verified by the same Playwright runs.
 4. **Observability** (R9). The daily run and zero-warning theme check.
-5. **Storewide events before Black Friday** (added 2026-11-14). The feed-driven seal, announcement item and welcome offer, fixed and tested before the first real running event on 27 November 2026, and since 2026-11-15 the home collection cards' badge. Tasks T20 to T39 in section 4.
+5. **Storewide events before Black Friday** (added 2026-11-14). The feed-driven seal, announcement item and welcome offer, fixed and tested before the first real running event on 27 November 2026, and since 2026-11-15 the home collection cards' badge and the first block's wording. Tasks T20 to T40 in section 4.
 
 Phase 2's fixes are small and safe on their own; R5 can ship first as a single-line removal.
 
@@ -164,6 +164,7 @@ Every pull request below was merged by the owner into `shopify-deploy` (the merg
 | #26 | 2026-11-14 11:45 | `3037a90` | `release-2026-11-14-2` | 43591561978 | The contact page's trading address drops "Office 19589" (Entry 40) |
 | #27 | 2026-11-14 15:25 | `695ba11` | `release-2026-11-14-3` | 43610125529 | Phase 5 pull request A: the storewide event surfaces hold their claims (Entries 41 to 43) |
 | #28 | 2026-11-14 16:57 | `d51d68c` | `release-2026-11-14-4` | 43618431953 | Phase 5 pull request B: the seal shows only what the feed confirms; customers who have ordered before see the offer (Entries 44 to 48) |
+| #29 | 2026-11-15 01:34 | `71ffa66` | `release-2026-11-15-1` | 43663746301 | Phase 5 pull request C: the home collection cards' badge follows the event; card pills are opaque (Entry 49) |
 
 Number 16 is an issue, not a pull request: a daily run that failed on the browser's message about a Shopify response header, now classified as platform text; closed. Open: issue #18, the storefront answering 503 to one page load from the GitHub runner (three times on 2026-09-23, a different page each time). Since #19 the run asks for a 5xx page once more after 15 s and records the refusal with the headers that say who refused it; the first record (run 35966224773, 2026-09-24) was a 503 with `retry-after: 73`, an `x-request-id` and no `cf-mitigated`, which points at Shopify throttling the runner rather than an edge block. Since #23 the background requests are retried and recorded the same way. The issue stays open until a few more records agree.
 
@@ -389,11 +390,16 @@ Added 2026-11-14 from an audit of the storewide event feature. PawScout's `/publ
     - the event checks pass, including a new arm with the bar switch off; live fails exactly the pill checks;
     - the switch was also measured end to end with the real setting pushed to the preview only, then restored;
     - looked at, at 1280 and 390 px, running and idle.
-  - **Not changed:** Keep Them Cool's title and copy still read as summer, because the owner chose the badge only.
+  - **Not changed:** Keep Them Cool's title and copy still read as summer, because the owner chose the badge only. Done in T40.
+- [x] T40 The first home block's title and copy, and its collection page (owner request 2026-11-15). Files: `templates/index.json`; the collection itself is store data.
+  - The owner asked for winter wording. Winter words over a cooling mat and a "Summer Beach Visor" hat would be a claim the products contradict, and the store had two winter items in stock.
+  - Three options were put to the owner: year-round wording, hiding the block until spring, or a new winter block. **The owner chose year-round wording.**
+  - **Done in pull request D (Entry 50):** the block reads "Fresh Water & Easy Walks / Water fountains, a slip-on travel bowl, and comfy extras for walks and rest."
+  - [ ] After the merge, the collection `keep-them-cool` gets the same title and line through the Shopify connector, so its page stops saying "Beat the heat". Its handle and URL stay. The original title and description are in Entry 50.
 
 #### Around the event
 
-- [ ] T34 (owner) Merge pull request A by Tue 24 Nov, and pull request B as its answers allow. Pull request A (#27) merged 2026-11-14 15:25 UTC as `695ba11`, `release-2026-11-14-3`; pull request B (#28) at 16:57 UTC as `d51d68c`, `release-2026-11-14-4`. Pull request C (T39) also merges by Tue 24 Nov. Deploy freeze from Fri 27 to Mon 30 Nov, except reverts. T21's setting is the off switch for the bar line and, since T39, for the card pills.
+- [ ] T34 (owner) Merge pull request A by Tue 24 Nov, and pull request B as its answers allow. Pull request A (#27) merged 2026-11-14 15:25 UTC as `695ba11`, `release-2026-11-14-3`; pull request B (#28) at 16:57 UTC as `d51d68c`, `release-2026-11-14-4`. Pull request C (#29) merged 2026-11-15 01:34 UTC as `71ffa66`, `release-2026-11-15-1`; pull request D (T40) also merges by Tue 24 Nov. Deploy freeze from Fri 27 to Mon 30 Nov, except reverts. T21's setting is the off switch for the bar line and, since T39, for the card pills.
   - Since the answers of 2026-11-14, pull request B must also merge by Tue 24 Nov. Until T29 ships, customers with past orders do not see the offer modal, so "customers will see the offer modal regardless" holds during Black Friday only once B is live.
 - [ ] T35 (owner) Start check: soon after 00:00 UTC on Fri 27 Nov, run `gh workflow run independence-daily.yml --ref shopify-deploy`, because the scheduled run is not until 06:17 UTC. Then look at the real bar, seal, modal and home card pills (T39) at desktop and phone width.
 - [ ] T36 End check: after 23:59:59 UTC on Mon 30 Nov, confirm that the bar, the seal and the offer stop offering the code, and the home card pills go back to their own badges, within about 2 minutes (T25), and that the code is refused.
