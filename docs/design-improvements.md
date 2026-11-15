@@ -1572,3 +1572,61 @@ The home page's "Keep Them Cool" collection block (`templates/index.json`: badge
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 49 - 2026-11-15: The home collection cards' badge follows the storewide event
+
+PRD phase 5, T39 (owner request 2026-11-15).
+
+### What changed
+- **While an event runs,** the pill on every home collection card reads "<pct>% off with code", built from the feed's `pctOff`. For `BLACKFRIDAY` that is "15% off with code".
+  - This covers every block of the home page's "Collection showcase" section. Cards on collection, search, article and product pages are unchanged.
+  - Sold out and Save % keep their place on a card; only the merchandising pill follows the event.
+  - With no `pctOff` in the feed, the pills are left alone, because there is no short offer to state.
+- **At the event's end,** on a page that is still open, each pill goes back to its block's own badge, or to none, as the bar, seal and offer stop at the end.
+- **The bar's switch covers the pills.** They follow the announcement bar's "Show the running storewide event" setting (T21), the rollback during an event that needs no deploy.
+  - With it off, the bar line is not rendered and the cards keep their own badges, so one switch takes the offer off both.
+  - With it on, the bar line names the code the pills refer to.
+  - Both settings' info texts in the Theme Editor say so.
+- **Outside an event,** the "Keep Them Cool" block shows no pill: its badge "Summer" is now empty in `templates/index.json`. Live's copy of that file was pulled first and was the same blob as the repo's.
+- **The block's badge setting loses its default "Popular pick".** An empty badge now means no pill on these cards. The other blocks keep their own badges (Cleaning, Accessory, Care, Play), and cards elsewhere keep "Popular pick" as their fallback.
+- **Every card pill is opaque white now,** sold out and Save % included (`assets/theme.css`, `.commerce-media span`).
+  - It was 92% white, so the photo showed through.
+  - Measured on the home cards on 2026-11-15, the darkest photo pixel under a pill took the 12px green text to 4.42 to 1, under the 4.5 to 1 that AA asks of small text. At 360 px, 13 of 22 pills were under 4.5.
+  - On white the text is 5.26 to 1 whatever the photo.
+  - This also affects cards on other pages, which use the same rule.
+- **How it is built.**
+  - `snippets/product-card-commerce.liquid` gains an `event_badge` parameter, which only `sections/category-showcase.liquid` passes.
+  - With it, the pill carries `data-event-card-badge` and its own badge in `data-default-badge`, and is hidden when the badge is empty.
+  - `assets/theme.js` paints the pills from the same single feed fetch as the other surfaces.
+
+### Why it changed
+The owner wrote on 2026-11-15: "Badge message must change in line with the current event." The Keep Them Cool cards said "Summer" in November. Asked what they should say outside an event, the owner chose no badge.
+
+### What the claim rests on
+- **Every card.** "15% off with code" on every card holds because the worker reports an event as running only for a discount on all items with no minimum (`docs/theme-worker-contract.md` §3, obligation 1). The percentage is the feed's `pctOff` (obligation 2).
+- **Every visitor.** Like the bar line and the seal, the pill is shown to every visitor. That includes a signed-in customer whose orders already used the code; only the offer modal is withheld from them (T29). "Once per customer" is a condition of the discount that no surface states (contract §3).
+
+### How it was checked
+All on preview 212415775058 with a stand-in feed, 2026-11-15. The home page carries 23 pills: Keep Them Cool 4, Cleaning 4, Accessory 4, Care 7, Play 4. The rest of its cards show Sold out or Save %.
+- **The event checks** (`ONLY=events`): 78 of 78 pass on the final preview. Live, run as the control, fails exactly the four pill checks, because it has no pills to read (59 of 63).
+  - Running: all 23 read "15% off with code".
+  - Idle, and at an end passing on an open page: each pill shows its own badge, and Keep Them Cool's 4 show none.
+- **The bar switch.**
+  - The new `event-bar-off` arm serves the home page without the bar line, as Liquid renders it with the switch off.
+  - Before the pills followed the switch, the arm failed on this preview: 23 pills read the offer while the seal confirmed the event was running. After, it passes.
+  - End to end, as T21 was measured: with `event_bar_enabled: false` pushed to the preview only, the bar line was not rendered, the seal stated the running offer, and every pill kept its own badge.
+  - With the committed settings pushed back (no key, so on), the bar line was rendered and all 23 pills read the offer. The preview's files were then compared with the commit by blob id: the same.
+- **The look,** with a scrollbar, at 1280, 390, 360 and 320 px.
+  - From 360 px up, every pill is on one line inside its photo; the widest is 124 px on a 143 px photo at 360.
+  - At 320 the pill wraps to two lines and reaches the photo's right edge, without being cut. That width is informational, as it is for the bar.
+  - Screenshots at 1280 and 390 were looked at, running and idle.
+- **Contrast** was measured on the darkest photo pixel under each pill, laid under the pill's computed background. At 92% white it was 4.42 to 5.26 to 1; opaque, it is 5.26 to 1 for all 22 pills in view at every width.
+
+### Not changed
+The Keep Them Cool block's title and copy ("Cooling beds and mats, flowing water fountains, and shade for sunny walks.") still read as summer, because the owner chose the badge only. This replaces Entry 48's "Not changed" note for the badge.
+
+### Files touched
+- `snippets/product-card-commerce.liquid`, `sections/category-showcase.liquid`, `sections/announcement-bar.liquid`, `templates/index.json`, `assets/theme.js`, `assets/theme.css`, `tests/independence.cjs`, `docs/theme-production-grade-prd.md`, `docs/theme-worker-contract.md`, `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.

@@ -528,8 +528,23 @@ const nextDates = (startIso, endIso, timeZone) => {
   return `${when(startIso)} to ${when(endIso)}`;
 };
 // `payload` may be a function, evaluated when the feed is asked, so "ends in 25 s" is relative to the visit.
-const eventStandIn = (payload, { delayMs = 0, dismissWelcome = false, discountAsked = null, usedCodes = null, viewport = null } = {}) => async (page) => {
+const eventStandIn = (payload, { delayMs = 0, dismissWelcome = false, discountAsked = null, usedCodes = null, viewport = null, barOff = false } = {}) => async (page) => {
   if (viewport) await page.setViewportSize(viewport);
+  // The home page as Liquid renders it with the bar's "Show the running storewide event"
+  // switch off (PRD T21): no event line at all. T21 measured that the setting removes the
+  // line; this serves that page without touching the theme's settings.
+  if (barOff) {
+    await page.route((url) => url.pathname === '/', async (route) => {
+      if (route.request().resourceType() !== 'document') return route.fallback();
+      const response = await route.fetch();
+      const html = await response.text();
+      const body = html.replace(/<div class="announcement-event" data-announcement-event[^>]*>[\s\S]*?<\/div>/, '');
+      const headers = { ...response.headers() };
+      delete headers['content-encoding'];
+      delete headers['content-length'];
+      return route.fulfill({ status: response.status(), headers, body });
+    });
+  }
   // The seal as the page is parsed, before any feed answer can paint it (PRD T28).
   await page.addInitScript(() => {
     document.addEventListener('DOMContentLoaded', () => {
@@ -598,6 +613,15 @@ const barLayoutProblems = (b) => {
   if (b.icon && b.icon.r > b.offer.l + 1) out.push('icon not before the offer');
   if (!b.codeWhole || b.code.l < b.link.l - 1 || b.code.r > b.link.r + 1) out.push('code cut');
   return out;
+};
+// The pills on home collection cards that follow the event (PRD T39), with each block's own badge.
+const readCardPills = () => Array.from(document.querySelectorAll('[data-event-card-badge]'))
+  .map((p) => ({ text: p.textContent.trim(), own: p.getAttribute('data-default-badge') || '', hidden: p.hidden }));
+const pillsAtOwn = (pills) => pills.length > 0 && pills.every((p) => p.text === p.own && p.hidden === !p.own && !/off with code/.test(p.text));
+const pillSummary = (pills) => {
+  const counts = {};
+  for (const p of pills) { const k = p.hidden ? '(none)' : p.text; counts[k] = (counts[k] || 0) + 1; }
+  return `${pills.length} pills: ${Object.entries(counts).map(([k, n]) => `${k} x${n}`).join(', ') || 'none'}`;
 };
 const readSeal = () => {
   const s = document.querySelector('[data-event-badge]');
@@ -701,7 +725,22 @@ async function eventSurfaces(browser) {
     const modal = await page.evaluate(readModal);
     const seal = await page.evaluate(readSeal);
     check(rec, 'at its end the bar line, the open offer and the seal offer go away without a reload', !bar.visible && !(modal && modal.open) && !(seal && !seal.hidden && seal.text.includes(EVENT_CODE)), `bar ${bar.visible}, modal ${modal && modal.open}, seal ${seal ? (seal.hidden ? 'hidden' : seal.text) : 'none'}`);
+    const pills = await page.evaluate(readCardPills);
+    check(rec, 'at its end every card pill goes back to its block\'s own badge, or to none', pillsAtOwn(pills), pillSummary(pills));
   }, false, eventStandIn(() => { endsAt = new Date(Date.now() + 25000).toISOString(); return runningEvent({ endsAt }); }));
+
+  // The bar's switch (T21) is the no-deploy rollback during an event, so it takes the offer
+  // off the card pills too (T39). The seal has its own setting and still shows the offer here,
+  // which proves the event was running while the pills kept their own badges.
+  await visit(context, 'event-bar-off', `${BASE}/`, async (page, rec) => {
+    await servedByPreview(page, rec);
+    const bar = await page.evaluate(readEventBar);
+    const seal = await page.evaluate(readSeal);
+    check(rec, 'bar switch off: no bar line is rendered, and the seal still states the running offer', !bar.rendered && seal && !seal.hidden && seal.state === 'active' && seal.text.includes(EVENT_CODE), `bar rendered ${bar.rendered}, seal ${seal ? (seal.hidden ? 'hidden' : seal.text) : 'none'}`);
+    const pills = await page.evaluate(readCardPills);
+    check(rec, 'bar switch off: every card pill keeps its block\'s own badge, or none, while the event runs', pillsAtOwn(pills), pillSummary(pills));
+  // No dismissWelcome: it is stored for the whole context and would keep event-running's offer closed.
+  }, false, eventStandIn(runningEvent(), { barOff: true }));
 
   // A running event, answering 2 s late so the line lands after first paint, as it does for real.
   const discountAsked = [];
@@ -724,6 +763,9 @@ async function eventSurfaces(browser) {
     const sealBase = `15% off with code ${EVENT_CODE}`;
     const sealOffer = `${sealBase} until ${end}`.length <= 52 ? `${sealBase} until ${end}` : sealBase;
     check(rec, 'the seal names the running event and states its offer', seal && !seal.hidden && seal.state === 'active' && seal.text.includes(EVENT_NAME) && seal.text.endsWith(sealOffer), seal ? `"${seal.text}" :: expected to end "${sealOffer}"` : 'no seal');
+    // T39: every home collection card's pill states the event's offer while it runs.
+    const pills = await page.evaluate(readCardPills);
+    check(rec, 'every home collection card pill reads "15% off with code" while the event runs', pills.length > 0 && pills.every((p) => !p.hidden && p.text === '15% off with code'), pillSummary(pills));
     const modal = await page.evaluate(readModal);
     check(rec, 'the offer opens with the heading, the code and the end in the visitor\'s time zone', modal && modal.open && modal.heading === '15% off everything' && modal.code === EVENT_CODE && modal.ends === `Ends at ${end}`, modal ? `open ${modal.open}, "${modal.heading}", "${modal.code}", "${modal.ends}"` : 'no modal');
     check(rec, 'the offer\'s browse link applies the code on the way', modal && modal.browse === discountHref(ALL_PRODUCTS), modal ? modal.browse : 'no modal');
@@ -881,6 +923,8 @@ async function eventBarWidths(browser) {
     const widths = await sweep(page);
     for (const w of EVENT_WIDTHS) idle[w] = widths[w].barHeight;
     check(rec, 'nothing running: no bar line at any width', EVENT_WIDTHS.every((w) => !widths[w].visible), EVENT_WIDTHS.map((w) => `${w}:${widths[w].barHeight}px`).join(' '));
+    const pills = await page.evaluate(readCardPills);
+    check(rec, 'nothing running: each card pill shows its block\'s own badge, or none', pillsAtOwn(pills), pillSummary(pills));
   }, false, eventStandIn({ active: false }));
   for (const [name, label] of [[EVENT_NAME, 'event-widths'], [EVENT_LONG_NAME, 'event-long-name']]) {
     await visit(context, label, `${BASE}/`, async (page, rec) => {
