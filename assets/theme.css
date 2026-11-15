@@ -901,7 +901,11 @@ p { line-height: 1.6; }
   top: 12px;
   border-radius: 999px;
   padding: 7px 10px;
-  background: rgba(255,255,255,0.92);
+  /* Opaque, so the photo never shows through. At 92% white, the darkest photo
+     pixel under a pill took the 12px green text to 4.42 to 1, under the 4.5 to 1
+     that AA asks of small text (measured on the home cards 2026-11-15, Entry 49);
+     on white it is 5.26 to 1 whatever the photo. */
+  background: #fff;
   color: var(--green);
   font-size: 12px;
   font-weight: 900;

@@ -7,6 +7,9 @@ purchase action:
   - not available              -> "Out of stock" state + media badge, dimmed image
 @param {product} product - Product to render
 @param {string} badge - Short merchandising badge (replaced by Sold out / Save % when applicable)
+@param {boolean} [event_badge] - Home collection cards: the badge may be empty (no pill), and
+  while a storewide event runs theme.js shows the event's offer in it instead, unless the
+  announcement bar's event switch is off (PRD T39, T21)
 {% enddoc %}
 
 {% liquid
@@ -45,6 +48,9 @@ purchase action:
           <span class="commerce-badge-soldout">Sold out</span>
         {% elsif on_sale %}
           <span class="commerce-badge-sale">Save {{ discount_pct }}%</span>
+        {% elsif event_badge %}
+          {%- comment -%} Sold out and Save % keep priority; only the merchandising pill follows the event. {%- endcomment -%}
+          <span data-event-card-badge data-default-badge="{{ badge | escape }}"{% if badge == blank %} hidden{% endif %}>{{ badge }}</span>
         {% else %}
           <span>{{ badge | default: 'Popular pick' }}</span>
         {% endif %}

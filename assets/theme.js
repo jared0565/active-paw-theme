@@ -1041,6 +1041,42 @@ const whenConsentBannerClear = () => {
   });
 })();
 
+/* ---------------- Home collection cards: the event's offer in the badge ---------------- */
+// While an event runs, the pill on every home collection card reads
+// "<pct>% off with code" (owner decision 2026-11-15, PRD T39); at the event's
+// end each pill goes back to its block's own badge, or to none. True for every
+// card because the worker reports an event as running only for a discount on
+// all items with no minimum (docs/theme-worker-contract.md §3). Sold out and
+// Save % pills are not touched (Liquid renders the slot only where neither
+// applies). No percentage, no pill change: there is no short offer to state.
+// The pills follow the announcement bar's "Show the running storewide event"
+// switch (PRD T21), the rollback during an event that needs no deploy: with it
+// off the bar line is not rendered, and the cards keep their own badges too.
+// With it on, the bar line states the code the pills refer to.
+(() => {
+  const pills = Array.from(document.querySelectorAll('[data-event-card-badge]'));
+  if (!pills.length || !document.querySelector('[data-announcement-event]')) return;
+  loadStorewideEvent().then((event) => {
+    if (!storewideEventRunning(event)) return;
+    const pct = storewidePctOff(event);
+    if (!pct) return;
+    const shown = paintEventSafely('collection card badges', () => {
+      pills.forEach((pill) => {
+        pill.textContent = `${pct}% off with code`;
+        pill.hidden = false;
+      });
+    });
+    if (!shown) return;
+    atEventEnd(event, () => {
+      pills.forEach((pill) => {
+        const own = pill.getAttribute('data-default-badge') || '';
+        pill.textContent = own;
+        pill.hidden = !own;
+      });
+    });
+  });
+})();
+
 /* ---------------- Welcome offer modal (event slot) ---------------- */
 // Shows once per browser per event: after 3 seconds or the visitor's first
 // scroll, whichever comes first - never instantly on load (mobile interstitial

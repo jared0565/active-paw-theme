@@ -99,7 +99,7 @@ Acceptance: the setting exists in `config/settings_schema.json`; a GB visit show
 2. **Honesty and independence** (R4, R5, R6, R7, R11). Fixes to what customers see; each verified on a preview then merged by the owner.
 3. **Structure** (R8). Consolidation with no visible change; verified by the same Playwright runs.
 4. **Observability** (R9). The daily run and zero-warning theme check.
-5. **Storewide events before Black Friday** (added 2026-11-14). The feed-driven seal, announcement item and welcome offer, fixed and tested before the first real running event on 27 November 2026. Tasks T20 to T38 in section 4.
+5. **Storewide events before Black Friday** (added 2026-11-14). The feed-driven seal, announcement item and welcome offer, fixed and tested before the first real running event on 27 November 2026, and since 2026-11-15 the home collection cards' badge. Tasks T20 to T39 in section 4.
 
 Phase 2's fixes are small and safe on their own; R5 can ship first as a single-line removal.
 
@@ -144,7 +144,7 @@ Ordered. Each task names its files and its acceptance check. Tasks marked (owner
 
 ### Deployed after phase 4
 
-Every pull request below was merged by the owner into `shopify-deploy` (the merge is the deploy), tagged, and followed by a green post-deploy independence run against live. Read from GitHub and the tags on 2026-09-24, 2026-10-01 and 2026-11-14; the change behind each is the named entry in `docs/design-improvements.md`.
+Every pull request below was merged by the owner into `shopify-deploy` (the merge is the deploy), tagged, and followed by a green post-deploy independence run against live. Read from GitHub and the tags on 2026-09-24, 2026-10-01, 2026-11-14 and 2026-11-15; the change behind each is the named entry in `docs/design-improvements.md`.
 
 | PR | Merged (UTC) | Merge commit | Tag | Post-deploy run | What |
 |---|---|---|---|---|---|
@@ -163,6 +163,7 @@ Every pull request below was merged by the owner into `shopify-deploy` (the merg
 | #25 | 2026-11-14 11:44 | `acdc3d6` | `release-2026-11-14-1` | 43591463041 | Dev tooling moves past seven npm advisories that refused every push (Entry 39) |
 | #26 | 2026-11-14 11:45 | `3037a90` | `release-2026-11-14-2` | 43591561978 | The contact page's trading address drops "Office 19589" (Entry 40) |
 | #27 | 2026-11-14 15:25 | `695ba11` | `release-2026-11-14-3` | 43610125529 | Phase 5 pull request A: the storewide event surfaces hold their claims (Entries 41 to 43) |
+| #28 | 2026-11-14 16:57 | `d51d68c` | `release-2026-11-14-4` | 43618431953 | Phase 5 pull request B: the seal shows only what the feed confirms; customers who have ordered before see the offer (Entries 44 to 48) |
 
 Number 16 is an issue, not a pull request: a daily run that failed on the browser's message about a Shopify response header, now classified as platform text; closed. Open: issue #18, the storefront answering 503 to one page load from the GitHub runner (three times on 2026-09-23, a different page each time). Since #19 the run asks for a 5xx page once more after 15 s and records the refusal with the headers that say who refused it; the first record (run 35966224773, 2026-09-24) was a 503 with `retry-after: 73`, an `x-request-id` and no `cf-mitigated`, which points at Shopify throttling the runner rather than an edge block. Since #23 the background requests are retried and recorded the same way. The issue stays open until a few more records agree.
 
@@ -367,17 +368,35 @@ Added 2026-11-14 from an audit of the storewide event feature. PawScout's `/publ
     - The orphan settings are removed; live's copy of the file was pulled first and equalled the repo's.
     - The badge link setting is gone with T28 (option B): the seal links to all products.
   - **Left to the owner:** the home page's "Keep Them Cool" block, with badge "Summer" (`templates/index.json`, written by the Theme Editor).
+    - Decided 2026-11-15: no badge outside an event, and the event's offer during one (T39). The block's title and copy are unchanged.
 - [x] T33 The "everything" wording (T20d), in `assets/theme.js`. Keep it or drop it as decided. Longer term, it follows a scope field in the feed (T37).
   - **Kept, in pull request A.**
   - The claim rests on a written condition: `docs/theme-worker-contract.md` §3 says the worker reports an event as running only for a discount on all items with no minimum. The code comments at both places that print "everything" point to it.
   - `BLACKFRIDAY` meets the condition (read through the Admin API on 2026-11-14). The scope field (T37) remains the longer-term check.
 
+#### Pull request C: owner request of 2026-11-15
+
+- [x] T39 The home collection cards' badge follows the event. Files: `snippets/product-card-commerce.liquid`, `sections/category-showcase.liquid`, `templates/index.json`, `assets/theme.js`, `assets/theme.css`.
+  - The owner, 2026-11-15: "Badge message must change in line with the current event." Answers the same day:
+    - during an event, the pill reads "15% off with code", built from `pctOff`;
+    - every home collection block;
+    - outside an event, Keep Them Cool shows no badge, and the other blocks keep theirs.
+  - **Done in pull request C (Entry 49).**
+    - The pills follow T21's switch: with the bar line not rendered, the cards keep their own badges.
+    - Sold out and Save % keep priority.
+    - Every card pill became opaque, because a dark photo took its text to 4.42 to 1.
+  - **Preview 212415775058:**
+    - the event checks pass, including a new arm with the bar switch off; live fails exactly the pill checks;
+    - the switch was also measured end to end with the real setting pushed to the preview only, then restored;
+    - looked at, at 1280 and 390 px, running and idle.
+  - **Not changed:** Keep Them Cool's title and copy still read as summer, because the owner chose the badge only.
+
 #### Around the event
 
-- [ ] T34 (owner) Merge pull request A by Tue 24 Nov, and pull request B as its answers allow. Pull request A (#27) merged 2026-11-14 15:25 UTC as `695ba11`, `release-2026-11-14-3`. Deploy freeze from Fri 27 to Mon 30 Nov, except reverts. T21's setting is the off switch.
+- [ ] T34 (owner) Merge pull request A by Tue 24 Nov, and pull request B as its answers allow. Pull request A (#27) merged 2026-11-14 15:25 UTC as `695ba11`, `release-2026-11-14-3`; pull request B (#28) at 16:57 UTC as `d51d68c`, `release-2026-11-14-4`. Pull request C (T39) also merges by Tue 24 Nov. Deploy freeze from Fri 27 to Mon 30 Nov, except reverts. T21's setting is the off switch for the bar line and, since T39, for the card pills.
   - Since the answers of 2026-11-14, pull request B must also merge by Tue 24 Nov. Until T29 ships, customers with past orders do not see the offer modal, so "customers will see the offer modal regardless" holds during Black Friday only once B is live.
-- [ ] T35 (owner) Start check: soon after 00:00 UTC on Fri 27 Nov, run `gh workflow run independence-daily.yml --ref shopify-deploy`, because the scheduled run is not until 06:17 UTC. Then look at the real bar, seal and modal at desktop and phone width.
-- [ ] T36 End check: after 23:59:59 UTC on Mon 30 Nov, confirm that all three surfaces stop offering the code within about 2 minutes (T25) and that the code is refused.
+- [ ] T35 (owner) Start check: soon after 00:00 UTC on Fri 27 Nov, run `gh workflow run independence-daily.yml --ref shopify-deploy`, because the scheduled run is not until 06:17 UTC. Then look at the real bar, seal, modal and home card pills (T39) at desktop and phone width.
+- [ ] T36 End check: after 23:59:59 UTC on Mon 30 Nov, confirm that the bar, the seal and the offer stop offering the code, and the home card pills go back to their own badges, within about 2 minutes (T25), and that the code is refused.
 
 #### Worker side, routed through the owner
 

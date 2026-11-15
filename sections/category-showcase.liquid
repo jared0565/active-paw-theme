@@ -24,7 +24,7 @@
       {% capture block_cards %}
         {% for product in collection.products limit: section.settings.max_products %}
           <div class="{% if forloop.index > visible_limit %}is-extra-product{% endif %}">
-            {% render 'product-card-commerce', product: product, badge: block.settings.badge %}
+            {% render 'product-card-commerce', product: product, badge: block.settings.badge, event_badge: true %}
           </div>
           {% assign rendered_products = rendered_products | plus: 1 %}
         {% endfor %}
@@ -76,7 +76,7 @@
       "settings": [
         { "type": "text", "id": "title", "label": "Title", "default": "Pet Cleaning" },
         { "type": "textarea", "id": "body", "label": "Body", "default": "Curated picks for easy browsing and confident buying." },
-        { "type": "text", "id": "badge", "label": "Product badge", "default": "Popular pick" },
+        { "type": "text", "id": "badge", "label": "Product badge", "info": "The pill on each product photo in this block. Leave it empty for none. While PawScout reports a storewide event as running, every card here shows the event's offer instead, e.g. \"15% off with code\", unless the announcement bar's \"Show the running storewide event\" setting is off." },
         { "type": "collection", "id": "collection", "label": "Collection" }
       ]
     }
