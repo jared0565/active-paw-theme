@@ -1630,3 +1630,47 @@ The Keep Them Cool block's title and copy ("Cooling beds and mats, flowing water
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 50 - 2026-11-15: The first home block stops talking about summer
+
+PRD phase 5, T40 (owner request 2026-11-15).
+
+### What changed
+- **The home page's first collection block** (`templates/index.json`, block `cool`):
+  - title "Keep Them Cool" becomes "Fresh Water & Easy Walks";
+  - the line "Cooling beds and mats, flowing water fountains, and shade for sunny walks." becomes "Water fountains, a slip-on travel bowl, and comfy extras for walks and rest."
+  - Its anchor follows the title, so it is now `#category-fresh-water-easy-walks`. Nothing in the theme or the tests linked to the old one.
+  - Live's copy of the file was pulled first and was the same blob as the repo's.
+- **After the merge, the collection itself** (store data, through the Shopify connector) gets the same title and line, so its page stops saying "Beat the heat".
+  - The handle and URL `/collections/keep-them-cool` stay.
+  - The originals, kept here for a return in spring:
+    - title "Keep Them Cool";
+    - description `<p>Beat the heat together: cooling beds and mats, fresh flowing water, and shade for sunny walks.</p>`.
+  - Its SEO title and description are empty, so search results take the title and description.
+  - No menu names the collection (all three menus read on 2026-11-15).
+
+### Why it changed
+- The owner asked for "the winter wording". The block shows the `keep-them-cool` collection, which held 6 active products on 2026-11-15, 2 of them out of stock: two water fountains, a slip-on water bowl, a "Summer Beach Visor" dog hat, a cooling mat and a mesh carrier.
+- Winter words over a cooling mat and a beach visor would be a claim the products contradict. The store had two winter items in stock: a plush Christmas toy and a plush car booster bed.
+- Three ways were put to the owner: year-round wording, hiding the block until spring, or a new winter block. The owner chose year-round wording.
+
+### What the wording rests on
+- **"Water fountains":** the collection holds two.
+- **"a slip-on travel bowl":** the product's own description says "simply slip it over most bottle necks". The draft the owner approved said "clip-on", which the product does not support, so the product's word is used.
+- **"comfy extras for walks and rest":** the hat and the carrier are for walks, and the mat is for rest.
+
+### How it was checked
+- **Preview 212418036050, at 1280 and 390 px:**
+  - the block reads the new title and line, and the heading stays on one line;
+  - the home page's main text holds none of "Keep Them Cool", "Cooling beds", "sunny walks" or "Beat the heat", while live, the control, holds three of them;
+  - the "View collection" link still goes to `/collections/keep-them-cool`;
+  - looked at.
+- **Collection-page pills.** Each card pill there shows the collection's title.
+  - Measured on live by putting the new title into the pills in a test browser only: one line at 1280, and two lines at 390, 360 and 320, inside the photo.
+  - "Keep Them Cool" fits one line at every width. The two-line pill was looked at, at 390.
+
+### Files touched
+- `templates/index.json`, `docs/theme-production-grade-prd.md` (T40, and the deployed table gains #29), `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
