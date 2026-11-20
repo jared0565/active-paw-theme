@@ -358,7 +358,10 @@ const DOUBLE_ESCAPED_RE = /&amp;(?:amp|quot|lt|gt|#39|#x27);/;
 const ENTITY_RE = /&(?:amp|quot|lt|gt|#39|#x27);/;
 const decodeAttr = (s) => s.replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 const SHARE_META_RE = /<meta (?:property|name)="(og:title|twitter:title|og:description|twitter:description|description|og:image:alt|twitter:image:alt)" content="([^"]*)"/g;
-const SHARE_LINK_RE = /href="((?:https:\/\/twitter\.com\/intent\/tweet|https:\/\/pinterest\.com\/pin\/create\/button\/|https:\/\/wa\.me\/|mailto:)\?[^"]*)"/g;
+// The affiliate form's title, set by the layout (Entry 59). The worker's script sets the same
+// words as document.title, so they must match the worker's.
+const AFFILIATE_TITLE = 'Apply to the Partner Program';
+const SHARE_LINK_RE =/href="((?:https:\/\/twitter\.com\/intent\/tweet|https:\/\/pinterest\.com\/pin\/create\/button\/|https:\/\/wa\.me\/|mailto:)\?[^"]*)"/g;
 async function shareMarkup(context) {
   const pick = async (label, url, key) => {
     const r = await backgroundRequest(context, label, 'get', url);
@@ -1280,6 +1283,23 @@ async function eventBarWidths(browser) {
   // (with the worker blocked it cannot render, which the owner accepted).
   await visit(context, 'affiliate', `${BASE}/apps/pawscout/affiliate/apply`, async (page, rec) => {
     check(rec, 'affiliate form renders (worker dependency, informational)', rec.status === 200, `status ${rec.status}`, false);
+    // The form's title is the theme's (Entry 59): Shopify gives an app-proxy page the shop's name
+    // as page_title, and a shared link's preview reads the HTML as served, never the worker's
+    // document.title, so the title is read from the served HTML. It needs the page rendered,
+    // which it is not while the worker is blocked.
+    if (rec.status !== 200) return;
+    const r = await backgroundRequest(context, 'affiliate html', 'get', rec.url);
+    const html = await r.text();
+    const themeId = (html.match(/Shopify\.theme\s*=\s*\{[^}]*?"id":(\d+)/) || [])[1] || '';
+    // Whether Shopify wraps an app-proxy page in a preview theme is not documented. When it
+    // does not, a preview run cannot prove the title, so the check is informational there.
+    const provable = !PREVIEW || themeId === PREVIEW;
+    if (PREVIEW) check(rec, 'served by the preview theme (app proxy, informational)', themeId === PREVIEW, `Shopify.theme.id ${themeId || 'unknown'}`, false);
+    const title = decodeAttr((html.match(/<title>([^<]*)<\/title>/) || [])[1] || '').trim();
+    const shareTitles = [...html.matchAll(SHARE_META_RE)].filter((m) => m[1] === 'og:title' || m[1] === 'twitter:title').map((m) => decodeAttr(m[2]));
+    check(rec, `the application form is titled "${AFFILIATE_TITLE}" in the tab and in shared-link previews${provable ? '' : ' (informational: not served by the preview theme)'}`,
+      r.status() === 200 && title.startsWith(`${AFFILIATE_TITLE} - `) && shareTitles.length === 2 && shareTitles.every((t) => t === AFFILIATE_TITLE),
+      `status ${r.status()}, title "${title}", share ${shareTitles.map((t) => `"${t}"`).join(', ') || 'none'}`, provable);
   }, false);
 
   // Cart and checkout with a real line in the basket, then clear it.

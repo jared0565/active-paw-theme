@@ -27,12 +27,28 @@
       <link rel="icon" href="{{ 'active-paw-favicon.svg' | asset_url }}" type="image/svg+xml">
       <link rel="apple-touch-icon" href="{{ 'active-paw-app-icon-180.png' | asset_url }}">
     {% endif %}
-    <title>{{ page_title | replace: 'Pawmerce', brand_name }}{% if current_tags %} - {{ current_tags | join: ', ' }}{% endif %}{% if current_page != 1 %} - Page {{ current_page }}{% endif %}{% unless page_title contains brand_name %} - {{ brand_name }}{% endunless %}</title>
+    {%- liquid
+      # One title for the tab and the shared-link tags (meta-tags.liquid reads it).
+      # PawScout's affiliate application form is an app-proxy page, and Shopify gives it the
+      # shop's name as page_title, so its tab and every shared-link preview read just the
+      # brand (measured 2026-11-20, Entry 59). Previews never run the worker's script, so the
+      # title is set here. The page is found through the footer's Affiliates link setting,
+      # never a written path. The words are the worker's own document.title words, so the
+      # tab does not change when its script runs.
+      assign title_base = page_title
+      if settings.affiliate_apply_url != blank
+        assign affiliate_apply_path = settings.affiliate_apply_url | remove_first: request.origin | split: '#' | first | split: '?' | first
+        if request.path == affiliate_apply_path
+          assign title_base = 'Apply to the Partner Program'
+        endif
+      endif
+    -%}
+    <title>{{ title_base | replace: 'Pawmerce', brand_name }}{% if current_tags %} - {{ current_tags | join: ', ' }}{% endif %}{% if current_page != 1 %} - Page {{ current_page }}{% endif %}{% unless title_base contains brand_name %} - {{ brand_name }}{% endunless %}</title>
     {% if page_description %}
       <meta name="description" content="{{ page_description | replace: 'Pawmerce', brand_name | escape_once }}">{% # page_description arrives escaped: escape_once, not escape (Entry 52) %}
     {% endif %}
     <link rel="canonical" href="{{ canonical_url }}">
-    {%- render 'meta-tags' -%}
+    {%- render 'meta-tags', title_base: title_base -%}
     {%- liquid
       assign body_font = settings.type_body_font
       assign body_font_semibold = body_font | font_modify: 'weight', '600'
