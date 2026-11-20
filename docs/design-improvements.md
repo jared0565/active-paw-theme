@@ -1753,3 +1753,30 @@ Dev tooling; no theme file changes. PRD R9, T17 and T35.
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 53 - 2026-11-20: The docs catch up with phase 5
+
+Docs only; no theme file changes.
+
+### What changed
+- **`docs/theme-production-grade-prd.md`:**
+  - the deployed table gains #30;
+  - T40's collection step is ticked;
+  - T34 is ticked: pull requests A to D have all merged;
+  - T35 states when the scheduled run really starts, and that its manual run needs Entry 51;
+  - issue #18's note says the comments from 16 to 19 November were not refusals.
+- **`docs/HANDOVER.md`:** the banner names phase 5, #30 and `release-2026-11-15-2` in place of the state on 2026-09-24.
+- **`README.md`:** a section on the storewide event surfaces shipped in #27 to #29. Every claim was read from `assets/theme.js`, `snippets/welcome-modal.liquid` and the sections' settings on 2026-11-20.
+
+### Why it changed
+- The banner still named #17 and `release-2026-09-23-1`.
+- The README had nothing on the event surfaces a visitor meets from 27 November.
+- T35 said the scheduled run starts at 06:17 UTC. From 9 to 19 November it started between 13:31 and 16:18 UTC (read with `gh run list` on 2026-11-20).
+
+### How it was checked
+- #30's merge (`2026-11-15T02:25:43Z`, `76faabc`) was read with `gh pr view 30`.
+- The tags were read with `git rev-parse`.
+- The collection was read back through the Shopify connector, on 2026-11-20.
+
+### Files touched
+- `docs/theme-production-grade-prd.md`, `docs/HANDOVER.md`, `README.md`, `docs/design-improvements.md`.

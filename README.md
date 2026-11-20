@@ -64,6 +64,28 @@ Product and cart templates read the product-level `supplier.*` metafields the Pa
 
 The theme footer carries an **Affiliates** link to `/apps/pawscout/affiliate/apply`. The application form and the partner-terms page are served by the worker over the App Proxy as Liquid (`Content-Type: application/liquid`), so Shopify renders them inside the live theme layout - real header, footer, and styling - even though the theme itself has no template for them. The programme, bot-gating, automated screening, partner dashboard, and commission logic all live in [`pawscout-worker`](https://github.com/jared0565/pawscout-worker); the theme's only job is the footer entry point.
 
+### Storewide events (Black Friday and after)
+
+Four surfaces follow the storewide event PawScout reports. They were shipped in pull requests #27 to #29 (PRD phase 5).
+
+- **One fetch per page view.** The surfaces share one request to the worker's `/public/event` (the `data-storewide-event-src` attribute).
+  - An answer that is unreachable, slower than 3 seconds, or not a JSON object paints nothing: every surface keeps its server-rendered state.
+  - A running event counts only with a code, and only until its `endsAt` passes on the visitor's clock.
+  - Dates and times are built from the feed's timestamps in the visitor's own time zone.
+- **The surfaces:**
+  - **The announcement bar line:** while an event runs, one line with its offer and code replaces the bar's three items.
+  - **The hero seal:** it shows the running event, or the next planned one. It is hidden otherwise, and while the feed cannot be reached.
+  - **The welcome offer:** a modal offering the event's code once per browser per event.
+    - It opens after 3 seconds or the first scroll, never while Shopify's cookie banner is waiting.
+    - Every customer can see it, including those who have ordered before.
+    - A signed-in customer is not offered a code their own orders already used.
+  - **The home collection cards:** each card's pill shows the offer, for example "15% off with code".
+- **The off switch, no deploy needed:** in the Theme Editor, the announcement bar's "Show the running storewide event".
+  - Turned off, it removes the bar line and gives the cards their own badges back.
+  - The seal and the welcome offer have their own settings.
+
+What the theme expects from the feed is written down in `docs/theme-worker-contract.md`. `tests/independence.cjs` puts every feed state on the page with a stand-in answer, so all four surfaces are checked whatever the worker reports that day.
+
 ---
 
 ## How it became helpful

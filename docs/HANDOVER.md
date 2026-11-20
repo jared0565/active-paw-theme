@@ -4,7 +4,7 @@
 **Audience:** the next developer picking this up cold.
 **Read this first, then follow the document index (§13) into the specs.**
 
-> **Theme state, 2026-09-24.** This brief describes June. For the theme since 2026-09-18 read `docs/theme-production-grade-prd.md`: tasks T1 to T19 are done, and pull requests #11 to #15 and #17 are deployed (section 4, "Deployed after phase 4": last tag `release-2026-09-23-1`, merge `8b0b0f3`). `shopify-deploy` is the one live branch; a merged pull request is a deploy (`docs/RUNBOOK-THEME-DEPLOY.md`). Every theme change is recorded in `docs/design-improvements.md`.
+> **Theme state, 2026-11-20.** This brief describes June. For the theme since 2026-09-18 read `docs/theme-production-grade-prd.md`. Phases 1 to 4 (tasks T1 to T19) are done. Phase 5, the storewide events before Black Friday (T20 to T40), is deployed through pull request #30. Its owner checks around the event (T35 to T37) and T29's acceptance are still open. The deployed pull requests are listed in section 4, "Deployed after phase 4": the last tag is `release-2026-11-15-2`, merge `76faabc`. `shopify-deploy` is the one live branch; a merged pull request is a deploy (`docs/RUNBOOK-THEME-DEPLOY.md`). Every theme change is recorded in `docs/design-improvements.md`.
 
 ---
 
