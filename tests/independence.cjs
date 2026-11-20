@@ -288,6 +288,13 @@ async function visit(context, name, url, specific, generic = true, before = null
     const headerCount = await count(page, 'header.site-header');
     const footerCount = await count(page, 'footer.site-footer');
     check(rec, 'header and footer rendered', headerCount === 1 && footerCount === 1);
+    // The notch rule once replaced the footer's bottom padding with env()'s 0px, leaving the
+    // last footer line on the page edge (Entry 58). Its own padding is at least 48px.
+    const footerPad = await page.evaluate(() => {
+      const f = document.querySelector('footer.site-footer');
+      return f ? parseFloat(window.getComputedStyle(f).paddingBottom) : null;
+    }).catch(() => null);
+    check(rec, 'footer keeps its bottom padding', footerPad !== null && footerPad >= 47.5, `padding-bottom ${footerPad}px`);
     const mainText = await text(page, '#MainContent');
     check(rec, 'main content not empty', mainText.trim().length > 200, `${mainText.trim().length} chars`);
     // With the feed blocked nothing may open. With the real feed, the welcome offer opens by

@@ -3282,7 +3282,11 @@ body {
   padding-right: env(safe-area-inset-right, 0px);
 }
 .announcement { padding-top: env(safe-area-inset-top, 0px); }
-.site-footer { padding-bottom: env(safe-area-inset-bottom, 0px); }
+/* The footer's inset is ADDED to its own bottom padding (the clamp in the
+   .section/.site-footer rule above). A bare env() replaced that padding and
+   resolved to 0px on every screen without a home indicator, so the last
+   footer line sat on the page edge (measured 2026-11-20, Entry 58). */
+.site-footer { padding-bottom: calc(clamp(48px, 7vw, 92px) + env(safe-area-inset-bottom, 0px)); }
 .cart-drawer__panel {
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
