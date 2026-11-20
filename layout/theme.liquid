@@ -29,7 +29,7 @@
     {% endif %}
     <title>{{ page_title | replace: 'Pawmerce', brand_name }}{% if current_tags %} - {{ current_tags | join: ', ' }}{% endif %}{% if current_page != 1 %} - Page {{ current_page }}{% endif %}{% unless page_title contains brand_name %} - {{ brand_name }}{% endunless %}</title>
     {% if page_description %}
-      <meta name="description" content="{{ page_description | replace: 'Pawmerce', brand_name | escape }}">
+      <meta name="description" content="{{ page_description | replace: 'Pawmerce', brand_name | escape_once }}">{% # page_description arrives escaped: escape_once, not escape (Entry 52) %}
     {% endif %}
     <link rel="canonical" href="{{ canonical_url }}">
     {%- render 'meta-tags' -%}

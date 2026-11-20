@@ -255,6 +255,64 @@ async function pickThinSearchTerm(context) {
   return { term: 'dog', have: null };
 }
 
+// Share and search metadata, read from the SERVED HTML: an HTML parser decodes one level of
+// escaping, so a DOM read hides exactly the second level this checks for. Shopify hands the theme
+// page_title and page_description already escaped, and a further `escape` sent "Teeth &amp;amp;
+// Gum Care" to every share preview and "pet&amp;#39;s" to search engines, while `url_encode` put
+// "&amp;" into the X, Pinterest, WhatsApp and email share text of every page but a product's
+// (measured on live 2026-11-20, Entry 52). The pages are picked from the catalogue, the first
+// product and collection whose title holds an ampersand or an apostrophe (preferring one whose
+// description holds one too), so the case is exercised whatever the titles say this season.
+const DOUBLE_ESCAPED_RE = /&amp;(?:amp|quot|lt|gt|#39|#x27);/;
+const ENTITY_RE = /&(?:amp|quot|lt|gt|#39|#x27);/;
+const decodeAttr = (s) => s.replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+const SHARE_META_RE = /<meta (?:property|name)="(og:title|twitter:title|og:description|twitter:description|description|og:image:alt|twitter:image:alt)" content="([^"]*)"/g;
+const SHARE_LINK_RE = /href="((?:https:\/\/twitter\.com\/intent\/tweet|https:\/\/pinterest\.com\/pin\/create\/button\/|https:\/\/wa\.me\/|mailto:)\?[^"]*)"/g;
+async function shareMarkup(context) {
+  const pick = async (label, url, key) => {
+    const r = await backgroundRequest(context, label, 'get', url);
+    const list = r.ok() ? ((await r.json())[key] || []) : [];
+    const marked = (s) => /[&']/.test(s || ''); // an escaped apostrophe (&#39;) holds an & too
+    return { status: r.status(), item: list.find((x) => marked(x.title) && marked(x.body_html || x.description)) || list.find((x) => marked(x.title)) || null };
+  };
+  const picks = [
+    ['share-product', 'products', await pick('product list', `${BASE}/products.json?limit=250`, 'products')],
+    ['share-collection', 'collections', await pick('collection list', `${BASE}/collections.json?limit=250`, 'collections')],
+  ];
+  for (const [name, kind, { status, item }] of picks) {
+    const rec = { name, url: item ? `${BASE}/${kind}/${item.handle}` : null, checks: [], consoleErrors: [], codeErrors: [], blocked: [] };
+    results.pages.push(rec);
+    if (status !== 200) { // a refused list is not an empty catalogue
+      check(rec, `the ${kind} list answered`, false, `/${kind}.json status ${status}`);
+      continue;
+    }
+    if (!item) {
+      check(rec, `a ${kind.slice(0, -1)} whose title holds & or an apostrophe (informational)`, false, 'none in the catalogue, so the case is not exercised', false);
+      continue;
+    }
+    const r = await backgroundRequest(context, name, 'get', rec.url);
+    const html = await r.text();
+    rec.status = r.status();
+    check(rec, 'http 200', rec.status === 200, `status ${rec.status}`);
+    if (PREVIEW) {
+      const themeId = (html.match(/Shopify\.theme\s*=\s*\{[^}]*?"id":(\d+)/) || [])[1] || '';
+      check(rec, 'served by the preview theme', themeId === PREVIEW, `Shopify.theme.id ${themeId || 'unknown'}`);
+    }
+    const metas = [...html.matchAll(SHARE_META_RE)].map((m) => ({ key: m[1], value: m[2] }));
+    const twice = metas.filter((m) => DOUBLE_ESCAPED_RE.test(m.value));
+    check(rec, 'share and search tags are escaped once, never twice', metas.length >= 3 && twice.length === 0, twice.map((m) => `${m.key}: ${decodeAttr(m.value).slice(0, 80)}`).join(' | ') || `${metas.length} tags, title "${item.title}"`);
+    const title = decodeAttr((html.match(/<title>([^<]*)<\/title>/) || [])[1] || '').trim();
+    const shareTitles = metas.filter((m) => m.key === 'og:title' || m.key === 'twitter:title').map((m) => decodeAttr(m.value));
+    check(rec, 'the share title reads as the page title does', shareTitles.length === 2 && shareTitles.every((t) => t.length > 0 && title.startsWith(t)), `title "${title}", share ${shareTitles.map((t) => `"${t}"`).join(', ')}`);
+    const said = [...html.matchAll(SHARE_LINK_RE)].map((m) => {
+      const u = new URL(decodeAttr(m[1]));
+      return ['text', 'description', 'subject'].map((k) => u.searchParams.get(k)).filter((v) => v !== null).join(' ');
+    });
+    const garbled = said.filter((t) => ENTITY_RE.test(t));
+    check(rec, 'the share buttons send the title as text, with no HTML entity in it', said.length === 4 && garbled.length === 0, garbled.map((t) => t.slice(0, 80)).join(' | ') || `${said.length} links, e.g. "${(said[0] || '').slice(0, 80)}"`);
+  }
+}
+
 // Supplier prices, with a stand-in for the worker. Every worker price is GBP (channel round 257)
 // and `currency` is optional, absent meaning GBP. A visitor whose currency it is sees it printed
 // as the storefront prints money; anyone else sees the code in words, never a converted amount.
@@ -957,6 +1015,15 @@ async function eventBarWidths(browser) {
     finish();
     return;
   }
+  // ONLY=share runs just the share and search metadata check (four background requests).
+  if (process.env.ONLY === 'share') {
+    const shareContext = await openContext(browser, null);
+    await shareMarkup(shareContext);
+    await shareContext.close();
+    await browser.close();
+    finish();
+    return;
+  }
 
   const context = await openContext(browser, null);
 
@@ -1071,6 +1138,8 @@ async function eventBarWidths(browser) {
   await visit(context, 'contact', `${BASE}/pages/contact`, async (page, rec) => {
     check(rec, 'contact form present', (await count(page, 'form[action^="/contact"]')) > 0);
   });
+
+  await shareMarkup(context);
 
   // Affiliate entry point (PRD T10, decision 5c): the Shopify page /pages/affiliates
   // carries the programme copy, an email route and the Apply button to the worker's

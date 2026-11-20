@@ -19,7 +19,9 @@
     if share_url == blank
       assign share_url = request.origin | append: request.path
     endif
-    assign share_text = page_title | default: shop.name
+    # page_title arrives HTML-escaped, and url_encode sent "&amp;" itself as the X, Pinterest,
+    # WhatsApp and email text (Entry 52). Decode it once, &amp; last so "&amp;lt;" stays "&lt;".
+    assign share_text = page_title | default: shop.name | replace: '&quot;', '"' | replace: '&#39;', "'" | replace: '&lt;', '<' | replace: '&gt;', '>' | replace: '&amp;', '&'
     assign share_image = ''
   endif
 -%}

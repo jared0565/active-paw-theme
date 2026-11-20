@@ -32,7 +32,11 @@ jobs:
   live:
     name: live store, worker blocked
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
-    runs-on: ubuntu-latest
+    # Pinned, not ubuntu-latest: on 2026-11-16 ubuntu-latest became ubuntu-26.04, where
+    # Playwright 1.60 refuses to install Chromium, and every run failed before checking anything
+    # (runs 43900048540 to 44558158093; 43721579037 passed on ubuntu-24.04). Move this with
+    # theme-preview.yml once a Playwright release supports the newer image (Entry 51).
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
