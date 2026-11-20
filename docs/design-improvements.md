@@ -1964,3 +1964,32 @@ The same block sets `body` left and right, `.announcement` top and `.cart-drawer
 
 ### Files touched
 - `assets/theme.css`, `tests/independence.cjs`, `docs/design-improvements.md`.
+
+## Entry 59 - 2026-11-20: The affiliate application form gets its own title
+
+Follow-up to the owner's audit of the affiliate application page (impeccable `audit`, item 9 of the worker brief). PawScout offered the theme route, and the owner said go.
+
+### What was wrong
+- The form at `/apps/pawscout/affiliate/apply` is a PawScout app-proxy page inside this theme's layout. Shopify gives such a page the shop's name as `page_title`.
+- Measured on live, 2026-11-20, with JavaScript off: `<title>`, `og:title` and `twitter:title` all read "Active Paw".
+- Since worker PR #12 (live about 19:50Z), the worker's script sets `document.title` to "Apply to the Partner Program - Active Paw". That fixes the tab once the script runs. Shared-link previews (WhatsApp, Facebook, X, LinkedIn) read the HTML as served and never run the script, so a shared application link still previewed as just "Active Paw".
+
+### What changed
+- **`layout/theme.liquid`:** one title, `title_base`, built before `<title>`. It is `page_title`, except on the page whose path equals the footer's Affiliates link setting (`settings.affiliate_apply_url`, with the store's origin, `#...` and `?...` removed), where it is "Apply to the Partner Program". `<title>` reads `title_base` and adds " - Active Paw" as before. The layout passes `title_base` to `meta-tags`.
+  - The path comes from the setting, never a written path. On the live page Liquid's `request.path` prints `/apps/pawscout/affiliate/apply` (measured: the country selector's `return_to` field), and markets use a cookie, not a path prefix (`/en-us/...` answers 404). If the setting is ever left blank, nothing changes.
+  - The words are the worker's own `document.title` words, so the tab does not change when its script runs. "Program" is the worker's US spelling; the theme setting's help text says "programme". If the owner wants "Programme", the worker's wording has to change too.
+- **`snippets/meta-tags.liquid`:** `og:title` and `twitter:title` now read `title_base`, falling back to `page_title`, then the brand, as before. Every other page's titles are unchanged.
+- **`tests/independence.cjs`:** the affiliate visit now reads the HTML as served (a background request, the same reading the share-markup checks use) and checks that `<title>` starts with "Apply to the Partner Program - " and that `og:title` and `twitter:title` both equal "Apply to the Partner Program".
+  - It runs only when the page rendered, so only in the control run: with the worker blocked the page does not render.
+  - Shopify does not document whether an app-proxy page is wrapped in a preview theme. In a preview run the check records the theme that served the page. If that isn't the preview theme, the title check is informational there, and the live run after the merge is the proof.
+
+### Not changed
+- `og:description` and `twitter:description` on this page are still the shop's description ("Shop Active Paw for smart pet care essentials: ..."). A description of the programme would need the worker's or the owner's wording.
+
+### How it was checked
+- **The check fails on live as it is:** its logic, run on the live page's HTML, reads title "Active Paw" and share titles "Active Paw", "Active Paw", so it fails. With the expected title and share tags substituted into that same HTML it passes.
+- **Gates run locally:** `npx eslint .`, `shopify theme check --fail-level warning` (69 files, no offences) and `python -m unittest discover -s tests -t .` (37 tests OK).
+- The CI preview and live runs give the reading of record. The existing "the share title reads as the page title does" check on a product and a collection covers the shared title on ordinary pages.
+
+### Files touched
+- `layout/theme.liquid`, `snippets/meta-tags.liquid`, `tests/independence.cjs`, `docs/design-improvements.md`.
