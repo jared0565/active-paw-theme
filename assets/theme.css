@@ -63,11 +63,11 @@ img { max-width: 100%; display: block; }
   background: var(--ink);
   color: white;
   border-bottom: 1px solid rgba(255,255,255,0.12);
-  overflow: hidden; /* clip the mobile marquee track */
+  overflow: hidden; /* the phone strip scrolls inside its own track */
 }
-/* The benefit set is rendered twice (announcement-bar.liquid): on desktop one set
-   shows as a static 3-up row and the duplicate is hidden; on mobile (<=900px) both
-   sets animate as a seamless marquee loop. */
+/* One benefit set (announcement-bar.liquid). On desktop it is a static 3-up row; on
+   phones (<=900px) it is one line the visitor swipes, and it never moves by itself
+   (Entry 60). */
 .announcement-track {
   display: flex;
   justify-content: center;
@@ -83,9 +83,10 @@ img { max-width: 100%; display: block; }
   flex: 1 1 100%;
   min-width: 0;
 }
-.announcement-dup { display: none; }
-@keyframes announcement-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-@media (prefers-reduced-motion: reduce) { .announcement-track { animation: none; } }
+/* Markup from before Entry 60, still in a cache, carries a second set. Keep it hidden, or the
+   desktop bar doubles in height. Two classes, so the phone rule for .announcement-set does not
+   show it again. Safe to remove once no page from before that deploy is served. */
+.announcement-set.announcement-dup { display: none; }
 .announcement p {
   display: flex;
   /* When an item cannot fit on one line its text drops under its title as one whole
@@ -2506,21 +2507,31 @@ summary { cursor: pointer; font-weight: 800; }
 
 @media (max-width: 900px) {
   :root { --sticky-header-offset: 222px; }
+  /* No motion (owner, 2026-11-20, Entry 60). The old 24 s marquee looped with no way to
+     pause it, which fails WCAG 2.2.2, and with reduced motion it stopped with items 2 and 3
+     cut off. Now it is one line the visitor swipes; a swipe that ends near an item settles
+     on it. Proximity, not mandatory: an item wider than the screen (a US visitor's delivery
+     line at 390px) must stay readable to its end. The item cut off at the edge shows there
+     is more. The bar keeps its one-line height, which the sticky offset and the event line
+     rely on. */
   .announcement-track {
-    width: max-content;
     justify-content: flex-start;
-    animation: announcement-marquee 24s linear infinite;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
   }
-  .announcement-set { display: flex; flex: 0 0 auto; }
-  .announcement-dup { display: flex; }
-  /* In the marquee the title moves, so it is text again; the footer selector is the route. */
-  .announcement strong a { pointer-events: none; text-decoration: none; }
+  .announcement-track::-webkit-scrollbar { display: none; }
+  /* Auto margins centre the set while it fits and drop to 0 once it overflows, so its start stays reachable. */
+  .announcement-set { display: flex; flex: 0 0 auto; margin: 0 auto; }
   .announcement p {
     justify-content: flex-start;
-    flex-wrap: nowrap; /* marquee items are always one line */
+    flex-wrap: nowrap; /* strip items are always one line */
     min-height: 44px;
     flex: 0 0 auto;
     border-right: 0;
+    scroll-snap-align: start;
   }
   .header-main {
     grid-template-columns: minmax(170px, auto) minmax(0, 1fr);
@@ -2761,6 +2772,13 @@ summary { cursor: pointer; font-weight: 800; }
   .mobile-sticky-atc .button { min-height: 44px; padding: 10px 12px; }
   .newsletter div { flex-direction: column; }
   .newsletter button { width: 100%; }
+}
+
+/* The narrowest phones (320px): like the event line, the strip drops the decorative icon
+   and tightens its gaps, so each UK item fits whole on screen (Entry 60). */
+@media (max-width: 380px) {
+  .announcement-track .announcement-icon { display: none; }
+  .announcement-track p { gap: 0 8px; padding: 7px 10px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
