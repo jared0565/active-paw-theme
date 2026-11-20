@@ -1921,3 +1921,20 @@ Test only; no theme file changes.
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 57 - 2026-11-20: The deployed table names #31 to #34
+
+Docs only; no theme file changes.
+
+### What changed
+- **`docs/theme-production-grade-prd.md`:**
+  - the deployed table gains #31, #32, #33 and #34;
+  - T34's note that the runner-image pull request "must also merge" now says it merged as #31.
+- **`docs/HANDOVER.md`:** the banner names #31 to #34 and the last tag, `release-2026-11-20-4`, merge `df36c2c`.
+
+### How it was checked
+- Merge times and commits were read with `gh pr view` for #31 to #34. Each tag was resolved with `git rev-parse <tag>^{commit}` and equals its merge commit.
+- The post-deploy runs are the `workflow_run` runs of `independence-daily` on each merge commit, read with `gh run list --commit`.
+
+### Files touched
+- `docs/theme-production-grade-prd.md`, `docs/HANDOVER.md`, `docs/design-improvements.md`.
