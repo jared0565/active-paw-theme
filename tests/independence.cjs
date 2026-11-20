@@ -37,6 +37,40 @@ const TURNSTILE_RE = /^https:\/\/challenges\.cloudflare\.com\//;
 // text to tell it from theme code (CI run 35568115045, 2026-09-21), so these too are classified
 // by where they were logged from.
 const SHOPIFY_PLATFORM_SRC_RE = /\/cdn\/shopifycloud\//;
+// The same telemetry also throws. When Shopify's metrics request to
+// otlp-http-production.shopifysvc.com is refused (an intermittent CORS refusal, worker-blocked
+// mode only, on 7 of 70 pages in the two runs of PR #33 on 2026-11-20), the bundles that send it
+// leave "TypeError: Failed to fetch" uncaught. It arrives as a page error, not a console line.
+// Reproduced by aborting that host (ABORT_SHOPIFY_TELEMETRY=1). Every frame was Shopify's own:
+//   - the storefront's fetch wrapper under /cdn/shopifycloud/;
+//   - the Shop bundle under cdn.shopify.com/shopifycloud/;
+//   - the web pixels manager under /cdn/wpm/.
+// Both Shopify fetch wrappers (wpm and the storefront listener) also top the stack of a THEME
+// fetch, so a platform frame alone proves nothing. The theme runs from two places only:
+//   - its files, under /cdn/shop/t/<id>/;
+//   - inline scripts in the pages Liquid renders, whose frames carry the page's own address.
+// So a page error is the theme's when any frame is one of those, and Shopify's when it has a
+// Shopify frame and no theme frame. Frames with no address count for neither: "<anonymous>",
+// and a bare name such as "event-observer-collector.js", seen once on 2026-11-20 and traced to no
+// script. A stack with no frame at all stays a failure. Every page error's full stack is kept in
+// the record (pageErrors), so the next unknown source explains itself (Entry 56).
+// Controls: ABORT_SHOPIFY_TELEMETRY=1 must pass; INJECT_THEME_PAGE_ERRORS=1 must fail.
+const SHOPIFY_PLATFORM_STACK_RE = /^https:\/\/(?:[^/]+\/cdn\/shopifycloud\/|cdn\.shopify\.com\/shopifycloud\/|[^/]+\/cdn\/wpm\/)/;
+const THEME_ASSET_RE = /\/cdn\/shop\/t\/\d+\/|\/s\/files\/.+\/t\/\d+\/assets\//;
+const STORE_ORIGIN = new URL(BASE).origin;
+const stackFrames = (e) => String((e && e.stack) || '').split('\n').map((l) => l.trim()).filter((l) => l.startsWith('at '));
+const frameUrl = (f) => { const m = f.match(/https?:\/\/[^\s)]+/); return m ? m[0].replace(/(?::\d+){1,2}$/, '') : ''; };
+const isPlatformFrame = (f) => SHOPIFY_PLATFORM_STACK_RE.test(frameUrl(f));
+const isThemeFrame = (f) => {
+  const u = frameUrl(f);
+  if (!u) return false;
+  if (THEME_ASSET_RE.test(u)) return true;
+  try {
+    const p = new URL(u);
+    return (p.origin === STORE_ORIGIN || p.hostname.endsWith('.myshopify.com')) && !p.pathname.startsWith('/cdn/');
+  } catch { return false; }
+};
+const isPlatformStack = (e) => { const frames = stackFrames(e); return frames.some(isPlatformFrame) && !frames.some(isThemeFrame); };
 // A market the worker keeps sparse on purpose (PRD T19): the home page must still look deliberate there.
 const SPARSE_MARKET = process.env.SPARSE_MARKET || 'US';
 const SETTLE_MS = 4500; // past the theme's 3 s feed cap
@@ -193,14 +227,22 @@ const fieldBoundaries = async (page, rec) => {
 async function visit(context, name, url, specific, generic = true, before = null, options = {}) {
   const page = await context.newPage();
   if (before) await before(page);
-  const rec = { name, url, checks: [], consoleErrors: [], codeErrors: [], blocked: [], turnstileErrorLines: 0, platformSourceErrorLines: 0 };
+  const rec = { name, url, checks: [], consoleErrors: [], codeErrors: [], pageErrors: [], blocked: [], turnstileErrorLines: 0, platformSourceErrorLines: 0 };
   page.on('console', (m) => {
     if (m.type() !== 'error') return;
     if (TURNSTILE_RE.test(m.location().url || '')) { rec.turnstileErrorLines += 1; return; }
     if (SHOPIFY_PLATFORM_SRC_RE.test(m.location().url || '') || SHOPIFY_PLATFORM_SRC_RE.test(m.text())) { rec.platformSourceErrorLines += 1; return; }
     rec.consoleErrors.push(m.text().slice(0, 200));
   });
-  page.on('pageerror', (e) => rec.codeErrors.push(String(e).slice(0, 200)));
+  page.on('pageerror', (e) => {
+    const platform = isPlatformStack(e);
+    if (rec.pageErrors.length < 6) rec.pageErrors.push({ platform, stack: String((e && e.stack) || e).slice(0, 1500) });
+    if (platform) { rec.platformSourceErrorLines += 1; return; }
+    // Name the frame to look at: the theme's own, else the first that is not Shopify's.
+    const frames = stackFrames(e);
+    const at = frames.find(isThemeFrame) || frames.find((f) => !isPlatformFrame(f));
+    rec.codeErrors.push(`${String(e)} (${at ? at.replace(/https?:\/\/[^/\s)]+/, '') : 'no stack'})`.slice(0, 260));
+  });
   page.on('requestfailed', (r) => { if (WORKER_RE.test(r.url())) rec.blocked.push(r.url().slice(0, 120)); });
 
   let status = null;
@@ -592,6 +634,24 @@ async function openContext(browser, country, options = {}) {
   }
   if (BLOCK) {
     await context.route(WORKER_RE, (route) => route.abort('failed'));
+  }
+  // The control that must FAIL: on the home page, a theme inline script and a theme file each leave
+  // a fetch rejection uncaught. Each fires three seconds after it runs, so Shopify's fetch wrappers
+  // are on top of its stack, as they would be on a real theme fetch. Only the home document changes.
+  if (process.env.INJECT_THEME_PAGE_ERRORS === '1') {
+    const probe = "setTimeout(function () { fetch('https://theme-probe.invalid/'); }, 3000);";
+    await context.route(/\/cdn\/shop\/t\/0\/assets\/__probe\.js$/, (route) => route.fulfill({ status: 200, contentType: 'application/javascript', body: probe }));
+    await context.route((u) => u.origin === STORE_ORIGIN && u.pathname === '/', async (route) => {
+      if (route.request().resourceType() !== 'document') return route.fallback();
+      const response = await route.fetch();
+      const body = (await response.text()).replace('</body>', `<script>${probe}</script><script src="/cdn/shop/t/0/assets/__probe.js"></script></body>`);
+      return route.fulfill({ response, body });
+    });
+  }
+  // The control that must PASS: refuse Shopify's own metrics host on every page, so its bundles
+  // throw "TypeError: Failed to fetch" for certain rather than now and then.
+  if (process.env.ABORT_SHOPIFY_TELEMETRY === '1') {
+    await context.route(/^https:\/\/otlp-http-production\.shopifysvc\.com\//, (route) => route.abort('failed'));
   }
   return context;
 }
