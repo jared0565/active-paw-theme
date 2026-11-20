@@ -2014,7 +2014,10 @@ The owner's decision on audit finding P1 (impeccable `audit` of the affiliate ap
 - **Kept:** `.announcement-set.announcement-dup { display: none; }`. A page cached from before this deploy still carries the duplicate set, and without the rule the desktop bar doubles in height (measured: 86.6px instead of 49 at 1280). It uses two classes, because the phone rule for `.announcement-set` would otherwise show it again. It's safe to remove once no page from before this deploy is served.
 - **`sections/announcement-bar.liquid`:** renders the set once. The duplicate only fed the loop.
 - **`snippets/announcement-event.liquid`:** drops `animation: none` from the event state. There is no animation left to stop.
-- **`tests/independence.cjs`:** the idle event visit (home, nothing running) now checks at 390 and 320px that the strip doesn't animate, that its first item hasn't moved after 1.5 s, and that its last item can be scrolled whole into view.
+- **`tests/independence.cjs`:** the idle event visit (home, nothing running) now checks at 390 and 320px that the strip doesn't animate, that its first item hasn't moved after 1.5 s, and that scrolling the strip brings the end of its last item into the visible bar.
+  - It asks for "every part reachable", not "whole on screen at once". That check runs in a browser that keeps a classic scrollbar, so a 320px window leaves the bar 305px wide, and the widest UK item is 319px. It's read by scrolling through it. On a phone, with overlay scrollbars, it fits whole.
+  - The first version asked for "whole" and failed the PR's preview run at 320px for exactly this reason (run 44815548616: "320px: moved 0px, animation none, last item reachable false"; 390px passed).
+  - It measures against the visible bar, not the track: the old stopped marquee's track was wider than the screen, so measuring the track would have passed falsely.
 
 ### Not changed
 - The trust strip on the home page (`.trust-track`) still loops on its own, pausing only on mouse hover. That is the same WCAG 2.2.2 issue for touch visitors, but the owner's decision covered the announcement bar.
@@ -2027,6 +2030,10 @@ The owner's decision on audit finding P1 (impeccable `audit` of the affiliate ap
   - the duplicate stays hidden, the last item scrolls whole into view, and nothing scrolls the page sideways.
   - The same with reduced motion on, and for a US visitor.
   - Looked at in screenshots at 320, 390 and 768px.
+- **The corrected check, in three arms:** its helper, copied from the test file and run in a Chromium that keeps its scrollbar:
+  - live with reduced motion (the old stopped marquee): FAIL at 320 and 390 (last item 359px, bar 305 and 375px);
+  - the branch: PASS at both;
+  - the branch with reduced motion: PASS at both.
 - **Gates:** `npx eslint .`, `shopify theme check --fail-level warning` (69 files, no offences) and the unit tests (OK).
 
 ### Files touched
