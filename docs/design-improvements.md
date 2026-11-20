@@ -1938,3 +1938,29 @@ Docs only; no theme file changes.
 
 ### Files touched
 - `docs/theme-production-grade-prd.md`, `docs/HANDOVER.md`, `docs/design-improvements.md`.
+
+## Entry 58 - 2026-11-20: The footer gets its bottom padding back
+
+Found in the owner's audit of the affiliate application page (impeccable `audit`). It affects every page.
+
+### What was wrong
+- `assets/theme.css` gives `.site-footer` a vertical padding of `clamp(48px, 7vw, 92px)`, shared with `.section`.
+- The notch rules added in `32b1efa` (2026-07-06) then set `.site-footer { padding-bottom: env(safe-area-inset-bottom, 0px); }`. That REPLACED the footer's bottom padding instead of adding to it.
+- Without a home indicator the inset is 0px, so the footer's bottom padding was 0px. The last footer line ("Prices, stock, and shipping are confirmed at checkout.") sat on the bottom edge of every page.
+- Measured on live, 2026-11-20, at 1280px and 390px, on the home page and the affiliate page: top padding 89.6px or 48px, bottom padding 0px, 0px below the last line.
+- The block's comment says every rule in it is "a no-op in ordinary portrait browsing". For the footer that wasn't true.
+
+### What changed
+- **`assets/theme.css`:** `.site-footer { padding-bottom: calc(clamp(48px, 7vw, 92px) + env(safe-area-inset-bottom, 0px)); }`, with a comment saying why. On a phone with a home indicator the inset is still added on top.
+- **`tests/independence.cjs`:** every generic theme page now checks "footer keeps its bottom padding", which needs at least 47.5px of computed `padding-bottom` on `footer.site-footer`.
+
+### Checked, and left as they were
+The same block sets `body` left and right, `.announcement` top and `.cart-drawer__panel` top and bottom. Each one was measured with its `env()` declaration removed from the live stylesheet, and its padding did not change (0px either way). So nothing else was hiding a padding. The footer was the only rule that lost one: 89.6px at 1280px, 48px at 390px.
+
+### How it was checked
+- **The check fails on live as it is:** `ONLY=fields node tests/independence.cjs https://activepaw.co.uk` failed "footer keeps its bottom padding" on home, product and contact with `padding-bottom 0px`; the other 21 checks passed.
+- **The fix, served locally:** with this branch's `theme.css` served in place of the live file (Playwright route, one swap per page), both pages measured bottom padding = top padding (89.6px at 1280, 48px at 390), with 90px and 48px below the last line.
+- The preview run in CI applies the same check to the pushed branch theme.
+
+### Files touched
+- `assets/theme.css`, `tests/independence.cjs`, `docs/design-improvements.md`.
