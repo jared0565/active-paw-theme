@@ -1993,3 +1993,41 @@ Follow-up to the owner's audit of the affiliate application page (impeccable `au
 
 ### Files touched
 - `layout/theme.liquid`, `snippets/meta-tags.liquid`, `tests/independence.cjs`, `docs/design-improvements.md`.
+
+## Entry 60 - 2026-11-20: The announcement bar stops scrolling on phones
+
+The owner's decision on audit finding P1 (impeccable `audit` of the affiliate application page): "no scrolling announcement bar on phone". It affects every page at 900px and below.
+
+### What was wrong
+- At 900px and below, the bar's three benefits (delivery, returns, support) ran as a marquee: the set was rendered twice and the track looped `translateX(0 -> -50%)` every 24 s, forever, with no way to pause it. Moving content that starts by itself, lasts more than 5 s and can't be paused fails WCAG 2.2.2 (Level A).
+- With reduced motion turned on, the marquee stopped where it started: on a 390px phone, item 3 sat fully off screen and item 2 was cut off, with no way to reach them.
+- Measured on live, 2026-11-20: the first item moved about 74px every 2 s at 320, 390, 768 and 900px. The bar was 43px tall at 320 and 390, and 45px at 768 and 900.
+
+### What changed
+- **`assets/theme.css`, at 900px and below:** the track no longer animates. It scrolls sideways (`overflow-x: auto`, hidden scrollbar, `overscroll-behavior-x: contain`), and each item snaps to the start with `scroll-snap-type: x proximity`. The visitor swipes; the item cut off at the right edge shows there is more.
+  - Proximity, not mandatory: a US visitor's delivery item ("Delivery to the United States / Rates and times at checkout") is 409px wide on a 390px phone. Under mandatory snapping, WebKit jumped past its end to the next item. Under proximity it rests where it's scrolled, in both engines.
+  - The set gets auto side margins, so it's centred whenever it fits and its start stays reachable when it doesn't.
+  - Items stay on one line at the old height, so the bar's height, the sticky offset and the event line that's laid over the bar are unchanged.
+  - The delivery title is a working link again on phones (to the country selector, as on desktop). It had been made plain text only because it moved.
+- **`assets/theme.css`, at 380px and below:** like the event line, the strip drops the decorative icon and tightens its gaps (8px gap, 10px side padding), so each UK item fits whole on a 320px screen. The widest is now 319px; before it was 359px.
+- **Removed:** the `announcement-marquee` keyframes and its reduced-motion rule.
+- **Kept:** `.announcement-set.announcement-dup { display: none; }`. A page cached from before this deploy still carries the duplicate set, and without the rule the desktop bar doubles in height (measured: 86.6px instead of 49 at 1280). It uses two classes, because the phone rule for `.announcement-set` would otherwise show it again. It's safe to remove once no page from before this deploy is served.
+- **`sections/announcement-bar.liquid`:** renders the set once. The duplicate only fed the loop.
+- **`snippets/announcement-event.liquid`:** drops `animation: none` from the event state. There is no animation left to stop.
+- **`tests/independence.cjs`:** the idle event visit (home, nothing running) now checks at 390 and 320px that the strip doesn't animate, that its first item hasn't moved after 1.5 s, and that its last item can be scrolled whole into view.
+
+### Not changed
+- The trust strip on the home page (`.trust-track`) still loops on its own, pausing only on mouse hover. That is the same WCAG 2.2.2 issue for touch visitors, but the owner's decision covered the announcement bar.
+
+### How it was checked
+- **The new check fails on live as it is:** `ONLY=events BLOCK=0 node tests/independence.cjs https://activepaw.co.uk` failed it at "390px: moved -56px, animation announcement-marquee" and the same at 320px; the other 64 checks passed.
+- **The branch's `theme.css` served in place of the live file** (Playwright route, exactly one swap per page; the old duplicate markup left in place to cover cached pages). Chromium and WebKit, at 320, 390, 768, 900, 960 and 1280px:
+  - nothing moved in 2 s, and there was no animation;
+  - the bar's height equals live at every width (43, 43, 45, 45, 65.8 and 49px);
+  - the duplicate stays hidden, the last item scrolls whole into view, and nothing scrolls the page sideways.
+  - The same with reduced motion on, and for a US visitor.
+  - Looked at in screenshots at 320, 390 and 768px.
+- **Gates:** `npx eslint .`, `shopify theme check --fail-level warning` (69 files, no offences) and the unit tests (OK).
+
+### Files touched
+- `assets/theme.css`, `sections/announcement-bar.liquid`, `snippets/announcement-event.liquid`, `tests/independence.cjs`, `docs/design-improvements.md`.

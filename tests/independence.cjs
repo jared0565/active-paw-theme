@@ -784,6 +784,24 @@ const barLayoutProblems = (b) => {
   if (!b.codeWhole || b.code.l < b.link.l - 1 || b.code.r > b.link.r + 1) out.push('code cut');
   return out;
 };
+// The bar's benefit strip (Entry 60): where its first item sits, whether it animates, and whether
+// its last item can be brought whole into view by scrolling the strip.
+const readStrip = () => {
+  const t = document.querySelector('.announcement-track');
+  const first = t ? t.querySelector('.announcement-set p') : null;
+  return first ? { x: first.getBoundingClientRect().left, anim: window.getComputedStyle(t).animationName } : { x: 0, anim: 'strip missing' };
+};
+const stripLastItemWhole = async () => {
+  const t = document.querySelector('.announcement-track');
+  const items = t ? [...t.querySelectorAll('.announcement-set:not(.announcement-dup) p')] : [];
+  if (!items.length) return false;
+  t.scrollTo({ left: t.scrollWidth, behavior: 'instant' });
+  await new Promise((r) => setTimeout(r, 400));
+  const bar = t.getBoundingClientRect();
+  const last = items[items.length - 1].getBoundingClientRect();
+  t.scrollTo({ left: 0, behavior: 'instant' });
+  return last.width > 0 && last.left >= bar.left - 0.5 && last.right <= bar.right + 0.5;
+};
 // The pills on home collection cards that follow the event (PRD T39), with each block's own badge.
 const readCardPills = () => Array.from(document.querySelectorAll('[data-event-card-badge]'))
   .map((p) => ({ text: p.textContent.trim(), own: p.getAttribute('data-default-badge') || '', hidden: p.hidden }));
@@ -1095,6 +1113,19 @@ async function eventBarWidths(browser) {
     check(rec, 'nothing running: no bar line at any width', EVENT_WIDTHS.every((w) => !widths[w].visible), EVENT_WIDTHS.map((w) => `${w}:${widths[w].barHeight}px`).join(' '));
     const pills = await page.evaluate(readCardPills);
     check(rec, 'nothing running: each card pill shows its block\'s own badge, or none', pillsAtOwn(pills), pillSummary(pills));
+    // The bar never moves by itself (Entry 60): the old phone marquee looped with no way to pause
+    // it (WCAG 2.2.2). On phones the benefits are a strip the visitor swipes to its last item.
+    const strip = [];
+    for (const w of [390, 320]) {
+      await page.setViewportSize({ width: w, height: 900 });
+      await page.waitForTimeout(300);
+      const before = await page.evaluate(readStrip);
+      await page.waitForTimeout(1500);
+      const after = await page.evaluate(readStrip);
+      strip.push({ w, moved: Math.round(after.x - before.x), anim: before.anim, lastWhole: await page.evaluate(stripLastItemWhole) });
+    }
+    check(rec, 'the bar never moves by itself, and on phones it swipes to its last item', strip.every((s) => s.moved === 0 && s.anim === 'none' && s.lastWhole),
+      strip.map((s) => `${s.w}px: moved ${s.moved}px, animation ${s.anim}, last item reachable ${s.lastWhole}`).join(' | '));
   }, false, eventStandIn({ active: false }));
   for (const [name, label] of [[EVENT_NAME, 'event-widths'], [EVENT_LONG_NAME, 'event-long-name']]) {
     await visit(context, label, `${BASE}/`, async (page, rec) => {

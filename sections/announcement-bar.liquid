@@ -1,9 +1,9 @@
 <div class="announcement" role="region" aria-label="Store benefits">
   <div class="announcement-track">
-    {% comment %} Items render twice: the duplicate set feeds the seamless
-       mobile marquee loop and is hidden on desktop + from screen readers. {% endcomment %}
-    {% for dup in (1..2) %}
-    <div class="announcement-set{% if forloop.last %} announcement-dup{% endif %}"{% if forloop.last %} aria-hidden="true"{% endif %}>
+    {% comment %} One set: a static row on desktop, a strip the visitor swipes on phones.
+       It never moves by itself (Entry 60), so the duplicate that fed the old marquee loop
+       is gone. {% endcomment %}
+    <div class="announcement-set">
       <p>
       <span class="announcement-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" focusable="false">
@@ -15,7 +15,7 @@
       </span>
       {%- comment -%} Market-aware: the UK promise for a GB visitor, a neutral line
           naming their country for everyone else. One place: the snippet. {%- endcomment -%}
-      {% render 'delivery-promise', link: forloop.first %}
+      {% render 'delivery-promise', link: true %}
     </p>
     <p>
       <span class="announcement-icon" aria-hidden="true">
@@ -38,7 +38,6 @@
       <span>{{ section.settings.support_text }}</span>
     </p>
     </div>
-    {% endfor %}
   </div>
   {%- if section.settings.event_bar_enabled -%}
     {% render 'announcement-event' %}
