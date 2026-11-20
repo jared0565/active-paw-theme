@@ -1780,3 +1780,42 @@ Docs only; no theme file changes.
 
 ### Files touched
 - `docs/theme-production-grade-prd.md`, `docs/HANDOVER.md`, `README.md`, `docs/design-improvements.md`.
+
+## Entry 54 - 2026-11-20: Form fields show where they are
+
+### What changed
+- **`assets/theme.css`:** a new token, `--field-line: #8a8073`. It is `--line`'s warm grey made darker. Seven rules now use it for the edge of a field:
+  - the contact modal's fields (`.contact-form input, select, textarea`), which on `/pages/contact` also draw that page's form;
+  - the product page's variant select (`.product-buybox select`) and quantity group (`.quantity-control`);
+  - the cart line quantity (`.cart-item-controls input`) and the cart drawer's quantity group (`.cart-drawer__qty`);
+  - the welcome offer's search field (`.welcome-modal__search input`);
+  - `.demo-purchase-form select`.
+- The footer newsletter field shares a rule with the product select, so its border darkens too. It stood out already: a white field on the dark footer.
+- Dividers, cards and the welcome offer's chips keep `--line`. Of its 54 border rules, only the fields changed.
+- **`tests/independence.cjs`:** every theme page now checks that each field stands out from its ground at 3 to 1.
+  - Either the field's fill does, or its border does, against both the fill and what is around it.
+  - The border counts on the field or, when the field draws none, on its wrapper.
+  - Fields inside the closed modals are measured too.
+  - `ONLY=fields` runs just this check on home, a product page and the contact page.
+
+### Why it changed
+- `--line` (#ded8cf) is a divider colour. On white it measures 1.42 to 1, and 1.39 on the page ground. Every white field on a white card showed only that edge.
+- WCAG 1.4.11 asks 3 to 1 for what shows where a control is.
+- Found on 2026-11-20 while checking the PawScout affiliate form, which draws its fields with `var(--line, #ded8cf)`. That form is the worker's own markup. It is told about the new token separately, and it changes only when the worker switches to it.
+
+### Contrast of the new edge
+| Ground | `--line` | `--field-line` |
+|---|---|---|
+| White (`--panel`, field fills) | 1.42 | 3.88 |
+| Page ground `#fffdf9` | 1.39 | 3.82 |
+| `--surface` `#f7f4ef` (the quantity buttons) | 1.29 | 3.53 |
+
+### How it was checked
+- The control: `ONLY=fields` against live on 2026-11-20 failed on all three pages. Every contact modal field and the welcome search measured 1.42 to 1, the product quantity 1.42, and the contact page's own four fields 1.39. The header search and both footer fields passed, which is what the rule expects.
+- The preview reading is the pull request's theme-preview run.
+
+### Files touched
+- `assets/theme.css`, `tests/independence.cjs`, `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
