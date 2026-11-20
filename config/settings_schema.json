@@ -77,6 +77,12 @@
     ]
   },
   {
+    "name": "Affiliates",
+    "settings": [
+      { "type": "text", "id": "affiliate_apply_url", "label": "Footer \"Affiliates\" link", "default": "/apps/pawscout/affiliate/apply", "info": "The partner programme's application form, served by PawScout; it carries the programme copy itself. While PawScout is down this link shows an error page. Leave it blank to hide the link." }
+    ]
+  },
+  {
     "name": "Welcome offer",
     "settings": [
       {

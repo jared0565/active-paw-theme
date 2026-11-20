@@ -41,12 +41,15 @@
         <a href="{{ routes.root_url }}#support">Shipping & returns</a>
         <a href="mailto:{{ settings.contact_email }}">Contact support</a>
         {%- comment -%}
-          Affiliates entry point is the Shopify page (PRD T10, decision 5c):
-          programme copy, an email route and the Apply button to the
-          worker's form, which theme.js shows only while the worker answers.
-          The page itself needs no worker, so this link never dead-ends.
+          Affiliates goes straight to the PawScout application form, which
+          carries the programme copy itself (owner decision 2026-11-20,
+          Entry 55). It replaced the /pages/affiliates page of PRD T10, which
+          repeated that copy. While PawScout is down the form shows an error
+          page; the owner accepted that. A blank setting hides the link.
         {%- endcomment -%}
-        <a href="{{ routes.root_url }}pages/affiliates">Affiliates</a>
+        {%- if settings.affiliate_apply_url != blank -%}
+          <a href="{{ settings.affiliate_apply_url }}">Affiliates</a>
+        {%- endif -%}
         <a href="{{ routes.root_url }}#support">FAQs</a>
         <a href="{{ routes.cart_url }}">Cart</a>
         <a href="{{ routes.search_url }}?type=product">Search products</a>
