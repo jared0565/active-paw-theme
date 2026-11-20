@@ -1819,3 +1819,68 @@ Docs only; no theme file changes.
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 55 - 2026-11-20: Affiliates goes straight to the application form
+
+### What changed
+- **`sections/site-footer.liquid`:** the footer's "Affiliates" link goes to the PawScout application form (`/apps/pawscout/affiliate/apply`) instead of `/pages/affiliates`.
+- **`config/settings_schema.json`:** that URL comes from a new theme setting, `affiliate_apply_url`, in a new "Affiliates" group. It defaults to the form, and a blank value hides the link.
+- **Removed:**
+  - `templates/page.affiliates.json` and `sections/affiliate-apply.liquid` (the "Ready to apply?" card with the Apply button and the email route);
+  - the `assets/theme.js` block that showed that Apply button once the storewide feed answered.
+- **`tests/independence.cjs`:**
+  - the home visit checks that the footer has one "Affiliates" link, to the form, and that nothing links to `/pages/affiliates`;
+  - the affiliate visit measures the worker's form, informational only.
+
+  The `/pages/affiliates` checks and their background request are gone.
+- **Docs:**
+  - PRD R6 and decision 5c are amended, and T10 has a superseded note;
+  - `docs/theme-worker-contract.md` row 6 is rewritten;
+  - the runbook's line on the affiliate check is updated.
+
+### Why it changed
+- The owner's audit of the affiliate path, 2026-11-20: the page "is not actually needed anymore because the information on that page is just covered again in the apply page".
+- Measured on live the same day:
+  - the page's "Earn with Active Paw" intro and its three "How it works" steps match the form page's opening word for word;
+  - the form page adds the form, the partner terms link and the same email address.
+- So a visitor read the same copy twice and clicked once more for nothing.
+- The page existed for one reason, PRD decision 5c: the footer link would never dead-end while the worker was down. The owner was asked how the link should behave then. Of three options (an email fallback, a short offline page, or always the form), they chose **always the form**. While the worker is down the link now shows the app proxy's error page, and that is accepted.
+- Shopify menus were read through the Admin API: no menu links to `/pages/affiliates`. The theme footer was the only way in.
+
+### The retired page, kept for recovery
+The page is 179229753682: title "Affiliates", handle `affiliates`, template suffix `affiliates`, published 2026-09-19T16:46:28Z. Its body was read through the Admin API on 2026-11-20:
+
+```html
+<h2>Earn with Active Paw</h2>
+<p>Recommend pet products you love and earn commission on every tracked order from your audience.</p>
+<ul>
+<li>Earn 2%, rising to 5% for performers</li>
+<li>5% off for your audience</li>
+<li>Open to creators of any size</li>
+</ul>
+<h2>How it works</h2>
+<ol>
+<li>
+<strong>Apply in two minutes.</strong> Tell us about your channel and how you would promote Active Paw.</li>
+<li>
+<strong>Verify your email.</strong> Click the link we send you. We review every application automatically, then by email.</li>
+<li>
+<strong>Get your code.</strong> Approved partners receive a discount code for their audience and a live results dashboard.</li>
+</ol>
+```
+
+### Owner steps
+1. Delete the page in admin. Do this before the merge, so no page is assigned to a template that no longer exists.
+2. Add a URL redirect from `/pages/affiliates` to `/apps/pawscout/affiliate/apply`, so old links and search results land on the form. Shopify applies a redirect only once the page is gone.
+
+### How it was checked
+- Graphite: `impact` on the section and the template finds nothing that depends on them. A text search of `sections`, `snippets`, `templates`, `layout`, `assets`, `config` and `locales` finds no other reference.
+- The control is the pull request's live dry run: the two new home checks must fail there, because live still links to `/pages/affiliates`. The preview run must pass them.
+
+### Files touched
+- `sections/site-footer.liquid`, `config/settings_schema.json`, `assets/theme.js`, `tests/independence.cjs`.
+- Deleted: `sections/affiliate-apply.liquid`, `templates/page.affiliates.json`.
+- Docs: `docs/theme-production-grade-prd.md`, `docs/theme-worker-contract.md`, `docs/RUNBOOK-THEME-DEPLOY.md`, `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.

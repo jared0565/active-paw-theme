@@ -1090,6 +1090,14 @@ async function eventBarWidths(browser) {
     const badgeVisible = await page.locator('[data-event-badge]:visible').count();
     if (BLOCK) check(rec, 'hero seal hidden while the feed is unreachable, with no copy of its own', badgeVisible === 0 && badge === '', `${badgeVisible} visible, "${badge}"`);
     else rec.heroBadge = badge;
+    // Entry 55: the footer's Affiliates link goes straight to the worker's form, and no
+    // link anywhere on the page still points at the retired /pages/affiliates.
+    const aff = await page.evaluate(() => ({
+      footer: [...document.querySelectorAll('footer.site-footer a')].filter((a) => a.textContent.trim() === 'Affiliates').map((a) => a.getAttribute('href')),
+      retired: document.querySelectorAll('a[href*="/pages/affiliates"]').length,
+    })).catch(() => ({ footer: [], retired: -1 }));
+    check(rec, 'footer Affiliates link goes straight to the application form', aff.footer.length === 1 && /\/apps\/pawscout\/affiliate\/apply$/.test(aff.footer[0] || ''), `${aff.footer.length} link(s): ${aff.footer.join(' ') || 'none'}`);
+    check(rec, 'no link to the retired /pages/affiliates', aff.retired === 0, `${aff.retired} link(s)`);
     // T31: one preconnect to PawScout's origin, matching the feed's anonymous fetch.
     const pre = await page.evaluate(() => {
       const src = document.body.getAttribute('data-storewide-event-src') || '';
@@ -1198,26 +1206,14 @@ async function eventBarWidths(browser) {
 
   await shareMarkup(context);
 
-  // Affiliate entry point (PRD T10, decision 5c): the Shopify page /pages/affiliates
-  // carries the programme copy, an email route and the Apply button to the worker's
-  // form; the button is hidden until the feed verdict proves the worker reachable.
-  // Until the owner creates the page, the worker-rendered form is measured instead.
-  const affPage = await backgroundRequest(context, 'affiliate page', 'get', `${BASE}/pages/affiliates`);
-  if (affPage.status() === 200) {
-    await visit(context, 'affiliate', `${BASE}/pages/affiliates`, async (page, rec) => {
-      const apply = page.locator('[data-affiliate-apply]');
-      const applyCount = await apply.count();
-      const applyVisible = applyCount ? await apply.first().isVisible() : false;
-      check(rec, 'apply button present in markup', applyCount === 1, `${applyCount} button(s)`);
-      if (BLOCK) check(rec, 'apply button stays hidden without the worker', !applyVisible);
-      else check(rec, 'apply button shown and links to the worker form', applyVisible && /\/apps\/pawscout\/affiliate\/apply/.test((await apply.first().getAttribute('href')) || ''));
-      check(rec, 'email route present', (await count(page, 'a[href^="mailto:"]')) > 0);
-    });
-  } else {
-    await visit(context, 'affiliate', `${BASE}/apps/pawscout/affiliate/apply`, async (page, rec) => {
-      check(rec, 'affiliate page renders (worker dependency, informational)', rec.status === 200, `status ${rec.status}; /pages/affiliates not created yet (${affPage.status()})`, false);
-    }, false);
-  }
+  // Affiliates (owner decision 2026-11-20, Entry 55): the footer links straight to the
+  // worker's application form, which carries the programme copy itself. The Shopify page
+  // /pages/affiliates (PRD T10) repeated that copy and was retired. The link is the theme's
+  // and is checked on the home visit; the form is the worker's, so it is informational here
+  // (with the worker blocked it cannot render, which the owner accepted).
+  await visit(context, 'affiliate', `${BASE}/apps/pawscout/affiliate/apply`, async (page, rec) => {
+    check(rec, 'affiliate form renders (worker dependency, informational)', rec.status === 200, `status ${rec.status}`, false);
+  }, false);
 
   // Cart and checkout with a real line in the basket, then clear it.
   if (variantId) {

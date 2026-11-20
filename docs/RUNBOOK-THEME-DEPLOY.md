@@ -78,7 +78,7 @@ Shopify redeploys within about a minute of the push. Check, in this order:
    git worktree remove --force /tmp/live-check
    ```
    or compare one changed file's `checksumMd5` from the Admin API with its local md5. Compiled assets (`assets/manifest.json` from `manifest.json.liquid`) are not written by the pull and are not a difference.
-3. Independence run against live: `node tests/independence.cjs` (blocked mode, 0 hard failures expected; the informational affiliate line is the one non-pass until the Affiliates page exists). Since T17 this also happens by itself: the `independence-daily` workflow runs two minutes after theme-ci finishes on `shopify-deploy`, and every day at 06:17 UTC. A failure opens or updates the issue "Independence run failed against live" (label `independence`); close it once live is fixed.
+3. Independence run against live: `node tests/independence.cjs` (blocked mode, 0 hard failures expected; the informational affiliate form line is a non-pass in blocked mode by design, since the form is the worker's). Since T17 this also happens by itself: the `independence-daily` workflow runs two minutes after theme-ci finishes on `shopify-deploy`, and every day at 06:17 UTC. A failure opens or updates the issue "Independence run failed against live" (label `independence`); close it once live is fixed.
 4. Tag the release and push the tag:
    ```sh
    git tag -a release-<yyyy-mm-dd>-<n> <merge-sha> -m "<one line>"
