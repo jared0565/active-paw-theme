@@ -15,6 +15,11 @@
 {%- endcomment -%}
 
 {%- liquid
+  # Shopify hands the theme page_title and page_description already HTML-escaped, and `escape`
+  # escapes them again once `replace` has run, so live served "Teeth &amp;amp; Gum Care" and
+  # "pet&amp;#39;s" (measured 2026-11-20, Entry 52). Every tag built from them uses
+  # `escape_once`, which leaves an existing entity alone and escapes a raw character, so the
+  # raw fallbacks (brand name, shop description, image alt) come out right as well.
   assign brand_name = settings.demo_brand_name | default: 'Active Paw'
   assign meta_title = page_title | default: brand_name | replace: 'Pawmerce', brand_name
   assign meta_description = page_description | default: shop.description | default: shop.name | replace: 'Pawmerce', brand_name
@@ -30,10 +35,10 @@
 
 <meta property="og:site_name" content="{{ brand_name | escape }}">
 <meta property="og:type" content="{{ og_type }}">
-<meta property="og:title" content="{{ meta_title | escape }}">
+<meta property="og:title" content="{{ meta_title | escape_once }}">
 <meta property="og:url" content="{{ meta_url }}">
 {%- if meta_description != blank %}
-<meta property="og:description" content="{{ meta_description | escape }}">
+<meta property="og:description" content="{{ meta_description | escape_once }}">
 {%- endif %}
 <meta property="og:locale" content="{{ request.locale.iso_code }}">
 
@@ -54,22 +59,22 @@
 <meta property="og:image:secure_url" content="{{ share_img_wide }}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="{{ share_img_alt | escape }}">
+<meta property="og:image:alt" content="{{ share_img_alt | escape_once }}">
 <meta property="og:image" content="{{ share_img_square }}">
 <meta property="og:image:secure_url" content="{{ share_img_square }}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="1200">
-<meta property="og:image:alt" content="{{ share_img_alt | escape }}">
+<meta property="og:image:alt" content="{{ share_img_alt | escape_once }}">
 {%- endif %}
 
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{{ meta_title | escape }}">
+<meta name="twitter:title" content="{{ meta_title | escape_once }}">
 {%- if meta_description != blank %}
-<meta name="twitter:description" content="{{ meta_description | escape }}">
+<meta name="twitter:description" content="{{ meta_description | escape_once }}">
 {%- endif %}
 {%- if share_image != blank %}
 <meta name="twitter:image" content="{{ share_img_wide }}">
-<meta name="twitter:image:alt" content="{{ share_img_alt | escape }}">
+<meta name="twitter:image:alt" content="{{ share_img_alt | escape_once }}">
 {%- endif %}
 
 {%- comment -%} ---- Organization + WebSite (every page) ---- {%- endcomment -%}

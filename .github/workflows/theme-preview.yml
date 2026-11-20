@@ -19,7 +19,9 @@ jobs:
     name: preview theme, independence both modes
     # Secrets are not available to pull requests from forks.
     if: github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    # Pinned with independence-daily.yml: Playwright 1.60 cannot install Chromium on
+    # ubuntu-26.04, which ubuntu-latest became on 2026-11-16 (Entry 51).
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       SHOPIFY_CLI_NO_ANALYTICS: "1"

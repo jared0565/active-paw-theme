@@ -1674,3 +1674,109 @@ PRD phase 5, T40 (owner request 2026-11-15).
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 51 - 2026-11-20: The live checks run on a runner image that can install their browser
+
+Dev tooling; no theme file changes. PRD R9, T17 and T35.
+
+### What changed
+- `.github/workflows/independence-daily.yml` and `.github/workflows/theme-preview.yml` run on `ubuntu-24.04` instead of `ubuntu-latest`, with a comment saying why and when to move them.
+- `theme-ci.yml` is unchanged: it installs no browser.
+
+### Why it changed
+- Every scheduled independence run from 16 to 19 November failed before it checked anything:
+  - runs 43900048540, 44120572975, 44338114232 and 44558158093;
+  - each reported "Playwright does not support chromium on ubuntu26.04-x64", then "Executable doesn't exist" at `chromium.launch`;
+  - each added a comment to issue #18.
+- The cause is the runner image, not the store or the theme. The run logs were read on 2026-11-20:
+  - the last green run, 43721579037 on 15 November, ran on image `ubuntu-24.04`;
+  - the 16 November run ran on `ubuntu-26.04`;
+  - both installed Playwright 1.60.0 from the same lock file;
+  - `shopify-deploy` did not move between them (`76faabc`).
+- `theme-preview.yml` installs Chromium the same way, so every pull request's preview check would have failed too. So would T35's manual start check on 27 November.
+- Pinning the image, rather than moving to a newer Playwright, keeps the exact pair that last passed. The freeze starts on 27 November. Playwright 1.65.1 was the newest release on 2026-11-20, and nobody has measured whether it supports 26.04.
+
+### How it was checked
+- See the pull request's runs: the dry run this branch's push started, and the preview job.
+
+### Files touched
+- `.github/workflows/independence-daily.yml`, `.github/workflows/theme-preview.yml`, `docs/design-improvements.md`.
+
+## Entry 52 - 2026-11-20: Share previews and search snippets read "&" and "'", not their codes
+
+### What changed
+- **`snippets/meta-tags.liquid`:** `og:title`, `twitter:title`, `og:description`, `twitter:description` and the three image `alt` tags use `escape_once` instead of `escape`.
+- **`layout/theme.liquid`:** `<meta name="description">` uses `escape_once` instead of `escape`.
+- **`snippets/social-share.liquid`:** on every page but a product's, the share text is decoded once before `url_encode`.
+  - It feeds the X, Pinterest, WhatsApp and email buttons.
+  - `&amp;` is decoded last, so a title that really holds "&lt;" keeps it.
+- **`tests/independence.cjs`:**
+  - a new check, `shareMarkup`, reads the served HTML of the first product and the first collection whose title holds "&" or "'";
+  - it fails on any tag escaped twice, on a share title that differs from the page title, and on an HTML entity in share-button text;
+  - `ONLY=share` runs just this check.
+
+### Why it changed
+- Measured on live on 2026-11-20, from the served HTML in a real browser (not the DOM, which decodes one level and hides the second):
+  - **Product "Pet Dental Wipes for Teeth & Gum Care":**
+    - `og:title` and `twitter:title` held `Teeth &amp;amp; Gum Care`, so a share preview reads "Teeth &amp; Gum Care";
+    - the search description and both share descriptions held `pet&amp;#39;s`, so a search snippet can read "pet&#39;s";
+    - `<title>` and the share buttons were right.
+  - **Collection "Fresh Water & Easy Walks":** the same `og:title` and `twitter:title`, and the X, Pinterest, WhatsApp and email text read "Fresh Water &amp; Easy Walks".
+- **Scope:**
+  - 6 of the 43 active products have "&" in their title, and 1 of the 7 collections does (`keep-them-cool`, since #30).
+  - Every page whose title or description holds "&", "'", a quote or "<" takes the same path.
+  - The `escape` lines date from the theme's first commit, `dadb6ae` (2026-06-10).
+  - The handover's note that #30 was the first time it showed was wrong: products were affected before #30.
+- **Why `escape` sometimes escapes twice.** Shopify gives the theme `page_title` and `page_description` already escaped. What the served HTML shows:
+
+  | Expression | Served |
+  |---|---|
+  | `page_title \| replace` (the `<title>`) | `&amp;` once, right |
+  | `page_title \| default \| escape` (the share menu's `data-ss-title`) | `&amp;` once, right |
+  | `page_title \| … \| replace \| escape` (the share tags) | `&amp;amp;`, wrong |
+  | `page_title \| url_encode` (the share buttons) | `%26amp%3B`, wrong |
+
+  - Inferred, not documented: `escape` leaves Shopify's escaped value alone until `replace` turns it into a plain string.
+  - `escape_once` gives the right output either way, and the raw fallbacks (the brand name, the shop description, an image's alt text) still get escaped.
+
+### Not changed
+- `<title>`, `og:site_name` (the brand setting, which arrives raw) and the share menu's `data-ss-title`: all three were measured right.
+- A product page's share buttons: they use the product's own title.
+- The JSON-LD blocks: they use `json` on the objects' own fields, not `page_title`.
+
+### How it was checked
+- Gates before the first push: eslint 0, `shopify theme check --fail-level warning` 0 offences in 71 files, 37 unit tests OK.
+- A local run with `ONLY=share` measured nothing: Shopify answered this machine 429 twice. The GitHub runner is the reading of record. See the pull request's runs for the red reading against live (the branch's dry run) and the green one on the preview.
+
+### Files touched
+- `snippets/meta-tags.liquid`, `layout/theme.liquid`, `snippets/social-share.liquid`, `tests/independence.cjs`, `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 53 - 2026-11-20: The docs catch up with phase 5
+
+Docs only; no theme file changes.
+
+### What changed
+- **`docs/theme-production-grade-prd.md`:**
+  - the deployed table gains #30;
+  - T40's collection step is ticked;
+  - T34 is ticked: pull requests A to D have all merged;
+  - T35 states when the scheduled run really starts, and that its manual run needs Entry 51;
+  - issue #18's note says the comments from 16 to 19 November were not refusals.
+- **`docs/HANDOVER.md`:** the banner names phase 5, #30 and `release-2026-11-15-2` in place of the state on 2026-09-24.
+- **`README.md`:** a section on the storewide event surfaces shipped in #27 to #29. Every claim was read from `assets/theme.js`, `snippets/welcome-modal.liquid` and the sections' settings on 2026-11-20.
+
+### Why it changed
+- The banner still named #17 and `release-2026-09-23-1`.
+- The README had nothing on the event surfaces a visitor meets from 27 November.
+- T35 said the scheduled run starts at 06:17 UTC. From 9 to 19 November it started between 13:31 and 16:18 UTC (read with `gh run list` on 2026-11-20).
+
+### How it was checked
+- #30's merge (`2026-11-15T02:25:43Z`, `76faabc`) was read with `gh pr view 30`.
+- The tags were read with `git rev-parse`.
+- The collection was read back through the Shopify connector, on 2026-11-20.
+
+### Files touched
+- `docs/theme-production-grade-prd.md`, `docs/HANDOVER.md`, `README.md`, `docs/design-improvements.md`.
