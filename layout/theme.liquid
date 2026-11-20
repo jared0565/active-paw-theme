@@ -35,20 +35,24 @@
       # title is set here. The page is found through the footer's Affiliates link setting,
       # never a written path. The words are the worker's own document.title words, so the
       # tab does not change when its script runs.
+      # The description works the same way (Entry 61). Its words are the form's own hero line
+      # and pill, without the commission figures, which are the worker's to change.
       assign title_base = page_title
+      assign description_base = page_description
       if settings.affiliate_apply_url != blank
         assign affiliate_apply_path = settings.affiliate_apply_url | remove_first: request.origin | split: '#' | first | split: '?' | first
         if request.path == affiliate_apply_path
           assign title_base = 'Apply to the Partner Program'
+          assign description_base = 'Recommend pet products you love and earn commission on every tracked order from your audience. Open to creators of any size.'
         endif
       endif
     -%}
     <title>{{ title_base | replace: 'Pawmerce', brand_name }}{% if current_tags %} - {{ current_tags | join: ', ' }}{% endif %}{% if current_page != 1 %} - Page {{ current_page }}{% endif %}{% unless title_base contains brand_name %} - {{ brand_name }}{% endunless %}</title>
-    {% if page_description %}
-      <meta name="description" content="{{ page_description | replace: 'Pawmerce', brand_name | escape_once }}">{% # page_description arrives escaped: escape_once, not escape (Entry 52) %}
+    {% if description_base %}
+      <meta name="description" content="{{ description_base | replace: 'Pawmerce', brand_name | escape_once }}">{% # page_description arrives escaped: escape_once, not escape (Entry 52) %}
     {% endif %}
     <link rel="canonical" href="{{ canonical_url }}">
-    {%- render 'meta-tags', title_base: title_base -%}
+    {%- render 'meta-tags', title_base: title_base, description_base: description_base -%}
     {%- liquid
       assign body_font = settings.type_body_font
       assign body_font_semibold = body_font | font_modify: 'weight', '600'

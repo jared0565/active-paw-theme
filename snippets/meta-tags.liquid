@@ -11,7 +11,7 @@
   Telegram thumbnails) is the alternate, and Shopify's auto image remains a
   final fallback. Pages without their own image keep only Shopify's.
 
-  Rendered once from layout/theme.liquid <head>, which passes title_base.
+  Rendered once from layout/theme.liquid <head>, which passes title_base and description_base.
 {%- endcomment -%}
 
 {%- liquid
@@ -20,10 +20,11 @@
   # "pet&amp;#39;s" (measured 2026-11-20, Entry 52). Every tag built from them uses
   # `escape_once`, which leaves an existing entity alone and escapes a raw character, so the
   # raw fallbacks (brand name, shop description, image alt) come out right as well.
-  # title_base is the layout's one title (page_title, or the affiliate form's own; Entry 59).
+  # title_base and description_base are the layout's (page_title and page_description, or the
+  # affiliate form's own; Entries 59 and 61).
   assign brand_name = settings.demo_brand_name | default: 'Active Paw'
   assign meta_title = title_base | default: page_title | default: brand_name | replace: 'Pawmerce', brand_name
-  assign meta_description = page_description | default: shop.description | default: shop.name | replace: 'Pawmerce', brand_name
+  assign meta_description = description_base | default: page_description | default: shop.description | default: shop.name | replace: 'Pawmerce', brand_name
   assign meta_url = canonical_url | default: request.origin
 
   assign og_type = 'website'
