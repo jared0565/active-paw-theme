@@ -148,6 +148,47 @@ const noUkDeliveryClaim = async (page, rec) => {
   if (found.merchant.length) check(rec, 'collection description (store content) makes no UK delivery claim (informational)', false, found.merchant.join(' | '), false);
 };
 
+// Every field a visitor types into or picks from must stand out from the ground around it at
+// 3 to 1 (WCAG 1.4.11, Entry 54). Either its fill does (the white fields in the dark footer),
+// or its border does, against the field's own fill and against what is around it. The border
+// is the field's own, or its wrapper's when the field draws none (the quantity steppers draw
+// it on the group). Fields inside the closed contact and welcome modals are measured too:
+// computed colours do not need the field on screen. Disabled fields are exempt.
+const FIELD_SEL = 'input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=submit]):not([type=button]), textarea, select';
+const fieldBoundaries = async (page, rec) => {
+  const weak = await page.evaluate((sel) => {
+    const rgba = (c) => { const v = (c.match(/[\d.]+/g) || []).map(Number); return v.length === 3 ? [...v, 1] : (v.length === 4 ? v : [0, 0, 0, 0]); };
+    const over = (top, base) => [0, 1, 2].map((i) => top[i] * top[3] + base[i] * (1 - top[3])).concat(1);
+    const lum = (c) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+    const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+    // The colour an element paints, with every translucent ground above it laid over the next.
+    const ground = (el) => {
+      const layers = [];
+      for (let p = el; p; p = p.parentElement) {
+        const c = rgba(window.getComputedStyle(p).backgroundColor);
+        if (c[3] > 0) { layers.push(c); if (c[3] >= 1) break; }
+      }
+      return layers.reverse().reduce((base, c) => over(c, base), [255, 255, 255, 1]);
+    };
+    const weakOnes = [];
+    for (const f of document.querySelectorAll(sel)) {
+      if (f.disabled) continue;
+      let host = f;
+      const own = window.getComputedStyle(f);
+      if (parseFloat(own.borderTopWidth) === 0 && f.parentElement && parseFloat(window.getComputedStyle(f.parentElement).borderTopWidth) > 0) host = f.parentElement;
+      const hs = window.getComputedStyle(host);
+      const fill = ground(host);
+      const around = host.parentElement ? ground(host.parentElement) : [255, 255, 255, 1];
+      const hasBorder = parseFloat(hs.borderTopWidth) > 0 && hs.borderTopStyle !== 'none';
+      const border = over(rgba(hs.borderTopColor), fill);
+      const best = Math.max(ratio(fill, around), hasBorder ? Math.min(ratio(border, fill), ratio(border, around)) : 0);
+      if (best < 3) weakOnes.push(`${f.id || f.name || f.tagName.toLowerCase()} ${best.toFixed(2)} to 1`);
+    }
+    return weakOnes;
+  }, FIELD_SEL).catch((e) => [`not measured: ${String(e).slice(0, 80)}`]);
+  check(rec, 'every form field stands out from its ground (3 to 1)', weak.length === 0, weak.join(', ') || 'all pass');
+};
+
 // options.keepConsentBanner leaves Shopify's cookie banner unanswered (the consent check needs it waiting).
 async function visit(context, name, url, specific, generic = true, before = null, options = {}) {
   const page = await context.newPage();
@@ -211,6 +252,7 @@ async function visit(context, name, url, specific, generic = true, before = null
     // design while a real event runs (27 to 30 November 2026), so it is the one dialog allowed.
     const dialogs = BLOCK ? '[role="dialog"]:visible' : '[role="dialog"]:visible:not(.welcome-modal__dialog)';
     check(rec, 'no open dialog', (await page.locator(dialogs).count()) === 0);
+    await fieldBoundaries(page, rec);
     if (BLOCK) {
       check(rec, 'no layout shift after the feed window', h0 !== null && h1 !== null && Math.abs(h1 - h0) <= 2, `main ${h0}px -> ${h1}px`);
     } else {
@@ -1020,6 +1062,21 @@ async function eventBarWidths(browser) {
     const shareContext = await openContext(browser, null);
     await shareMarkup(shareContext);
     await shareContext.close();
+    await browser.close();
+    finish();
+    return;
+  }
+  // ONLY=fields runs the form field edge check on the pages that carry the theme's fields:
+  // home (header search, footer, contact and welcome modals), a product page and the contact page.
+  if (process.env.ONLY === 'fields') {
+    const fieldsContext = await openContext(browser, null);
+    let firstProduct = null;
+    await visit(fieldsContext, 'home', `${BASE}/`, async (page) => {
+      firstProduct = await page.locator('a[href*="/products/"]').first().getAttribute('href').catch(() => null);
+    });
+    if (firstProduct) await visit(fieldsContext, 'product', new URL(firstProduct, BASE).href);
+    await visit(fieldsContext, 'contact', `${BASE}/pages/contact`);
+    await fieldsContext.close();
     await browser.close();
     finish();
     return;

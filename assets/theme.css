@@ -13,6 +13,11 @@
   --accent-dark: #b33700;
   --accent-soft: #ffe0d2;
   --line: #ded8cf;
+  /* The edge of a field a visitor types into or picks from (2026-11-20, Entry 54). --line
+     is a divider at 1.42 to 1 on white, too faint to show where a white field sits on a
+     white card; WCAG 1.4.11 asks 3 to 1. This is --line's warm grey made darker: 3.88 to 1
+     on white, 3.82 on the page ground and 3.53 on --surface. Dividers and cards keep --line. */
+  --field-line: #8a8073;
   --green: #1f7a5a;
   --sticky-header-offset: 176px;
 }
@@ -1298,7 +1303,7 @@ p { line-height: 1.6; }
 .cart-item-controls input {
   width: 78px;
   min-height: 40px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--field-line);
   border-radius: 8px;
   padding: 8px 10px;
   font: inherit;
@@ -2088,7 +2093,7 @@ summary { cursor: pointer; font-weight: 800; }
 .product-buybox select, .newsletter input {
   width: 100%;
   min-height: 42px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--field-line);
   border-radius: 8px;
   padding: 9px 11px;
 }
@@ -2105,7 +2110,7 @@ summary { cursor: pointer; font-weight: 800; }
 .quantity-control {
   display: grid;
   grid-template-columns: 42px 1fr 42px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--field-line);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -2313,7 +2318,7 @@ summary { cursor: pointer; font-weight: 800; }
 .demo-purchase-form select {
   width: 100%;
   min-height: 52px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--field-line);
   border-radius: 8px;
   padding: 10px 12px;
   font: inherit;
@@ -2859,7 +2864,7 @@ summary { cursor: pointer; font-weight: 800; }
   grid-template-columns: 36px 44px 36px;
   align-items: center;
   width: max-content;
-  border: 1px solid var(--line);
+  border: 1px solid var(--field-line);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -3065,7 +3070,7 @@ body.cart-drawer-open { overflow: hidden; }
   width: 100%;
   min-height: 48px;
   padding: 12px 14px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--field-line);
   border-radius: 10px;
   background: #fff;
   color: var(--ink);
@@ -3252,7 +3257,7 @@ body.pawscout-lock { overflow: hidden; }
 .welcome-modal__code strong { font-size: 20px; letter-spacing: 0.08em; color: var(--ink); }
 .welcome-modal__code span { color: var(--muted); font-size: 12px; }
 .welcome-modal__search { display: flex; gap: 8px; margin: 0 0 10px; }
-.welcome-modal__search input { flex: 1 1 auto; min-width: 0; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 999px; font-size: 15px; background: var(--panel); color: var(--ink); }
+.welcome-modal__search input { flex: 1 1 auto; min-width: 0; padding: 12px 14px; border: 1.5px solid var(--field-line); border-radius: 999px; font-size: 15px; background: var(--panel); color: var(--ink); }
 .welcome-modal__search input:focus { outline: none; border-color: var(--accent); }
 .welcome-modal__search button { flex: 0 0 auto; padding: 12px 20px; border: 0; border-radius: 999px; background: var(--accent); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
 .welcome-modal__search button:hover { background: var(--accent-dark); }
