@@ -1884,3 +1884,40 @@ The page is 179229753682: title "Affiliates", handle `affiliates`, template suff
 
 ### Graphite sync
 - The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
+
+## Entry 56 - 2026-11-20: Shopify's telemetry errors no longer fail the daily check
+
+Test only; no theme file changes.
+
+### What changed
+- **`tests/independence.cjs`:** a page error (an uncaught exception or rejected promise) is now sorted by the frames in its stack. Before, every page error failed the "no console errors from page code" check.
+  - **The theme's:** any frame in a theme file (`/cdn/shop/t/<id>/`), or in an inline script on the page, whose frames carry the page's own address. These still fail.
+  - **Shopify's:** at least one frame in Shopify's own scripts (`/cdn/shopifycloud/`, `cdn.shopify.com/shopifycloud/`, `/cdn/wpm/`) and no theme frame. These are counted, not failed, like Shopify's console lines already were.
+  - **Neither:** frames with no address, such as `<anonymous>` or a bare script name, count for neither side. A stack with no frame at all still fails.
+- Every page error's full stack is kept in the run's JSON (`pageErrors`, up to six per page), so an unknown source explains itself next time. A failing error now names its frame.
+- **Two controls, set by environment variables:**
+  - `ABORT_SHOPIFY_TELEMETRY=1` refuses Shopify's metrics host on every page. It must pass.
+  - `INJECT_THEME_PAGE_ERRORS=1` adds an inline script and a theme-path script to the home page, each leaving a fetch rejection uncaught. It must fail.
+
+### Why it changed
+- PR #33's first runs on 2026-11-20 failed on "TypeError: Failed to fetch" on 7 of 70 pages, on the preview and on live alike. Live was running #32's code, which had passed an hour before.
+- Every one of those pages also logged Shopify's telemetry request to `otlp-http-production.shopifysvc.com/v1/metrics` being refused by CORS. Not one had the TypeError without it.
+- Refusing that host on purpose reproduced the error. Its stack ran entirely through Shopify's scripts: the web pixels manager, the storefront's fetch wrapper (`shop_events_listener`) and the Shop bundle (`shop-js`).
+- Those two fetch wrappers also sit on top of any fetch the theme makes. A rule that trusted one platform frame would therefore hide theme errors. That is why the rule asks whether any frame is the theme's.
+- The first two drafts were wrong and are recorded here:
+  - "every frame has a Shopify address" failed Shopify's own errors, because some of their frames carry no address (`event-observer-collector.js`);
+  - "every address in the stack is Shopify's" passed a script added to the page, whose frames show as `<anonymous>`.
+
+  The rule above is built on how the theme actually runs: from its files and from inline Liquid scripts.
+
+### How it was checked
+- `ABORT_SHOPIFY_TELEMETRY=1 ONLY=fields`, 2026-11-20: 21/21 passed. The 7 page errors were all counted as Shopify's (home 4, product 2, contact 1).
+- The same run with the rule switched off: 3 hard failures, the error CI had hit.
+- `INJECT_THEME_PAGE_ERRORS=1 ONLY=fields`: home failed with both injected errors, named `/:3196:34` (inline) and `/cdn/shop/t/0/assets/__probe.js:1:26`. Both stacks had Shopify's two fetch wrappers on top. The product and contact pages passed.
+- eslint 0.
+
+### Files touched
+- `tests/independence.cjs`, `docs/design-improvements.md`.
+
+### Graphite sync
+- The repo's Stop hook runs `graphite build` after the session; no manual rebuild needed.
