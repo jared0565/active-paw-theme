@@ -361,6 +361,8 @@ const SHARE_META_RE = /<meta (?:property|name)="(og:title|twitter:title|og:descr
 // The affiliate form's title, set by the layout (Entry 59). The worker's script sets the same
 // words as document.title, so they must match the worker's.
 const AFFILIATE_TITLE = 'Apply to the Partner Program';
+// Its description, also set by the layout (Entry 61): the form's hero line and pill, no figures.
+const AFFILIATE_DESCRIPTION = 'Recommend pet products you love and earn commission on every tracked order from your audience. Open to creators of any size.';
 const SHARE_LINK_RE =/href="((?:https:\/\/twitter\.com\/intent\/tweet|https:\/\/pinterest\.com\/pin\/create\/button\/|https:\/\/wa\.me\/|mailto:)\?[^"]*)"/g;
 async function shareMarkup(context) {
   const pick = async (label, url, key) => {
@@ -1335,6 +1337,10 @@ async function eventBarWidths(browser) {
     check(rec, `the application form is titled "${AFFILIATE_TITLE}" in the tab and in shared-link previews${provable ? '' : ' (informational: not served by the preview theme)'}`,
       r.status() === 200 && title.startsWith(`${AFFILIATE_TITLE} - `) && shareTitles.length === 2 && shareTitles.every((t) => t === AFFILIATE_TITLE),
       `status ${r.status()}, title "${title}", share ${shareTitles.map((t) => `"${t}"`).join(', ') || 'none'}`, provable);
+    const descriptions = [...html.matchAll(SHARE_META_RE)].filter((m) => ['description', 'og:description', 'twitter:description'].includes(m[1])).map((m) => `${m[1]}=${decodeAttr(m[2])}`);
+    check(rec, `the application form describes the programme in search results and shared-link previews${provable ? '' : ' (informational: not served by the preview theme)'}`,
+      descriptions.length === 3 && descriptions.every((d) => d.endsWith(`=${AFFILIATE_DESCRIPTION}`)),
+      descriptions.map((d) => d.slice(0, 90)).join(' | ') || 'none', provable);
   }, false);
 
   // Cart and checkout with a real line in the basket, then clear it.

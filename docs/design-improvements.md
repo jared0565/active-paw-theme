@@ -2038,3 +2038,27 @@ The owner's decision on audit finding P1 (impeccable `audit` of the affiliate ap
 
 ### Files touched
 - `assets/theme.css`, `sections/announcement-bar.liquid`, `snippets/announcement-event.liquid`, `tests/independence.cjs`, `docs/design-improvements.md`.
+
+## Entry 61 - 2026-11-20: The affiliate application form describes the programme in previews
+
+The owner approved a programme description for the form's shared links ("a line describing the partner programme is fine"). This completes Entry 59, which gave the form its own title.
+
+### What was wrong
+- On the PawScout application form at `/apps/pawscout/affiliate/apply`, `og:description` and `twitter:description` were the shop's general line: "Shop Active Paw for smart pet care essentials: grooming brushes, toys, paw care, leashes, walking gear, and everyday supplies for happier dogs and cats." There was no `<meta name="description">` at all, because the app-proxy page has no `page_description`. Measured on live, 2026-11-20.
+- So a shared application link previewed as the shop, not the programme, and search engines had nothing of the page's own to show.
+
+### What changed
+- **`layout/theme.liquid`:** next to `title_base` (Entry 59), the layout builds `description_base`. It is `page_description`, or this on the page whose path equals the footer's Affiliates link setting: "Recommend pet products you love and earn commission on every tracked order from your audience. Open to creators of any size."
+  - The words are the form's own hero line and one of its pills. The commission figures ("Earn 2%, rising to 5%", "5% off for your audience") are left out: they are the worker's terms, and a copy in the theme would go stale silently if they changed.
+  - `<meta name="description">` now reads `description_base`, so the form gets one. The layout passes it to `meta-tags`.
+- **`snippets/meta-tags.liquid`:** `og:description` and `twitter:description` read `description_base`, falling back as before (`page_description`, then the shop's description, then its name). Every other page is unchanged.
+- **`tests/independence.cjs`:** the affiliate visit (control run, served HTML; the same rules as the title check) now also needs `description`, `og:description` and `twitter:description` to all equal that line.
+
+### How it was checked
+- **The check fails on live as it is:** run on the live page's HTML, its logic finds two description tags, both the shop's line, so it fails. With the new line substituted and the missing tag added, it passes.
+- **Gates run locally:** `npx eslint .`, `shopify theme check --fail-level warning` (69 files, no offences) and the unit tests (OK).
+- The CI preview run is the reading of record. It showed under Entry 59 that the preview theme renders this page.
+- **CI on the first head (087645c):** the preview run (44815938298) passed the check, enforced, with all three tags reading the line. The live dry run (44815921031) failed it on the shop's line, as it should before the merge. The branch was then rebased onto PR #38's merge (Entry 60); only this file conflicted.
+
+### Files touched
+- `layout/theme.liquid`, `snippets/meta-tags.liquid`, `tests/independence.cjs`, `docs/design-improvements.md`.
